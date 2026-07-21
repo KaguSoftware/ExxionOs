@@ -42,6 +42,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/finance", labelKey: "nav.finance", icon: Wallet, ready: true },
   // Phase 4 — shipped.
   { href: "/equipment", labelKey: "nav.equipment", icon: Boxes, ready: true },
-  { href: "/clients", labelKey: "nav.clients", icon: Users, ready: false },
+  // Phase 6 — shipped.
+  { href: "/clients", labelKey: "nav.clients", icon: Users, ready: true },
   { href: "/marketing", labelKey: "nav.marketing", icon: Megaphone, ready: false },
 ];

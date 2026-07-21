@@ -26,6 +26,7 @@ export function NeedsYou({
   lowSupplies = 0,
   ordersOverdue = 0,
   ordersUnpaid = 0,
+  clientsQuiet = 0,
 }: {
   dueCount: number;
   openIssues?: number;
@@ -35,6 +36,8 @@ export function NeedsYou({
   ordersOverdue?: number;
   /** Delivered with money still owed — the one that costs real money. */
   ordersUnpaid?: number;
+  /** Regulars (2+ orders) with nothing for 90 days. One-timers aren't listed. */
+  clientsQuiet?: number;
 }) {
   const t = useT();
 
@@ -45,7 +48,8 @@ export function NeedsYou({
     machinesDown === 0 &&
     lowSupplies === 0 &&
     ordersOverdue === 0 &&
-    ordersUnpaid === 0
+    ordersUnpaid === 0 &&
+    clientsQuiet === 0
   )
     return null;
 
@@ -116,6 +120,19 @@ export function NeedsYou({
           className="text-sm text-ink underline-offset-2 hover:underline"
         >
           {t("dashboard.ordersUnpaid", { count: ordersUnpaid })}
+        </Link>
+      )}
+
+      {/* ⚠️ RENDERED, not just accepted as a prop. Phase 4 passed machinesDown
+          and lowSupplies in and never rendered them, so a broken machine
+          reached the dashboard and silently vanished. `?tab=` is the real param
+          the tab shell reads. */}
+      {clientsQuiet > 0 && (
+        <Link
+          href="/clients?tab=insights"
+          className="text-sm text-ink underline-offset-2 hover:underline"
+        >
+          {t("dashboard.clientsQuiet", { count: clientsQuiet })}
         </Link>
       )}
     </div>

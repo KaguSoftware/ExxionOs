@@ -5,11 +5,13 @@ import { LiveRefresh } from "@/components/shell/live-refresh";
 import { PageHeader } from "@/components/ui/panel";
 import { countOrThrow, rowsOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
+import { goneQuiet, type ClientOrderRow } from "@/lib/clients";
 import { isLowStock } from "@/lib/equipment";
 import { totals } from "@/lib/finance-series";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  Client,
   Direction,
   Order,
   OrderPayment,
@@ -42,6 +44,8 @@ export default async function DashboardPage() {
     supplyRows,
     activeOrders,
     orderPayments,
+    quietCandidates,
+    clientOrders,
   ] = await Promise.all([
     rowsOrThrow<Reminder>(
       "dashboard.reminders",
@@ -115,6 +119,25 @@ export default async function DashboardPage() {
       "dashboard.orderPayments",
       supabase.from("order_payments").select("order_id, amount_minor, kind")
     ),
+    /**
+     * Phase 6: regulars who have gone quiet. INSIDE the existing wave.
+     *
+     * Also cannot be a SQL count — it needs each client's order count AND how
+     * long since their last one, then a threshold on both. Fetch the rows and
+     * fold in JS, exactly as low stock and unpaid orders do above.
+     *
+     * ⚠️ `dashboard.orders` above excludes cancelled orders, so it can't answer
+     * "when did they last order" on its own; these are the client-linked
+     * orders including their dates.
+     */
+    rowsOrThrow<Client>(
+      "dashboard.clients",
+      supabase.from("clients").select("*").is("archived_at", null)
+    ),
+    rowsOrThrow<ClientOrderRow>(
+      "dashboard.clientOrders",
+      supabase.from("orders").select("id, client_id, stage, created_at").limit(2000)
+    ),
   ]);
 
   const dueCount = reminders.filter((r) => r.due_on && r.due_on <= today).length;
@@ -139,6 +162,20 @@ export default async function DashboardPage() {
       o.total_minor > (paidByOrder.get(o.id) ?? 0)
   ).length;
 
+  /**
+   * Regulars — two orders or more — with nothing for 90 days.
+   *
+   * The empty revenue map is deliberate: `goneQuiet` filters on order COUNT and
+   * RECENCY, never on money, so the dashboard doesn't pay for the transactions
+   * query just to compute a lifetime value it never shows.
+   */
+  const clientsQuiet = goneQuiet(
+    quietCandidates,
+    clientOrders,
+    new Map(),
+    today
+  ).length;
+
   const greeting = greetingKey();
   const firstName = ctx.profile.full_name.split(/\s+/)[0] || "";
 
@@ -153,6 +190,7 @@ export default async function DashboardPage() {
           "supplies",
           "orders",
           "order_payments",
+          "clients",
         ]}
       />
 
@@ -167,6 +205,7 @@ export default async function DashboardPage() {
         lowSupplies={lowSupplies}
         ordersOverdue={ordersOverdue}
         ordersUnpaid={ordersUnpaid}
+        clientsQuiet={clientsQuiet}
       />
 
       {/* This month's money, linking into Finance. ⚠️ The link uses the REAL

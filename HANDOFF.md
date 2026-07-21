@@ -7,15 +7,15 @@
 ## 👋 START HERE — resuming in a brand-new chat
 
 **If Parsa says "next", "next phase", or "continue": read this file top to bottom, then start
-PHASE 6 — CLIENTS.** Everything you need is here; no other file is required.
+PHASE 7 — MARKETING.** Everything you need is here; no other file is required.
 
-- **Phases 1–5 are DONE, verified against prod, and pushed.** 5 of 7.
-- **Phase 6 is CLIENTS** — the CRM surfaces, pattern analytics, and the `events` table.
-  ⚠️ **The `clients` TABLE ALREADY EXISTS** (built in Phase 5 so orders had a real foreign key).
-  Phase 6 ADDS to it — surfaces, more columns, analytics — it does **not** reshape it. Orders
-  already carry `client_id`, so "what does this client buy, how often, how much" are real queries
-  on day one.
-- Then Phase 7 is Marketing, then the reshaping pass (see the next section).
+- **Phases 1–6 are DONE, verified against prod, and pushed.** 6 of 7.
+- **Phase 7 is MARKETING** — campaigns, free samples, filming days, networking.
+  ⚠️ **The `events` TABLE ALREADY EXISTS** (built in Phase 6), and its CHECK constraint already
+  accepts `'filming'`, `'networking'` and `'campaign'`. ✅ Proven against prod: inserting a
+  `filming` event succeeds TODAY. So Phase 7 adds a **LENS over existing rows**, not a migration
+  that widens a constraint — the same relationship Learnings has to `issues`.
+- Then the reshaping pass (see the next section).
 - **Ask Parsa the design questions first** (as every previous phase did) rather than assuming.
 - **Commit as Parsa alone. NEVER add `Co-Authored-By`, never mention Claude or AI** in a commit
   message or PR body. This is an absolute rule.
@@ -168,6 +168,80 @@ These come from KaguOs, where each was **measured**. They are why that system is
   an unbreakable login loop — that's what `0002_backfill_profiles.sql` fixes (idempotent).
 
 ## Current status (2026-07-21)
+
+### 🟢 PHASE 6 — CLIENTS: BUILT + VERIFIED AGAINST PROD **and driven in a browser**
+`tsc` · `lint` · `build` green (**26 routes**). **Migration 0009 applied and schema-verified.**
+Sidebar entry is **live**. Routes: `/clients` (2 tabs), `/clients/[id]`, `/clients/new`.
+
+**⚠️⚠️ THE RULE THIS PHASE TURNS ON — LIFETIME VALUE IS MONEY THAT ARRIVED.**
+
+> **`orders.total_minor` IS THE AGREED PRICE. `transactions` IS THE MONEY.**
+
+`revenueByClient()` in `lib/clients.ts` joins **transaction → order → client** (a transaction's
+`source_id` is the ORDER, not the client) and lets `direction` carry the sign, so a refund
+subtracts. **Never rank clients by summing `orders.total_minor`.**
+- ✅ **Proven against prod**: a client with a ₺5.000 quote and no payment has a lifetime value of
+  **₺0**, while a client who paid ₺5.000 across a deposit + balance + a second order reads
+  **₺5.000**. The same test demonstrates that the naive sum reports **₺5.000 for the client who
+  has never sent a lira**, ranking them **level with the best client on the board**. Third in the
+  family of bugs after `maintenance_logs.cost_minor` (Phase 4) and order revenue (Phase 5).
+- ✅ A refund subtracts: ₺5.000 → **₺4.500** after a ₺500 `direction:'out'` row.
+
+**Migration 0009 is ADDITIVE ONLY.** `clients` gains `kind`, `source`, `tags`, `birthday`,
+`address`, `postal_code`, `country`. Nothing dropped, renamed or retyped — `orders.client_id` and
+every past sale depend on those rows staying as they are.
+- `kind`/`source` are **CHECK-constrained text, not enums** (matching `orders.stage`), so adding
+  "tiktok" later is a two-line `alter constraint`, not an `alter type` that locks the table.
+  ✅ Verified: `kind:'wizard'` and `source:'carrier pigeon'` are both **refused with 23514**.
+- ⚠️ **`source` is NULLABLE and null is a REAL ANSWER.** "Nobody asked how they found us" is not
+  "other", and `bySource()` **returns the unknown bucket rather than filtering it out** — dropping
+  it would make the percentages add to 100% of a subset while looking like 100% of the business.
+
+**⚠️ `events` IS ONE TABLE WITH TWO LENSES**, the same shape as `issues` → Learnings. A client's
+timeline and Phase 7's Marketing schedule are two VIEWS of "something happened on a date".
+- ⚠️ **The Marketing kinds are already in the CHECK** (`filming`, `networking`, `campaign`) even
+  though Phase 6 renders none of them. ✅ Proven: inserting a `filming` event **succeeds today**.
+  Phase 7 adds a lens, not a migration.
+- ⚠️ **Both links are SET NULL, never cascade** — matching `issues.collection_id`. ✅ Proven
+  against prod: deleting a client leaves the **complaint standing** with `client_id` nulled, and
+  then deleting the order leaves it standing again with `order_id` nulled. Deleting a client also
+  leaves **the orders AND their revenue** intact (Phase 5's guarantee, re-proven).
+
+**⚠️ `goneQuiet` REQUIRES 2+ ORDERS, deliberately.** A client who ordered once and never came back
+is not "at risk" — they are a one-time buyer, which is the largest group there is. Including them
+would bury the handful of genuinely lapsed regulars, and a list that always has fifty names in it
+stops being read. ✅ Unit-tested both directions.
+
+**⚠️ `repeatRate` returns `null`, never `0`, when nobody has ordered** — same guard as `lostRate()`.
+A 0% rendered on a dashboard reads as "nobody ever returns", a claim about the business rather
+than about the data. Same reason `averageOrderMinor` is `null` and not ₺0,00.
+
+**`createClientRecord`/`updateClientRecord` MOVED** out of `actions/shipping.ts` into
+**`src/lib/actions/clients.ts`** — the same lift-and-share as `syncTransaction()` in Phase 5. One
+implementation, so the field trimming can't drift. **Clients ARCHIVE, never delete** (the confirm
+dialog says the orders and revenue stay); events DO delete, since nothing references them.
+
+**Dashboard**: a gone-quiet signal was added **INSIDE the existing `Promise.all`**, and — unlike
+Phase 4's `machinesDown` — **it is actually rendered** in `NeedsYou`, deep-linking to
+`/clients?tab=insights`.
+
+**✅ VERIFICATION — 41 checks, all passing:**
+- **16 schema checks** against prod: every new column queryable by name, all 10 `events` columns,
+  RLS blocks the anon key, the CHECK constraints reject bad values, defaults land.
+- **14 unit tests** on `lib/clients.ts` (pure, no React/Supabase — same as `costing.ts`).
+- **11 end-to-end** against prod with real rows, cleaned up afterwards.
+- **✅ FARSI + LIGHT/DARK — THE PHASE 5 DEBT IS NOW CLEARED.** Driven signed-in on the real dev
+  server for `/clients`, `/clients/[id]`, `/clients/new` **AND `/shipping`**, in EN and FA:
+  `lang` correct, `dir=ltr` (Parsa's call), Persian text present, **no untranslated leaks**,
+  **money still Latin digits**, no physical-direction classes in the served HTML. A bogus client
+  id correctly **404s** instead of rendering an empty shell.
+  ⚠️ The trick Phase 5 lacked: **don't hand-write the session cookie** — `@supabase/ssr` chunks
+  and encodes them. Sign in with `createServerClient` and let it serialise the jar itself.
+- Design detector clean (only the documented known-false `image-strip.tsx` warning).
+- `npm run wipe` dry-run lists **`events` first** — it must precede `clients` and `orders`.
+
+**Still worth Parsa's eyes**: make a client, attach an order, take a deposit, and watch the
+lifetime value on `/clients` move by the DEPOSIT — not by the order total.
 
 ### 🟢 PHASE 5 — SHIPPING: BUILT + VERIFIED AGAINST PROD (the revenue half of the system)
 `tsc` · `lint` · `build` green (**23 routes**). **Migration 0008 applied and schema-verified.**
@@ -539,11 +613,25 @@ toggle light/dark/system.
 - `src/components/creative/collection-pnl.tsx` — per-collection P&L.
 - `src/components/finance/charts.tsx` — ⚠️ `useChartMode`, `AXIS`, `compactMinor`, `monthLabel`
   and `ChartTooltip` are **exported and reused** by Shipping's charts. Don't copy them.
-- `scripts/wipe-data.mjs` — `npm run wipe`. Dry-run by default. ⚠️ **Needs the five new tables
-  added — done, verified by dry run.
+**Clients (phase 6):**
+- `src/lib/clients.ts` — **pure analytics, and the file that enforces "money that ARRIVED".**
+  `revenueByClient()` (transaction → order → client, refunds subtract) · `clientStats` ·
+  `repeatRate` (null, not 0) · `newVsReturning` · `bySource` (keeps the unknown bucket) ·
+  `goneQuiet` (2+ orders on purpose) · `topClients`. Also `CLIENT_KIND_KEY` / `CLIENT_SOURCE_KEY` /
+  `EVENT_KIND_KEY` — value→i18n key in ONE place each, like `STAGE_KEY`.
+- `src/lib/actions/clients.ts` — clients + events. **`createClientRecord`/`updateClientRecord`
+  moved here from `actions/shipping.ts`.** Clients **archive**; events delete. Tags are
+  lowercased/trimmed/de-duplicated here so "Gift" and "gift " never become two tags.
+- `src/components/clients/*` — `panels` (Directory · Insights) · `directory` (client-side filters) ·
+  `client-detail` · `client-form` · `event-timeline` · `insights`.
+  ⚠️ `insights.tsx` reuses `useChartMode` from `finance/charts.tsx` and the validated
+  `CATEGORY_COLORS` / `OTHER_COLOR` — don't introduce a second palette.
+- `scripts/wipe-data.mjs` — `npm run wipe`. Dry-run by default. ⚠️ **`events` is listed FIRST**:
+  it points at both `clients` and `orders`, and because both links are SET NULL, leaving it out
+  would not error — it would silently strand a pile of orphaned notes.
 - `supabase/migrations/0001_foundation.sql` · `0002_backfill_profiles.sql` · `0003_finance.sql` ·
   `0004_creative.sql` · `0005_equipment.sql` · `0006_machine_purchase_expense.sql` ·
-  `0007_material_stock.sql` · `0008_shipping.sql`.
+  `0007_material_stock.sql` · `0008_shipping.sql` · `0009_clients.sql`.
 - `scripts/apply-migration.mjs` — Management-API applier (alternative to `db push`).
 
 ## Roadmap / next steps
@@ -557,19 +645,20 @@ toggle light/dark/system.
    contract Phase 2 was built to honour.
 5. ✅ **Shipping** — order lifecycle board, staged + timestamped, **payments → Finance income**,
    per-collection P&L. The revenue half of the system.
-6. ⬅️ **NEXT — Clients** — CRM surfaces + pattern analytics + events. ⚠️ The `clients` TABLE
-   already exists (Phase 5) and orders already link to it — Phase 6 adds surfaces and columns,
-   it does not reshape the table.
-7. **Marketing** — campaigns, samples, filming schedule, networking.
+6. ✅ **Clients** — directory + pattern analytics + the `events` table. **Lifetime value is read
+   from `transactions`, never from `orders.total_minor`** — a client with an unpaid ₺5.000 quote
+   is worth ₺0, proven against prod.
+7. ⬅️ **NEXT — Marketing** — campaigns, samples, filming schedule, networking. ⚠️ The `events`
+   TABLE already exists (Phase 6) and its CHECK already accepts `filming`/`networking`/`campaign`
+   — Phase 7 adds a LENS over those rows, not a migration.
 8. *(implied)* **"Make it ours"** — the reshaping pass. See the section at the top of this file.
 
 Finance is second **on purpose**: every later section writes into its `transactions` contract, so
 that contract must exist before anything can honour it.
 
 **Also outstanding:**
-- ⚠️ **Farsi + light/dark pass on the Phase 5 surfaces** — the one verification this phase could
-  not complete (see the Phase 5 status note). Quickest check: switch to Farsi in Settings and open
-  `/shipping`.
+- ✅ ~~Farsi + light/dark pass on the Phase 5 surfaces~~ — **DONE in Phase 6**, for `/shipping`
+  as well as `/clients`. See the ✅ VERIFICATION block under Phase 6 for the technique.
 - ⚠️ **Set the Vercel env vars** — `NEXT_PUBLIC_SUPABASE_URL`,
   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. The first two are read at
   BUILD time, so the deploy fails without them. **Only Parsa can do this.**
@@ -591,11 +680,13 @@ that contract must exist before anything can honour it.
 ## Deliberately partial — grows later (scope ledger)
 | Area | What shipped now | Intended full shape | Grows in |
 |---|---|---|---|
-| Sections 4–7 | Nav entries render **disabled with a "soon" chip** — visible so the shape of the app is legible, not hidden | Four remaining sections | Phases 4–7 |
+| Section 7 (Marketing) | Its nav entry renders **disabled with a "soon" chip** — visible so the shape of the app is legible, not hidden. Sections 1–6 are all `ready: true` | The last remaining section | Phase 7 |
 | Materials | Name, kind, cost per kg, archive | **Stock levels deliberately excluded** — tracking grams remaining turns this into an inventory system, and Equipment (Phase 4) owns supplies. Decide it there | Phase 4 |
 | Product photos | Upload/remove on the product EDIT form only (a new product has no id to attach to yet) | Staged upload on create, reordering, a lightbox | Later |
 | Per-collection P&L | ✅ **Shipped (Phase 5).** Revenue from order lines meeting computed cost | Time series, per-product margin trends | Later |
-| Clients | **Table only** — name, email, phone, instagram, city, notes. No surfaces; `/clients` is `ready: false` | CRM surfaces, pattern analytics, events | Phase 6 |
+| Clients | ✅ **Shipped (Phase 6).** Directory (search · kind/source/tag filters · archive) + Insights (top clients, repeat rate, new vs returning, source breakdown, gone quiet) + per-client detail with order history and event timeline | Per-client P&L against computed cost; birthday reminders auto-created via the `reminders` back-link; CSV export | Later |
+| Events | ✅ **Table shipped (Phase 6)**, client lens only. Marketing kinds already pass the CHECK | The Marketing lens — filming days, networking, campaigns — over the SAME rows | Phase 7 |
+| Client tags | Free-form, lowercased, capped at 25. Filterable in the directory | A managed vocabulary if the free-form list gets messy | If asked |
 | Carrier / tracking | Plain text fields, by decision | No carrier API integration is planned | Not planned |
 | Order codes | Typed by hand (`EX-014`) | Auto-generated sequence if Parsa wants one | If asked |
 | Finance charts | 12-month in/out bars · category breakdown · net line | Budgets, per-collection P&L, forecasting — deliberately deferred until there's real data to budget against | Later |
@@ -625,6 +716,24 @@ that contract must exist before anything can honour it.
 - ⚠️ **Deposits mean "log the total on delivery" is WRONG.** Reaching `delivered` must prompt for
   the OUTSTANDING BALANCE (`outstandingMinor()` in `lib/shipping.ts`), never the total. This was
   Parsa's own answer overturning the original plan — don't let a later refactor "simplify" it back.
+- ⚠️⚠️ **NEVER RANK CLIENTS BY `orders.total_minor`.** A client's lifetime value is the
+  `transactions` their payments wrote — `revenueByClient()` in `lib/clients.ts`. Summing agreed
+  prices puts someone who has paid nothing level with the best client on the board (proven with
+  real rows against prod). Third in the family after `maintenance_logs.cost_minor` and order
+  revenue.
+- ⚠️ **`clients.source` null ≠ 'other'.** Null means nobody asked; 'other' means they told you
+  something off the list. `bySource()` returns the unknown bucket rather than dropping it —
+  filtering it out makes the percentages add to 100% of a subset while looking like the whole
+  business.
+- ⚠️ **`goneQuiet` deliberately needs 2+ orders**, and `repeatRate`/`averageOrderMinor` return
+  **null, never 0**, when there is nothing to divide. A 0% reads as a claim about the business.
+- ⚠️ **`events` is ONE table with TWO lenses** (client timeline · Phase 7 Marketing). The
+  Marketing kinds already pass the CHECK — add the lens, not a migration. Both `client_id` and
+  `order_id` are **SET NULL**: deleting a client must not delete the record that the meeting
+  happened.
+- ⚠️ **Driving a protected route in a script needs a REAL session cookie.** Don't hand-write it —
+  `@supabase/ssr` chunks and base64-encodes them, which is why Phase 5's Farsi pass failed with
+  307s. Sign in through `createServerClient` with an in-memory jar and reuse what it serialises.
 - ⚠️ **`setOrderStage` must write BOTH** the `stage` column and an `order_stage_events` row.
   Updating only the column loses history silently and cycle-time becomes quietly wrong.
 - ⚠️ **`react-hooks/purity` is an ERROR.** Never call `Date.now()` or `todayInIstanbul()` during

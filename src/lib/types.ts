@@ -350,6 +350,42 @@ export const ORDER_STAGES: OrderStage[] = [
 export type PaymentKind = "deposit" | "balance" | "refund";
 export const PAYMENT_KINDS: PaymentKind[] = ["deposit", "balance", "refund"];
 
+/**
+ * Individual / business / reseller. A reseller's ₺20.000 and a gift buyer's
+ * ₺400 are different kinds of number; averaging them describes neither.
+ */
+export type ClientKind = "individual" | "business" | "reseller";
+export const CLIENT_KINDS: ClientKind[] = [
+  "individual",
+  "business",
+  "reseller",
+];
+
+/**
+ * HOW THEY FOUND EXXION.
+ *
+ * ⚠️ A FIXED LIST ON PURPOSE. This is the column "which channel actually
+ * brings the money" is answered from, and that question is only answerable if
+ * the values group — free text gives "insta", "Instagram" and "IG" as three
+ * separate channels. `null` is a real and distinct answer ("nobody asked"),
+ * which is why the insights panel shows an unknown bucket instead of hiding it.
+ */
+export type ClientSource =
+  | "instagram"
+  | "referral"
+  | "market"
+  | "walk_in"
+  | "website"
+  | "other";
+export const CLIENT_SOURCES: ClientSource[] = [
+  "instagram",
+  "referral",
+  "market",
+  "walk_in",
+  "website",
+  "other",
+];
+
 export type Client = {
   id: string;
   name: string;
@@ -358,7 +394,68 @@ export type Client = {
   instagram: string | null;
   city: string | null;
   notes: string | null;
+  kind: ClientKind;
+  source: ClientSource | null;
+  /** Free-form. Analytics reads `source`/`kind`; tags are for FINDING people. */
+  tags: string[];
+  birthday: string | null;
+  address: string | null;
+  postal_code: string | null;
+  country: string | null;
+  /** ⚠️ Clients ARCHIVE, never delete — a past sale must keep its buyer's name. */
   archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * ONE `events` table, kind-tagged, TWO lenses — the same shape as
+ * `issues` → Learnings, and for the same reason: a client's timeline and
+ * Marketing's schedule are two VIEWS of "something happened on a date". Two
+ * tables would need syncing and would drift; one table cannot.
+ *
+ * ⚠️ The Marketing kinds are already valid in the database (migration 0009), so
+ * Phase 7 adds a lens, not a migration. Phase 6 renders only the client kinds.
+ */
+export type EventKind =
+  | "call"
+  | "meeting"
+  | "message"
+  | "sample_sent"
+  | "complaint"
+  | "note"
+  | "filming"
+  | "networking"
+  | "campaign";
+
+/** The kinds Phase 6 offers when logging against a client. */
+export const CLIENT_EVENT_KINDS: EventKind[] = [
+  "call",
+  "meeting",
+  "message",
+  "sample_sent",
+  "complaint",
+  "note",
+];
+
+/** Reserved for Phase 7's lens over the same table. */
+export const MARKETING_EVENT_KINDS: EventKind[] = [
+  "filming",
+  "networking",
+  "campaign",
+];
+
+export type Event = {
+  id: string;
+  kind: EventKind;
+  title: string;
+  body: string | null;
+  /** A DATE — a business fact, not a clock reading. See `todayInIstanbul()`. */
+  occurred_on: string;
+  /** ⚠️ SET NULL: deleting a client must not delete the record it happened. */
+  client_id: string | null;
+  order_id: string | null;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 };

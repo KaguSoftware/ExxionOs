@@ -49,6 +49,12 @@ const wipeSetupToo = args.includes("--all");
  * if the script is interrupted.
  */
 const CONTENT = [
+  // Clients (phase 6). `events` FIRST: it points at both `clients` and
+  // `orders`, so it has to go before either. (Both links are SET NULL, so
+  // leaving it would not error — it would silently leave a pile of orphaned
+  // notes behind, which is exactly the surprise this explicit list exists to
+  // prevent.)
+  "events",
   // Shipping (phase 5) — before `transactions`, which its payments point at.
   // ⚠️ `clients` goes too: it holds customer data, so a "wipe the business
   // data" that left the customer list behind would be a nasty surprise.

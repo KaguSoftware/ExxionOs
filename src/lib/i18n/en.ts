@@ -52,6 +52,7 @@ export const en = {
     reminderDue: "1 reminder due",
     ordersOverdue: "{count} orders past their date",
     ordersUnpaid: "{count} delivered, not paid",
+    clientsQuiet: "{count} regulars gone quiet",
     allClear: "Nothing needs you right now.",
     reminders: "Reminders",
     addReminder: "Add a reminder",
@@ -585,6 +586,7 @@ export const en = {
 
   clients: {
     title: "Clients",
+    subtitle: "Who buys, how often, and what they are worth.",
     name: "Name",
     namePlaceholder: "Who is it for?",
     email: "Email",
@@ -596,6 +598,106 @@ export const en = {
     addClient: "Add client",
     clientAdded: "Client added.",
     noClients: "No clients yet.",
+    noClientsHint: "Add the first one and their orders start adding up here.",
+
+    // Tabs
+    tabDirectory: "Directory",
+    tabInsights: "Insights",
+
+    // Fields added in phase 6
+    kind: "Type",
+    kindIndividual: "Individual",
+    kindBusiness: "Business",
+    kindReseller: "Reseller",
+    source: "How they found us",
+    sourceInstagram: "Instagram",
+    sourceReferral: "Referral",
+    sourceMarket: "Market",
+    sourceWalkIn: "Walk-in",
+    sourceWebsite: "Website",
+    sourceOther: "Other",
+    sourceUnknown: "Not recorded",
+    tags: "Tags",
+    tagsHint: "Comma separated. Lowercased, for finding people later.",
+    birthday: "Birthday",
+    address: "Address",
+    postalCode: "Postal code",
+    country: "Country",
+
+    // Directory
+    search: "Search",
+    searchPlaceholder: "Name, email, phone, city, tag…",
+    allKinds: "All types",
+    allSources: "All sources",
+    allTags: "All tags",
+    showArchived: "Show archived",
+    archived: "Archived",
+    orders: "Orders",
+    lifetimeValue: "Lifetime value",
+    lastOrder: "Last order",
+    neverOrdered: "No orders yet",
+    daysAgo: "{count} days ago",
+    noMatches: "No clients match those filters.",
+
+    // Detail
+    profile: "Profile",
+    orderHistory: "Order history",
+    timeline: "Timeline",
+    averageOrder: "Average order",
+    firstOrder: "First order",
+    clientSince: "Client since",
+    openInShipping: "View in Shipping",
+    editClient: "Edit client",
+    clientSaved: "Client saved.",
+    notFound: "That client no longer exists.",
+
+    // ⚠️ Archive, never delete — see the note on `archiveClient`.
+    archiveClient: "Archive client",
+    archiveConfirm:
+      "Archiving removes them from the directory and the analytics. Their orders and revenue stay exactly as they are. You can bring them back at any time.",
+    archived_: "Client archived.",
+    unarchive: "Bring back",
+    unarchived: "Client restored.",
+
+    // Events
+    events: "Events",
+    newEvent: "Log an event",
+    eventKind: "What happened",
+    eventTitle: "Title",
+    eventBody: "Details",
+    eventDate: "Date",
+    eventAdded: "Event logged.",
+    eventDeleted: "Event deleted.",
+    deleteEvent: "Delete event",
+    deleteEventConfirm: "This removes the note. Nothing else is affected.",
+    noEvents: "Nothing logged yet.",
+    kindCall: "Call",
+    kindMeeting: "Meeting",
+    kindMessage: "Message",
+    kindSampleSent: "Sample sent",
+    kindComplaint: "Complaint",
+    kindNote: "Note",
+
+    // Insights
+    topClients: "Top clients",
+    topClientsHint:
+      "Ranked by money actually received — never by quoted totals.",
+    repeatRate: "Repeat rate",
+    repeatRateHint: "Share of buying clients who came back for a second order.",
+    newVsReturning: "New vs returning",
+    newClients: "New",
+    returningClients: "Returning",
+    whereFrom: "Where clients come from",
+    whereFromHint: "Revenue by channel. Unrecorded sources are shown, not hidden.",
+    goneQuiet: "Gone quiet",
+    goneQuietHint:
+      "Regulars — two orders or more — with nothing for 90 days. One-time buyers are not listed.",
+    goneQuietEmpty: "Nobody has gone quiet.",
+    notEnoughData: "Not enough data yet.",
+    clientsCount: "{count} clients",
+
+    saved: "Saved.",
+    saveFailed: "Could not save. Try again.",
   },
 
   units: {

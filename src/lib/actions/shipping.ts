@@ -9,7 +9,6 @@ import { outstandingMinor } from "@/lib/shipping";
 import { createClient } from "@/lib/supabase/server";
 import type {
   ActionResult,
-  Client,
   Order,
   OrderPayment,
   OrderStage,
@@ -33,59 +32,11 @@ function refresh(orderId?: string) {
 }
 
 // --- clients ---------------------------------------------------------------
-// ⚠️ Minimal on purpose. Clients is PHASE 6 — this exists now only so orders
-// have a real foreign key from day one rather than a text field to migrate
-// later. Phase 6 adds columns and surfaces; it should not need to reshape this.
-
-export type ClientInput = {
-  name: string;
-  email: string | null;
-  phone: string | null;
-  instagram: string | null;
-  city: string | null;
-  notes: string | null;
-};
-
-function clientRow(input: ClientInput) {
-  return {
-    name: input.name.trim().slice(0, 120) || "Unnamed client",
-    email: input.email?.trim().slice(0, 200) || null,
-    phone: input.phone?.trim().slice(0, 60) || null,
-    instagram: input.instagram?.trim().replace(/^@/, "").slice(0, 60) || null,
-    city: input.city?.trim().slice(0, 120) || null,
-    notes: input.notes?.trim().slice(0, 4000) || null,
-  };
-}
-
-export async function createClientRecord(
-  input: ClientInput
-): Promise<ActionResult<Client>> {
-  await getSessionContext();
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("clients")
-    .insert(clientRow(input))
-    .select()
-    .single<Client>();
-
-  if (error) return { ok: false, error: error.message };
-  refresh();
-  return { ok: true, data };
-}
-
-export async function updateClientRecord(
-  id: string,
-  input: ClientInput
-): Promise<ActionResult> {
-  await getSessionContext();
-  const supabase = await createClient();
-
-  const { error } = await supabase.from("clients").update(clientRow(input)).eq("id", id);
-  if (error) return { ok: false, error: error.message };
-  refresh();
-  return { ok: true, data: undefined };
-}
+// ⚠️ MOVED. `createClientRecord` / `updateClientRecord` lived here through
+// Phase 5, when `clients` existed only so orders had a real foreign key. They
+// now live in `actions/clients.ts` alongside the rest of the CRM — one
+// implementation, so the field trimming cannot drift between two copies. Same
+// reasoning as lifting `syncTransaction()` into `actions/finance-link.ts`.
 
 // --- orders ----------------------------------------------------------------
 
