@@ -6,16 +6,17 @@
 
 ## 👋 START HERE — resuming in a brand-new chat
 
-**If Parsa says "next", "next phase", or "continue": read this file top to bottom, then start
-PHASE 7 — MARKETING.** Everything you need is here; no other file is required.
+**ALL SEVEN PHASES ARE DONE.** If Parsa says "next", "next phase", or "continue", the next work
+is **THE RESHAPING PASS — "make it ours"** (the section immediately below). There is no Phase 8
+to build from a spec; the next move is to use the system and change what's wrong.
 
-- **Phases 1–6 are DONE, verified against prod, and pushed.** 6 of 7.
-- **Phase 7 is MARKETING** — campaigns, free samples, filming days, networking.
-  ⚠️ **The `events` TABLE ALREADY EXISTS** (built in Phase 6), and its CHECK constraint already
-  accepts `'filming'`, `'networking'` and `'campaign'`. ✅ Proven against prod: inserting a
-  `filming` event succeeds TODAY. So Phase 7 adds a **LENS over existing rows**, not a migration
-  that widens a constraint — the same relationship Learnings has to `issues`.
-- Then the reshaping pass (see the next section).
+- **Phases 1–7 are DONE, verified against prod, and pushed.** 7 of 7. Every section in
+  `src/lib/nav.ts` is `ready: true` — nothing renders as "soon" any more.
+- **The reshaping pass is not a phase with a plan.** Read the section below, then ask Parsa what
+  is wrong with what he's been using. Renames, re-ordered screens, different numbers — all of it
+  is expected and none of it is scope creep.
+- The scaffold is finished and correct: the schema, the money contracts, the performance rules,
+  the i18n discipline. Those were the expensive-to-get-wrong parts, and they are done properly.
 - **Ask Parsa the design questions first** (as every previous phase did) rather than assuming.
 - **Commit as Parsa alone. NEVER add `Co-Authored-By`, never mention Claude or AI** in a commit
   message or PR body. This is an absolute rule.
@@ -65,6 +66,8 @@ One login, six sections plus a dashboard and settings:
 4. **Shipping** — the order lifecycle, client enquiry → build → delivered.
 5. **Clients** — CRM + pattern analytics + events.
 6. **Marketing** — campaigns, free samples, filming days, networking.
+
+**All six are built.** Every nav entry is `ready: true`.
 
 ## ⚠️ BRANDING IS NOT DONE — read before any visual work
 There is no brand yet. The current palette is a **deliberately neutral, high-quality placeholder**:
@@ -168,6 +171,71 @@ These come from KaguOs, where each was **measured**. They are why that system is
   an unbreakable login loop — that's what `0002_backfill_profiles.sql` fixes (idempotent).
 
 ## Current status (2026-07-21)
+
+### 🟢 PHASE 7 — MARKETING: BUILT + VERIFIED AGAINST PROD **— THE SEVENTH AND LAST SECTION**
+`tsc` · `lint` · `build` green (**29 routes**). **Migration 0010 applied and schema-verified.**
+Sidebar entry is **live — every section is now `ready: true`.** Routes: `/marketing` (4 tabs),
+`/marketing/campaigns/[id]`, `/marketing/campaigns/new`.
+
+**⚠️⚠️ RULE 1 — A SAMPLE IS COSTED, NEVER EXPENSED.**
+A sample links to a Creative product, so `productCost()` knows what it cost to make. It writes
+**NO Finance transaction**, and `recordSample` must never be "fixed" to write one: the filament
+was expensed when it was BOUGHT (Phase 4), so charging again when the print is given away counts
+the same lira twice. Identical to Phase 3's rule for products.
+- ✅ **Proven against prod**: creating a sample leaves the transactions table **byte-identical**
+  (10 rows → 10 rows), and no `source_type='marketing'` row appears for it.
+- ✅ Its value is computed at READ time: a 50g / 2h product at ₺1000/kg + ₺25/h costs ₺100, so
+  2 of them = **₺200**. Delete the product and it costs **`null`, never ₺0** — ₺0,00 would claim
+  the giveaway was free.
+- `givenAwayMinor()` returns an **`uncostedCount`** so the headline figure never silently
+  under-reports while looking authoritative.
+
+**⚠️⚠️ RULE 2 — `campaigns.budget_minor` IS THE PLAN; `transactions` IS THE MONEY.**
+Fourth in the family after `maintenance_logs.cost_minor` (P4), `orders.total_minor` (P5) and
+client lifetime value (P6). A campaign planned at ₺5.000 that never ran spent ₺0.
+- Each `campaign_costs` row calls the **shared `syncTransaction()`** — Marketing is its THIRD
+  writer. ✅ Proven: two costs → **exactly two** `source_type='marketing'` OUT rows, the ledger
+  and the cost rows agree at ₺1.200, and `transaction_id` is stored on both (without it the next
+  edit would create a duplicate).
+- ✅ **COUNTER-PROOF**: budget + spend reports **₺2.200 for ₺1.200 actually spent**.
+- ✅ `budgetUsage().ratio` is **`null` when the budget is 0**, not 0 — "0% of budget used" on an
+  unbudgeted campaign reads as headroom that doesn't exist, so the UI says "No budget set" and
+  draws no bar at all.
+- ✅ Deleting the Finance row leaves the cost standing with a null link (SET NULL).
+
+**⚠️ THE SCHEDULE IS A LENS, NOT A TABLE.** `events` was **not touched by this migration**. The
+Marketing schedule reads `kind in ('filming','networking','campaign')` from the SAME table the
+client timeline reads, and reuses the same `createEvent`/`deleteEvent` actions from
+`actions/clients.ts`. ✅ Proven: a filming event created here is one row of `events`. Phase 6 put
+those kinds in the CHECK on purpose so this phase needed no migration for them.
+
+**⚠️ INSIGHTS DELIBERATELY DOES NOT CLAIM CAMPAIGNS EARNED MONEY.** Nothing in the data proves an
+order came from a campaign, so there is no ROI figure anywhere — an invented attribution number is
+worse than none, because it gets believed and then spent against. What it reports: spend per
+campaign (from Finance), what the giveaways cost, and **which channel new clients said they came
+from** (Phase 6's `clients.source`). The panel says so in its own subtitle. If real ROI is ever
+wanted it needs `orders.campaign_id` and the discipline of tagging every order — a decision, not
+a chart.
+
+**✅ VERIFICATION — 40 checks, all passing:**
+- **14 schema checks** against prod: every column of all three tables by name, RLS blocks anon on
+  each, CHECK constraints reject `channel:'billboard'` / `status:'vibing'` / `quantity:0`, the
+  Marketing category seeded as an expense, and deleting a campaign **cascades its costs but leaves
+  the sample standing** with `campaign_id` nulled.
+- **12 unit tests** on `lib/marketing.ts` (pure — no React, no Supabase).
+- **14 end-to-end** against prod with real rows, cleaned up afterwards.
+- **Farsi + light/dark driven signed-in on all FOUR tabs** in EN and FA: `lang` correct,
+  `dir=ltr`, Persian text present, **no untranslated leaks**, money in Latin digits, no
+  physical-direction classes. A bogus campaign id **404s**. The other four sections still render.
+  ⚠️ Note for future checks: `TabbedPanels` renders **only the active tab's panel**, so asserting
+  on another tab's copy needs `?tab=<id>` — the first Farsi run "failed" on exactly this and the
+  code was right.
+- Design detector clean (only the documented known-false `image-strip.tsx` warning).
+- `npm run wipe` dry-run lists `samples` · `campaign_costs` · `campaigns` child-first.
+
+**Still worth Parsa's eyes**: create a campaign with a ₺1.000 budget, log two costs over it, and
+watch the bar turn red AND the expense appear in Finance tagged *Marketing*. Then log a sample and
+confirm Finance does **not** move.
 
 ### 🟢 PHASE 6 — CLIENTS: BUILT + VERIFIED AGAINST PROD **and driven in a browser**
 `tsc` · `lint` · `build` green (**26 routes**). **Migration 0009 applied and schema-verified.**
@@ -557,7 +625,8 @@ toggle light/dark/system.
   instances of a form with hardcoded ids make every label focus the FIRST row's input.
 - `src/app/(app)/error.tsx` — the boundary the throws land on. Shows `digest`, **not**
   `error.message` (Next redacts it in production, so it would print an empty string).
-- `src/lib/nav.ts` — the six sections. Unbuilt ones render disabled with a "soon" chip rather than
+- `src/lib/nav.ts` — the six sections, **all now `ready: true`**. The disabled-with-a-"soon"-chip
+  path still exists for anything added later. Unbuilt ones render disabled rather than
   being hidden. ⚠️ **Flip `ready: true` in the SAME commit that ships the section** — a built
   section left `false` is invisible work; a `true` one that isn't built is a dead link.
 - `src/components/shell/tabbed-panels.tsx` — **the instant-tab shell.** Server-rendered content per
@@ -629,9 +698,22 @@ toggle light/dark/system.
 - `scripts/wipe-data.mjs` — `npm run wipe`. Dry-run by default. ⚠️ **`events` is listed FIRST**:
   it points at both `clients` and `orders`, and because both links are SET NULL, leaving it out
   would not error — it would silently strand a pile of orphaned notes.
+**Marketing (phase 7):**
+- `src/lib/marketing.ts` — **pure logic, and the file that enforces both rules.**
+  `campaignSpendMinor` · `budgetUsage` (**null ratio on a zero budget**) · `sampleCostMinor`
+  (**null, never 0**, reuses `productCost`) · `givenAwayMinor` (reports `uncostedCount`) ·
+  `newClientsBySourceByMonth` (the honest signal) · `overBudgetCampaigns` · `groupCosts`. Plus
+  `CAMPAIGN_CHANNEL_KEY` / `CAMPAIGN_STATUS_KEY` / `MARKETING_EVENT_KIND_KEY`.
+- `src/lib/actions/marketing.ts` — campaigns (**archive, not delete**), `addCampaignCost` /
+  `deleteCampaignCost` (**the third `syncTransaction()` writer**), `recordSample` /
+  `deleteSample` (**writes NO transaction, deliberately**).
+- `src/components/marketing/*` — `panels` (4 tabs) · `campaign-list` (exports **`BudgetBar`**,
+  reused by the detail page) · `campaign-detail` · `campaign-form` · `schedule` (**the events
+  lens — reuses `createEvent`/`deleteEvent` from `actions/clients.ts`**) · `sample-list` ·
+  `insights`.
 - `supabase/migrations/0001_foundation.sql` · `0002_backfill_profiles.sql` · `0003_finance.sql` ·
   `0004_creative.sql` · `0005_equipment.sql` · `0006_machine_purchase_expense.sql` ·
-  `0007_material_stock.sql` · `0008_shipping.sql` · `0009_clients.sql`.
+  `0007_material_stock.sql` · `0008_shipping.sql` · `0009_clients.sql` · `0010_marketing.sql`.
 - `scripts/apply-migration.mjs` — Management-API applier (alternative to `db push`).
 
 ## Roadmap / next steps
@@ -648,10 +730,12 @@ toggle light/dark/system.
 6. ✅ **Clients** — directory + pattern analytics + the `events` table. **Lifetime value is read
    from `transactions`, never from `orders.total_minor`** — a client with an unpaid ₺5.000 quote
    is worth ₺0, proven against prod.
-7. ⬅️ **NEXT — Marketing** — campaigns, samples, filming schedule, networking. ⚠️ The `events`
-   TABLE already exists (Phase 6) and its CHECK already accepts `filming`/`networking`/`campaign`
-   — Phase 7 adds a LENS over those rows, not a migration.
-8. *(implied)* **"Make it ours"** — the reshaping pass. See the section at the top of this file.
+7. ✅ **Marketing** — campaigns with budget vs actual, the schedule (a LENS over `events`), free
+   samples, honest insights. **A sample is COSTED, never EXPENSED**; **the budget is the plan,
+   `transactions` is the money** — both proven against prod.
+8. ⬅️ **NEXT — "Make it ours"** — the reshaping pass. **Not a spec to build; a conversation to
+   have.** See the section at the top of this file, then ask Parsa what is wrong with what he has
+   been using.
 
 Finance is second **on purpose**: every later section writes into its `transactions` contract, so
 that contract must exist before anything can honour it.
@@ -680,7 +764,10 @@ that contract must exist before anything can honour it.
 ## Deliberately partial — grows later (scope ledger)
 | Area | What shipped now | Intended full shape | Grows in |
 |---|---|---|---|
-| Section 7 (Marketing) | Its nav entry renders **disabled with a "soon" chip** — visible so the shape of the app is legible, not hidden. Sections 1–6 are all `ready: true` | The last remaining section | Phase 7 |
+| All seven sections | ✅ **Every one is `ready: true`.** Nothing renders as "soon" any more | — | Done |
+| Campaigns | ✅ **Shipped (Phase 7).** Budget vs actual, itemised costs each writing one Finance expense, archive | Per-campaign ROI — needs `orders.campaign_id` and the discipline of tagging orders. Deliberately NOT guessed at | If asked |
+| Samples | ✅ **Shipped (Phase 7).** Costed from the product at read time, never expensed. Optional links to client and campaign | Opt-in "also log a print run" so a sample printed for the occasion deducts filament in one step | Later |
+| Marketing schedule | ✅ **Shipped (Phase 7)** as a LENS over `events` — filming, networking, campaign moments | A calendar view rather than two lists | Later |
 | Materials | Name, kind, cost per kg, archive | **Stock levels deliberately excluded** — tracking grams remaining turns this into an inventory system, and Equipment (Phase 4) owns supplies. Decide it there | Phase 4 |
 | Product photos | Upload/remove on the product EDIT form only (a new product has no id to attach to yet) | Staged upload on create, reordering, a lightbox | Later |
 | Per-collection P&L | ✅ **Shipped (Phase 5).** Revenue from order lines meeting computed cost | Time series, per-product margin trends | Later |
@@ -731,6 +818,22 @@ that contract must exist before anything can honour it.
   Marketing kinds already pass the CHECK — add the lens, not a migration. Both `client_id` and
   `order_id` are **SET NULL**: deleting a client must not delete the record that the meeting
   happened.
+- ⚠️⚠️ **A SAMPLE WRITES NO FINANCE TRANSACTION, EVER.** The filament was expensed when it was
+  bought; charging again when the print is given away double-counts it. Its value is computed at
+  read time by `sampleCostMinor()`, and is **null (not ₺0) when it can't be costed** — ₺0,00 would
+  claim the giveaway was free. Same rule as products (P3) and machine purchase prices (P4).
+- ⚠️⚠️ **NEVER ADD `campaigns.budget_minor` TO CAMPAIGN SPEND.** The budget is the PLAN; the
+  `transactions` rows are the money. Adding them reports **₺2.200 for ₺1.200 spent** (proven).
+  Fourth in the family after `maintenance_logs.cost_minor`, `orders.total_minor`, and ranking
+  clients by agreed prices.
+- ⚠️ **`budgetUsage().ratio` is null on a zero budget** — render "No budget set" and NO bar. A bar
+  at 0% reads as headroom that doesn't exist.
+- ⚠️ **Marketing's Insights must not claim a campaign earned money.** Nothing links an order to a
+  campaign, and an invented attribution number gets believed. Real ROI needs `orders.campaign_id`
+  and the discipline of tagging every order — a decision, not a chart.
+- ⚠️ **`TabbedPanels` renders ONLY the active tab's panel.** A test asserting on another tab's
+  copy must pass `?tab=<id>`, or it fails against perfectly correct code (this happened during the
+  Phase 7 Farsi pass).
 - ⚠️ **Driving a protected route in a script needs a REAL session cookie.** Don't hand-write it —
   `@supabase/ssr` chunks and base64-encodes them, which is why Phase 5's Farsi pass failed with
   307s. Sign in through `createServerClient` with an in-memory jar and reuse what it serialises.

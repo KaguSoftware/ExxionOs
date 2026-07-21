@@ -7,10 +7,13 @@ import { countOrThrow, rowsOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
 import { goneQuiet, type ClientOrderRow } from "@/lib/clients";
 import { isLowStock } from "@/lib/equipment";
+import { groupCosts, overBudgetCampaigns } from "@/lib/marketing";
 import { totals } from "@/lib/finance-series";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  Campaign,
+  CampaignCost,
   Client,
   Direction,
   Order,
@@ -46,6 +49,8 @@ export default async function DashboardPage() {
     orderPayments,
     quietCandidates,
     clientOrders,
+    liveCampaigns,
+    campaignCosts,
   ] = await Promise.all([
     rowsOrThrow<Reminder>(
       "dashboard.reminders",
@@ -138,6 +143,27 @@ export default async function DashboardPage() {
       "dashboard.clientOrders",
       supabase.from("orders").select("id, client_id, stage, created_at").limit(2000)
     ),
+    /**
+     * Phase 7: campaigns that have run past their budget. INSIDE the wave.
+     *
+     * ⚠️ Not a SQL comparison — actual spend is the SUM of the campaign's cost
+     * rows, and "over budget" compares that sum against a column on a different
+     * table. Fetch both and fold in JS, exactly as low stock, unpaid orders and
+     * gone-quiet clients do above. Only live campaigns can be over budget: a
+     * finished one is history, not a thing to act on.
+     */
+    rowsOrThrow<Campaign>(
+      "dashboard.campaigns",
+      supabase
+        .from("campaigns")
+        .select("*")
+        .is("archived_at", null)
+        .in("status", ["planned", "running"])
+    ),
+    rowsOrThrow<CampaignCost>(
+      "dashboard.campaignCosts",
+      supabase.from("campaign_costs").select("*")
+    ),
   ]);
 
   const dueCount = reminders.filter((r) => r.due_on && r.due_on <= today).length;
@@ -176,6 +202,11 @@ export default async function DashboardPage() {
     today
   ).length;
 
+  const campaignsOverBudget = overBudgetCampaigns(
+    liveCampaigns,
+    groupCosts(campaignCosts)
+  ).length;
+
   const greeting = greetingKey();
   const firstName = ctx.profile.full_name.split(/\s+/)[0] || "";
 
@@ -191,6 +222,8 @@ export default async function DashboardPage() {
           "orders",
           "order_payments",
           "clients",
+          "campaigns",
+          "campaign_costs",
         ]}
       />
 
@@ -206,6 +239,7 @@ export default async function DashboardPage() {
         ordersOverdue={ordersOverdue}
         ordersUnpaid={ordersUnpaid}
         clientsQuiet={clientsQuiet}
+        campaignsOverBudget={campaignsOverBudget}
       />
 
       {/* This month's money, linking into Finance. ⚠️ The link uses the REAL

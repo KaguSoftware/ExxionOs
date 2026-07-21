@@ -27,6 +27,7 @@ export function NeedsYou({
   ordersOverdue = 0,
   ordersUnpaid = 0,
   clientsQuiet = 0,
+  campaignsOverBudget = 0,
 }: {
   dueCount: number;
   openIssues?: number;
@@ -38,6 +39,8 @@ export function NeedsYou({
   ordersUnpaid?: number;
   /** Regulars (2+ orders) with nothing for 90 days. One-timers aren't listed. */
   clientsQuiet?: number;
+  /** Live campaigns whose logged spend has passed their planned budget. */
+  campaignsOverBudget?: number;
 }) {
   const t = useT();
 
@@ -49,7 +52,8 @@ export function NeedsYou({
     lowSupplies === 0 &&
     ordersOverdue === 0 &&
     ordersUnpaid === 0 &&
-    clientsQuiet === 0
+    clientsQuiet === 0 &&
+    campaignsOverBudget === 0
   )
     return null;
 
@@ -133,6 +137,15 @@ export function NeedsYou({
           className="text-sm text-ink underline-offset-2 hover:underline"
         >
           {t("dashboard.clientsQuiet", { count: clientsQuiet })}
+        </Link>
+      )}
+
+      {campaignsOverBudget > 0 && (
+        <Link
+          href="/marketing?tab=campaigns"
+          className="text-sm text-ink underline-offset-2 hover:underline"
+        >
+          {t("marketing.overBudgetCount", { count: campaignsOverBudget })}
         </Link>
       )}
     </div>

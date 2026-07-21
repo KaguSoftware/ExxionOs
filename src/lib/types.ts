@@ -525,6 +525,101 @@ export type OrderPayment = {
   created_at: string;
 };
 
+// --- marketing (phase 7) ---------------------------------------------------
+
+export type CampaignChannel =
+  | "instagram"
+  | "tiktok"
+  | "market"
+  | "collab"
+  | "print"
+  | "other";
+export const CAMPAIGN_CHANNELS: CampaignChannel[] = [
+  "instagram",
+  "tiktok",
+  "market",
+  "collab",
+  "print",
+  "other",
+];
+
+/** 'cancelled' is terminal, and lives here for the same reason `orders.stage`
+ *  keeps it: a campaign that was called off must leave the active list without
+ *  being deleted, or you cannot tell how many plans never happened. */
+export type CampaignStatus = "planned" | "running" | "done" | "cancelled";
+export const CAMPAIGN_STATUSES: CampaignStatus[] = [
+  "planned",
+  "running",
+  "done",
+  "cancelled",
+];
+
+/**
+ * ⚠️ `budget_minor` IS THE PLAN, NOT THE MONEY. Actual spend is the sum of the
+ * `transactions` rows tagged `source_type='marketing'` — exactly the
+ * relationship `orders.total_minor` has to `order_payments`. A campaign planned
+ * at ₺5.000 that never ran spent ₺0. See `lib/marketing.ts`.
+ */
+export type Campaign = {
+  id: string;
+  name: string;
+  channel: CampaignChannel;
+  status: CampaignStatus;
+  goal: string | null;
+  budget_minor: number;
+  starts_on: string | null;
+  ends_on: string | null;
+  notes: string | null;
+  /** ⚠️ Campaigns ARCHIVE, never delete — costs and samples point at them. */
+  archived_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * One itemised spend against a campaign. Each writes ONE Finance transaction.
+ *
+ * ⚠️ `transaction_id` is the ONLY link, and it is `on delete set null`. Store
+ * what `syncTransaction()` returns, or the next edit creates a second
+ * transaction instead of updating the first.
+ */
+export type CampaignCost = {
+  id: string;
+  campaign_id: string;
+  label: string;
+  amount_minor: number;
+  spent_on: string;
+  transaction_id: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+/**
+ * Something given away.
+ *
+ * ⚠️ A SAMPLE IS COSTED, NEVER EXPENSED — it writes NO Finance transaction.
+ * The filament was expensed when it was bought; charging again when it is
+ * given away counts the same lira twice. Its value comes from `productCost()`
+ * at read time, like every other cost in this app. See `lib/marketing.ts`.
+ *
+ * ⚠️ `description` is denormalised at write time so the row still reads after
+ * its product is deleted (`product_id` is SET NULL) — like `OrderLine`.
+ */
+export type Sample = {
+  id: string;
+  product_id: string | null;
+  description: string;
+  client_id: string | null;
+  campaign_id: string | null;
+  recipient: string | null;
+  quantity: number;
+  given_on: string;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
 /** The signed-in context every page and action resolves once per request. */
 export type SessionContext = {
   userId: string;

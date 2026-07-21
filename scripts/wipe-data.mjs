@@ -49,6 +49,14 @@ const wipeSetupToo = args.includes("--all");
  * if the script is interrupted.
  */
 const CONTENT = [
+  // Marketing (phase 7), children first. ⚠️ `campaign_costs` must go before
+  // `campaigns` (it cascades, but the explicit order keeps the count honest),
+  // and BOTH must precede `transactions` below, which the costs point at.
+  // `samples` points at products, clients and campaigns — all SET NULL, so
+  // leaving it out would silently strand rows rather than error.
+  "samples",
+  "campaign_costs",
+  "campaigns",
   // Clients (phase 6). `events` FIRST: it points at both `clients` and
   // `orders`, so it has to go before either. (Both links are SET NULL, so
   // leaving it would not error — it would silently leave a pile of orphaned
