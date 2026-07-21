@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getSessionContext } from "@/lib/data/session";
 import { toMinor } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
+import { todayInIstanbul } from "@/lib/utils";
 import type {
   ActionResult,
   Collection,
@@ -376,6 +377,141 @@ export async function deleteIssue(id: string): Promise<ActionResult> {
   return { ok: true, data: undefined };
 }
 
+// --- print runs (filament stock) -------------------------------------------
+
+/**
+ * Record that you printed N of something, and deduct the filament.
+ *
+ * ⚠️ STOCK IS DEDUCTED HERE, NOT WHEN THE PRODUCT IS CREATED. A product is a
+ * DESIGN; creating it consumes nothing. Printing it is the real-world event, so
+ * this is the honest place to touch stock. Deducting at design time would
+ * charge one unit for something you print fifty times.
+ *
+ * The deduction only happens when the product's material is LINKED to a supply
+ * (`materials.supply_id`) — a material you buy per-job has no stock to draw
+ * down, and silently inventing one would be worse than tracking nothing.
+ */
+export async function recordPrintRun(input: {
+  productId: string;
+  units: number;
+  printedOn?: string;
+  notes?: string | null;
+}): Promise<ActionResult<{ gramsUsed: number | null; supplyName: string | null }>> {
+  const ctx = await getSessionContext();
+  const supabase = await createClient();
+
+  const units = Math.max(1, Math.round(input.units));
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("id, collection_id, grams, material_id")
+    .eq("id", input.productId)
+    .maybeSingle<{
+      id: string;
+      collection_id: string;
+      grams: string | number | null;
+      material_id: string | null;
+    }>();
+
+  if (!product) return { ok: false, error: "That product no longer exists." };
+
+  // Resolve material → supply. Either link may be absent, and that's fine:
+  // the run is still recorded, just without a deduction.
+  let supply: { id: string; name: string; quantity: string | number } | null = null;
+  if (product.material_id) {
+    const { data: material } = await supabase
+      .from("materials")
+      .select("supply_id")
+      .eq("id", product.material_id)
+      .maybeSingle<{ supply_id: string | null }>();
+
+    if (material?.supply_id) {
+      const { data } = await supabase
+        .from("supplies")
+        .select("id, name, quantity")
+        .eq("id", material.supply_id)
+        .maybeSingle<{ id: string; name: string; quantity: string | number }>();
+      supply = data ?? null;
+    }
+  }
+
+  // `numeric` arrives as a string over PostgREST.
+  const gramsEach = Number(product.grams);
+  const gramsUsed =
+    Number.isFinite(gramsEach) && gramsEach > 0 ? gramsEach * units : null;
+
+  const { error: runError } = await supabase.from("print_runs").insert({
+    product_id: product.id,
+    printed_on: input.printedOn ?? todayInIstanbul(),
+    units,
+    grams_used: gramsUsed,
+    supply_id: supply?.id ?? null,
+    notes: input.notes?.trim().slice(0, 500) || null,
+    created_by: ctx.userId,
+  });
+
+  if (runError) return { ok: false, error: runError.message };
+
+  if (supply && gramsUsed != null) {
+    const current = Number(supply.quantity) || 0;
+    // Floor at zero: stock cannot be negative, and a negative reading would
+    // just be a confusing way of saying "you ran out and kept going".
+    const next = Math.max(0, current - gramsUsed);
+    const { error } = await supabase
+      .from("supplies")
+      .update({ quantity: next })
+      .eq("id", supply.id);
+    if (error) return { ok: false, error: error.message };
+  }
+
+  refreshCreative(product.collection_id);
+  revalidatePath("/equipment");
+  return {
+    ok: true,
+    data: { gramsUsed, supplyName: supply?.name ?? null },
+  };
+}
+
+/** Undo a print run and put the filament back. */
+export async function deletePrintRun(id: string): Promise<ActionResult> {
+  await getSessionContext();
+  const supabase = await createClient();
+
+  const { data: run } = await supabase
+    .from("print_runs")
+    .select("grams_used, supply_id, product_id")
+    .eq("id", id)
+    .maybeSingle<{
+      grams_used: string | number | null;
+      supply_id: string | null;
+      product_id: string;
+    }>();
+
+  const { error } = await supabase.from("print_runs").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  // Restore stock from the SNAPSHOT on the run, not from the product's current
+  // grams — the design may have been edited since, and putting back a
+  // different amount than was taken would corrupt the count.
+  if (run?.supply_id && run.grams_used != null) {
+    const { data: supply } = await supabase
+      .from("supplies")
+      .select("quantity")
+      .eq("id", run.supply_id)
+      .maybeSingle<{ quantity: string | number }>();
+    if (supply) {
+      await supabase
+        .from("supplies")
+        .update({ quantity: (Number(supply.quantity) || 0) + Number(run.grams_used) })
+        .eq("id", run.supply_id);
+    }
+  }
+
+  refreshCreative();
+  revalidatePath("/equipment");
+  return { ok: true, data: undefined };
+}
+
 // --- materials + costing settings ------------------------------------------
 
 export async function createMaterial(input: {
@@ -407,7 +543,7 @@ export async function createMaterial(input: {
 
 export async function updateMaterial(
   id: string,
-  input: { name: string; costPerKg: number }
+  input: { name: string; costPerKg: number; supplyId?: string | null }
 ): Promise<ActionResult> {
   await getSessionContext();
   const supabase = await createClient();
@@ -420,6 +556,9 @@ export async function updateMaterial(
     .update({
       name,
       cost_per_kg_minor: Math.abs(toMinor(input.costPerKg || 0)),
+      // Only touched when explicitly provided, so an edit that doesn't mention
+      // the supply can't silently unlink it.
+      ...(input.supplyId !== undefined ? { supply_id: input.supplyId } : {}),
     })
     .eq("id", id);
 

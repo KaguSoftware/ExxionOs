@@ -14,7 +14,7 @@ export default async function SettingsPage() {
   const supabase = await createClient();
 
   // One wave.
-  const [materials, settings] = await Promise.all([
+  const [materials, settings, supplies] = await Promise.all([
     rowsOrThrow<Material>(
       "settings.materials",
       supabase.from("materials").select("*").order("name")
@@ -22,6 +22,15 @@ export default async function SettingsPage() {
     selectOrThrow<AppSettings>(
       "settings.app",
       supabase.from("app_settings").select("*").eq("id", 1).maybeSingle()
+    ),
+    // Same wave — lets a material be linked to the stock it draws down.
+    rowsOrThrow<{ id: string; name: string; unit: string }>(
+      "settings.supplies",
+      supabase
+        .from("supplies")
+        .select("id, name, unit")
+        .is("archived_at", null)
+        .order("name")
     ),
   ]);
 
@@ -36,6 +45,7 @@ export default async function SettingsPage() {
           <CostingForm
             materials={materials}
             machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
+            supplies={supplies}
           />
         </div>
       </div>

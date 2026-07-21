@@ -31,6 +31,7 @@ export function CollectionDetail({
   materials,
   machineRateMinor,
   images,
+  supplies,
 }: {
   collection: Collection;
   products: Product[];
@@ -38,6 +39,7 @@ export function CollectionDetail({
   materials: Material[];
   machineRateMinor: number;
   images: (StoredImage & { product_id: string })[];
+  supplies: { id: string; name: string }[];
 }) {
   const { t } = useI18n();
 
@@ -90,6 +92,7 @@ export function CollectionDetail({
                 machineRateMinor={machineRateMinor}
                 images={images}
                 collectionId={collection.id}
+                supplies={supplies}
               />
             ),
           },

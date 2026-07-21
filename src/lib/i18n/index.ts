@@ -13,9 +13,21 @@ export const LOCALE_COOKIE = "exxion-locale";
 
 const DICTIONARIES: Record<Locale, Dictionary> = { en, fa };
 
+/**
+ * ⚠️ FARSI RENDERS LEFT-TO-RIGHT, BY PARSA'S CHOICE (2026-07-21).
+ *
+ * Persian is an RTL script and this was `rtl` originally, but he asked for
+ * translation only — no mirrored layout. So the UI keeps its direction and
+ * Farsi keeps its words, Persian digits and date formats.
+ *
+ * ⚠️ THE LOGICAL CSS PROPERTIES AND THEIR LINT RULE STAY. `ps-`/`pe-`/`ms-`/
+ * `me-` cost nothing while LTR (they resolve to left/right anyway), and
+ * keeping them means turning RTL back on is EXACTLY this one line — not
+ * another sweep through every component. Do not "simplify" them away.
+ */
 export const DIRECTIONS: Record<Locale, "ltr" | "rtl"> = {
   en: "ltr",
-  fa: "rtl",
+  fa: "ltr",
 };
 
 export function isLocale(value: unknown): value is Locale {

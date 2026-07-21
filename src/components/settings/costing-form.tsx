@@ -39,9 +39,12 @@ const KIND_KEY: Record<MaterialKind, string> = {
 export function CostingForm({
   materials: initial,
   machineRateMinor,
+  supplies = [],
 }: {
   materials: Material[];
   machineRateMinor: number;
+  /** Stocked supplies a material can be linked to, so printing deducts. */
+  supplies?: { id: string; name: string; unit: string }[];
 }) {
   const { t } = useI18n();
   const { run, pending } = useAction();
@@ -105,6 +108,29 @@ export function CostingForm({
       rollback: () => setMaterials(previous),
       errorMessage: t("creative.saveFailed"),
     });
+  };
+
+  /** Link (or unlink) a material to the supply it physically IS. */
+  const linkSupply = async (material: Material, supplyId: string | null) => {
+    const previous = materials;
+    await run(
+      () =>
+        updateMaterial(material.id, {
+          name: material.name,
+          costPerKg: toMajor(material.cost_per_kg_minor),
+          supplyId,
+        }),
+      {
+        optimistic: () =>
+          setMaterials((list) =>
+            list.map((m) =>
+              m.id === material.id ? { ...m, supply_id: supplyId } : m
+            )
+          ),
+        rollback: () => setMaterials(previous),
+        errorMessage: t("creative.saveFailed"),
+      }
+    );
   };
 
   const toggleArchive = async (material: Material) => {
@@ -251,6 +277,21 @@ export function CostingForm({
                       <span className="tnum shrink-0 text-xs text-muted">
                         {formatMinor(material.cost_per_kg_minor)}/kg
                       </span>
+                      {/* The stock link, made visible: if it's absent, printing
+                          deducts nothing, and that should never be a surprise. */}
+                      {supplies.length > 0 && (
+                        <Dropdown
+                          value={material.supply_id}
+                          onChange={(v) => linkSupply(material, v || null)}
+                          options={[
+                            { value: "", label: t("creative.notStocked") },
+                            ...supplies.map((s) => ({ value: s.id, label: s.name })),
+                          ]}
+                          label={t("creative.linkedSupply")}
+                          placeholder={t("creative.notStocked")}
+                          className="w-36 shrink-0"
+                        />
+                      )}
                       {material.archived_at && (
                         <Badge>{t("creative.archivedStatus")}</Badge>
                       )}

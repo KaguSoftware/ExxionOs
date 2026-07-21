@@ -31,7 +31,7 @@ export default async function CollectionPage({
    * on its contents, only on the id from the URL, so making it sequential
    * would add ~305ms to buy nothing.
    */
-  const [collectionResult, products, issues, materials, settings, images] =
+  const [collectionResult, products, issues, materials, settings, images, supplies] =
     await Promise.all([
       selectOrThrow<Collection>(
         "collection.row",
@@ -69,6 +69,11 @@ export default async function CollectionPage({
           .select("id, path, sort_order, product_id")
           .order("sort_order")
       ),
+      // Names the stock a print run will draw from. In the same wave — ~3ms.
+      rowsOrThrow<{ id: string; name: string }>(
+        "collection.supplies",
+        supabase.from("supplies").select("id, name").is("archived_at", null)
+      ),
     ]);
 
   const collection = collectionResult.data;
@@ -85,6 +90,7 @@ export default async function CollectionPage({
           materials={materials}
           machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
           images={images}
+          supplies={supplies}
         />
       </Suspense>
     </>

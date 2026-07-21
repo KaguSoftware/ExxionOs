@@ -132,6 +132,66 @@ These come from KaguOs, where each was **measured**. They are why that system is
 
 ## Current status (2026-07-21)
 
+### 🟢 PHASE 4 — EQUIPMENT: BUILT + VERIFIED AGAINST PROD (+ deploy unblocked, Farsi now LTR, filament stock)
+`tsc` · `lint` · `build` green (20 routes). **Migrations 0005 · 0006 · 0007 applied.** Sidebar live.
+
+**⚠️ EQUIPMENT IS THE FIRST REAL WRITER INTO THE `transactions` CONTRACT.** Logging a repair with a
+cost creates a genuine Finance expense tagged `source_type='equipment'`, `source_id` = the machine,
+categorised *Maintenance*. That is what `transactions.source_type`/`source_id` (0003) was built for.
+✅ **Proven end to end**: a ₺450 repair appeared in Finance, in July's net, correctly categorised.
+
+**⚠️ THE TRANSACTION IS THE SINGLE SOURCE OF TRUTH FOR MONEY.** `maintenance_logs.cost_minor` is the
+INPUT that creates it; Finance is where it's counted. **Never sum `cost_minor` for a total** — the
+verification demonstrates that summing both sources reports **₺900 for a ₺450 repair**. "Spent on
+this machine" reads `transactions`, always (see the query comment in `(app)/equipment/page.tsx`).
+
+**⚠️ `transaction_id` is `on delete SET NULL`.** ✅ Proven: deleting the Finance row leaves the
+maintenance log intact with a null link — the repair still happened. Deleting the *machine* cascades
+its logs but **leaves the expenses standing**, because that money really was spent; the confirm
+dialog says so.
+
+**Machine purchase price is OPT-IN, and this was a real question from Parsa** ("I added a printer,
+why didn't the cost show up in Finance?"). It doesn't, by default: most machines are entered long
+after they were bought and were already expensed then, so auto-logging would **double-count and
+date it to today**. Migration **0006** adds `machines.purchase_transaction_id` and the form now has
+a checkbox — off by default, and when ticked the expense is dated to **`purchased_on`**, not today.
+
+**⚠️ FILAMENT STOCK — deducted per PRINT RUN, never per product** (migration **0007**). A product is
+a *design*; creating it consumes nothing, and printing it 50 times is what empties the spool.
+- `materials.supply_id` (nullable) links the costing material to the stocked supply it physically
+  IS. Null is normal — a material bought per job has no stock. Two tables stayed two tables: gloves
+  and boxes have no cost-per-kg, and a per-job material has no count.
+- `print_runs` records units + a **snapshot** of `grams_used`. Undoing a run restores from the
+  snapshot, **not** from the product's current grams — the design may have been edited since.
+- ✅ Proven: 1000g spool → 12 × 25g → 700g → 20 more → 200g, tripping low-stock at the threshold.
+- The print-run dialog states what will be deducted **before** you confirm, including
+  "No stock linked — nothing was deducted", so an unlinked material is never a silent no-op.
+
+**Reminders reuse — no new table.** `reminders` (0001) already carries `source_type`/`source_id`,
+so "service this printer in 3 months" is a reminder pointed at a machine, and it lands in the
+dashboard strip for free.
+
+**⚠️ FARSI IS NOW LTR (Parsa's call, 2026-07-21).** He asked for translation only, no mirrored
+layout. `DIRECTIONS.fa` is `"ltr"` in `lib/i18n/index.ts`. ✅ Verified: `dir=ltr lang=fa` with
+Persian text intact. **The logical CSS properties and their lint rule STAY** — they cost nothing
+while LTR and mean re-enabling RTL is that one line, not another sweep of every component.
+
+**Deploy unblocked.** Vercel refused the build because `parsaa.mansourii@gmail.com` matched no
+GitHub account. ⚠️ **An empty commit alone would NOT have fixed it** — the new commit carries the
+same email. Fixed by `git config user.email parsaxavier@gmail.com` (going forward only, no history
+rewrite); ✅ commit `bc3fc09` is now attributed to GitHub user **ParSaMnSS**.
+⚠️ **If the build still fails it's the ENV VARS** — `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are read at BUILD time and must be set in the Vercel
+dashboard. Only Parsa can do that; they're gitignored and must stay so.
+
+**`npm run wipe`** (`scripts/wipe-data.mjs`) — clears all business data, keeps accounts/settings.
+Dry-run by default; `-- --confirm` requires typing DELETE. ⚠️ It names every table **explicitly**
+because three relationships deliberately survive their parent (issues, maintenance logs,
+transactions) — "delete all collections" would leave issues behind.
+
+**Not driven in a browser yet.** Worth Parsa's eyes: log a repair with a cost and watch it appear in
+Finance; link PLA to a spool in Settings then log a print run and watch grams drop.
+
 ### 🟢 PHASE 3 — CREATIVE HUB: BUILT + VERIFIED AGAINST PROD, **not yet driven in a browser by Parsa**
 `tsc` · `lint` · `build` green (15 routes). **Migration 0004 applied and schema-verified.**
 Sidebar entry is **live**. Seed data left in prod so there's something to look at.
@@ -332,8 +392,18 @@ toggle light/dark/system.
   `transform` (a transform appended to an already-signed URL silently returns the full-size image).
 - `src/components/settings/costing-form.tsx` — machine rate + materials. Editing either re-costs
   every product, which is why its actions revalidate `/creative` too.
+**Equipment (phase 4):**
+- `src/lib/actions/equipment.ts` — **`syncTransaction()` is the contract in one function.** Cost set
+  → create; changed → update; **cleared → DELETE** (a ₺0 expense is ledger noise). The returned id
+  is the only link; store it or the next edit creates a second transaction.
+- `src/lib/equipment.ts` — `isLowStock` (⚠️ `numeric` arrives as a STRING; `"9" > "10"` is true for
+  strings), status rank/tone.
+- `src/components/equipment/*` — panels, machine detail, forms.
+- `src/components/creative/print-run-button.tsx` — **where filament leaves stock.**
+- `scripts/wipe-data.mjs` — `npm run wipe`. Dry-run by default.
 - `supabase/migrations/0001_foundation.sql` · `0002_backfill_profiles.sql` · `0003_finance.sql` ·
-  `0004_creative.sql`.
+  `0004_creative.sql` · `0005_equipment.sql` · `0006_machine_purchase_expense.sql` ·
+  `0007_material_stock.sql`.
 - `scripts/apply-migration.mjs` — Management-API applier (alternative to `db push`).
 
 ## Roadmap / next steps
@@ -342,10 +412,10 @@ toggle light/dark/system.
 1. ✅ **Foundation** — auth, shell, i18n+RTL, tokens, UI kit, data layer, dashboard, settings.
 2. ✅ **Finance** — transactions (the hub), categories, recurring, charts, CSV, receipts.
 3. ✅ **Creative hub** — ideas · collections → products · issues → learnings · costing.
-4. ⬅️ **NEXT — Equipment** — machines, maintenance, supplies, reminders. **The first real writer
+4. ✅ **Equipment** — machines, maintenance, supplies, filament stock. **The first real writer
    into `transactions`**: a repair logs an expense with `source_type='equipment'`, which is the
    contract Phase 2 was built to honour.
-5. **Shipping** — order lifecycle board, staged + timestamped.
+5. ⬅️ **NEXT — Shipping** — order lifecycle board, staged + timestamped.
 6. **Clients** — CRM + pattern analytics + events.
 7. **Marketing** — campaigns, samples, filming schedule, networking.
 
@@ -396,6 +466,14 @@ that contract must exist before anything can honour it.
   the guarantee working and is deliberately swallowed.
 - ⚠️ **Categories AND materials archive, never delete.** Deleting either nulls a foreign key on
   every historical row and silently changes what past months were spent on / what a product costs.
+- ⚠️ **Never sum `maintenance_logs.cost_minor` (or `supply_restocks.cost_minor`) for a total.**
+  The linked `transactions` row is the money; the cost column is only the input that created it.
+  Summing both reports double. Machine spend queries `transactions` by `source_id`.
+- ⚠️ **A machine's `purchase_price_minor` does NOT create an expense unless the checkbox is
+  ticked** — most machines are entered after they were already expensed. When ticked, the expense
+  is dated to `purchased_on`, not today.
+- ⚠️ **Filament deducts on a PRINT RUN, never on product creation** — a product is a design.
+  Undo restores from the run's `grams_used` snapshot, not the product's current grams.
 - ⚠️ **Never store a computed product cost.** It is derived from the material's current price and
   the machine rate on purpose; a cached copy is wrong the moment either changes.
 - ⚠️ **`detect.mjs` reports one KNOWN-FALSE "broken image"** in `image-strip.tsx` — its regex

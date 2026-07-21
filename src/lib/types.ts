@@ -116,9 +116,28 @@ export type Material = {
   cost_per_kg_minor: number;
   color: string | null;
   notes: string | null;
+  /**
+   * Optional link to the stocked supply this material IS.
+   * ⚠️ Null is normal — a material bought per job has no stock to draw down.
+   * When set, recording a print run deducts grams from that supply.
+   */
+  supply_id: string | null;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type PrintRun = {
+  id: string;
+  product_id: string;
+  printed_on: string;
+  units: number;
+  /** Snapshot of what was actually deducted — not recomputed from the product. */
+  grams_used: string | number | null;
+  supply_id: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
 };
 
 export type AppSettings = {
@@ -197,6 +216,94 @@ export type StoredImage = {
   id: string;
   path: string;
   sort_order: number;
+};
+
+// --- equipment -------------------------------------------------------------
+
+export type MachineStatus =
+  | "operational"
+  | "needs_attention"
+  | "broken"
+  | "retired";
+export type MaintenanceKind = "repair" | "service" | "part" | "inspection";
+
+export const MACHINE_STATUSES: MachineStatus[] = [
+  "operational",
+  "needs_attention",
+  "broken",
+  "retired",
+];
+export const MAINTENANCE_KINDS: MaintenanceKind[] = [
+  "repair",
+  "service",
+  "part",
+  "inspection",
+];
+export const SUPPLY_UNITS = ["pcs", "roll", "ml", "l", "g", "kg"] as const;
+
+export type Machine = {
+  id: string;
+  name: string;
+  kind: string | null;
+  model: string | null;
+  serial: string | null;
+  status: MachineStatus;
+  location: string | null;
+  purchased_on: string | null;
+  purchase_price_minor: number | null;
+  /**
+   * Set only when the user asked for the purchase to be logged in Finance.
+   * ⚠️ Null does NOT mean "not bought" — most machines were bought before the
+   * system existed and were expensed at the time. See migration 0006.
+   */
+  purchase_transaction_id: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * ⚠️ `cost_minor` here is the INPUT that creates a Finance transaction — it is
+ * NOT the source of truth for the money. `transaction_id` points at the row
+ * that is. Never sum `cost_minor` for a total: that double-counts against
+ * Finance and drifts the moment someone edits the transaction.
+ */
+export type MaintenanceLog = {
+  id: string;
+  machine_id: string;
+  performed_on: string;
+  kind: MaintenanceKind;
+  description: string;
+  cost_minor: number | null;
+  transaction_id: string | null;
+  performed_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** `quantity` / `low_threshold` are Postgres numeric — they arrive as strings. */
+export type Supply = {
+  id: string;
+  name: string;
+  unit: string;
+  quantity: string | number;
+  low_threshold: string | number | null;
+  last_price_minor: number | null;
+  notes: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SupplyRestock = {
+  id: string;
+  supply_id: string;
+  restocked_on: string;
+  quantity: string | number;
+  cost_minor: number | null;
+  transaction_id: string | null;
+  created_by: string | null;
+  created_at: string;
 };
 
 /** The signed-in context every page and action resolves once per request. */

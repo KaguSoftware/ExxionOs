@@ -22,14 +22,24 @@ import { useT } from "@/lib/i18n/client";
 export function NeedsYou({
   dueCount,
   openIssues = 0,
+  machinesDown = 0,
+  lowSupplies = 0,
 }: {
   dueCount: number;
   openIssues?: number;
+  machinesDown?: number;
+  lowSupplies?: number;
 }) {
   const t = useT();
 
   // Nothing needs you: render nothing at all.
-  if (dueCount === 0 && openIssues === 0) return null;
+  if (
+    dueCount === 0 &&
+    openIssues === 0 &&
+    machinesDown === 0 &&
+    lowSupplies === 0
+  )
+    return null;
 
   return (
     <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-danger/30 bg-danger-soft px-3 py-2.5">

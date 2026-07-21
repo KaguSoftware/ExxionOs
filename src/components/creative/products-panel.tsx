@@ -3,6 +3,7 @@
 import { Package, Pencil } from "lucide-react";
 import Link from "next/link";
 
+import { PrintRunButton } from "@/components/creative/print-run-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { productCost, productMargin } from "@/lib/costing";
 import { useI18n } from "@/lib/i18n/client";
@@ -15,12 +16,15 @@ export function ProductsPanel({
   machineRateMinor,
   images,
   collectionId,
+  supplies = [],
 }: {
   products: Product[];
   materials: Material[];
   machineRateMinor: number;
   images: (StoredImage & { product_id: string })[];
   collectionId: string;
+  /** Used to name the stock a print run will draw from. */
+  supplies?: { id: string; name: string }[];
 }) {
   const { t } = useI18n();
 
@@ -120,6 +124,20 @@ export function ProductsPanel({
               {product.grams && <span>· {product.grams}g</span>}
               {product.print_hours && <span>· {product.print_hours}h</span>}
               {photoCount > 0 && <span className="ms-auto">{photoCount} 📷</span>}
+            </div>
+
+            {/* Printing is what consumes filament — so the action lives on the
+                product, not on the material. */}
+            <div className="mt-3 border-t border-line pt-2">
+              <PrintRunButton
+                productId={product.id}
+                gramsEach={Number(product.grams) || null}
+                supplyName={
+                  material?.supply_id
+                    ? (supplies.find((s) => s.id === material.supply_id)?.name ?? null)
+                    : null
+                }
+              />
             </div>
           </li>
         );

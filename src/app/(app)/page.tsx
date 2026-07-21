@@ -5,10 +5,11 @@ import { LiveRefresh } from "@/components/shell/live-refresh";
 import { PageHeader } from "@/components/ui/panel";
 import { countOrThrow, rowsOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
+import { isLowStock } from "@/lib/equipment";
 import { totals } from "@/lib/finance-series";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
-import type { Direction, Reminder, Transaction } from "@/lib/types";
+import type { Direction, Reminder, Supply, Transaction } from "@/lib/types";
 import { todayInIstanbul } from "@/lib/utils";
 
 export default async function DashboardPage() {
@@ -26,7 +27,8 @@ export default async function DashboardPage() {
   const today = todayInIstanbul();
   const monthStart = `${today.slice(0, 7)}-01`;
 
-  const [reminders, monthRows, openIssues] = await Promise.all([
+  const [reminders, monthRows, openIssues, machinesDown, supplyRows] =
+    await Promise.all([
     rowsOrThrow<Reminder>(
       "dashboard.reminders",
       supabase
@@ -60,23 +62,49 @@ export default async function DashboardPage() {
         .select("*", { count: "exact", head: true })
         .is("resolved_at", null)
     ),
+    // Phase 4: machines that want a human, and supplies about to run out.
+    // Both INSIDE the existing wave.
+    countOrThrow(
+      "dashboard.machinesDown",
+      supabase
+        .from("machines")
+        .select("*", { count: "exact", head: true })
+        .in("status", ["broken", "needs_attention"])
+    ),
+    // Low stock can't be a SQL count: it compares two columns, and PostgREST
+    // has no column-to-column filter. Fetch the two numbers and compare in JS —
+    // the table is small and this stays inside the same wave either way.
+    rowsOrThrow<Pick<Supply, "quantity" | "low_threshold">>(
+      "dashboard.supplies",
+      supabase
+        .from("supplies")
+        .select("quantity, low_threshold")
+        .is("archived_at", null)
+        .not("low_threshold", "is", null)
+    ),
   ]);
 
   const dueCount = reminders.filter((r) => r.due_on && r.due_on <= today).length;
   const monthTotals = totals(monthRows as Transaction[]);
+  const lowSupplies = supplyRows.filter(isLowStock).length;
 
   const greeting = greetingKey();
   const firstName = ctx.profile.full_name.split(/\s+/)[0] || "";
 
   return (
     <div className="animate-fade-rise px-4 py-6 md:px-8">
-      <LiveRefresh tables={["reminders", "transactions", "issues"]} />
+      <LiveRefresh tables={["reminders", "transactions", "issues", "machines", "supplies"]} />
 
       <PageHeader title={t(greeting, { name: firstName })} />
 
       {/* ⚠️ Renders NOTHING when every count is zero. A permanent strip reading
           all zeros is furniture, not an answer to "what needs my attention?" */}
-      <NeedsYou dueCount={dueCount} openIssues={openIssues} />
+      <NeedsYou
+        dueCount={dueCount}
+        openIssues={openIssues}
+        machinesDown={machinesDown}
+        lowSupplies={lowSupplies}
+      />
 
       {/* This month's money, linking into Finance. ⚠️ The link uses the REAL
           filter params from `use-finance-filters.ts` — a made-up param would
