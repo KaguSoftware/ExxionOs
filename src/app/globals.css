@@ -290,6 +290,11 @@
     --font-mono-stack: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono",
       Menlo, Consolas, monospace;
 
+    /* The display stack falls through to the SAME body stack, which is what
+       makes Farsi safe: Space Grotesk has no Persian glyphs, so an fa heading
+       lands on the Arabic-script face instead of rendering tofu. */
+    --font-display-stack: var(--font-display), var(--font-sans-stack);
+
     -webkit-text-size-adjust: 100%;
   }
 
@@ -312,6 +317,16 @@
   h1, h2, h3 {
     text-wrap: balance;
     letter-spacing: -0.011em;
+  }
+
+  /* The brand voice, opt-in. Applied to PAGE TITLES and the wordmark only —
+     see the note on --font-display in layout.tsx. Tracking is tightened a
+     little because Space Grotesk sets wider than Inter at the same size, and
+     a title is the one place that difference is visible. */
+  .font-display {
+    font-family: var(--font-display-stack);
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 
   p {

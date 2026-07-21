@@ -47,7 +47,7 @@ export function CreatePage({
           {t("common.back")}
         </button>
 
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">{title}</h1>
+        <h1 className="font-display text-2xl text-ink">{title}</h1>
         {description && (
           <p className="mt-1 max-w-[65ch] text-sm text-muted">{description}</p>
         )}
@@ -173,7 +173,7 @@ export function CreateOverlay({
           <ArrowLeft aria-hidden className="size-4 rtl:rotate-180" />
           {t("common.back")}
         </button>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">{title}</h1>
+        <h1 className="font-display text-2xl text-ink">{title}</h1>
         {description && <p className="mt-1 text-sm text-muted">{description}</p>}
         <div className="mt-6">{children}</div>
       </div>

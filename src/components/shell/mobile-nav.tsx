@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { Logomark } from "@/components/shell/wordmark";
 import { signOut } from "@/lib/actions/auth";
 import { useT } from "@/lib/i18n/client";
 import { NAV_ITEMS } from "@/lib/nav";
@@ -53,8 +54,13 @@ export function MobileNav({ profile }: { profile: Profile }) {
   return (
     <>
       <header className="flex items-center justify-between border-b border-line bg-surface px-4 py-3 md:hidden">
-        <Link href="/" className="text-sm font-semibold tracking-tight text-ink">
-          {t("app.name")}
+        <Link
+          href="/"
+          aria-label={t("app.name")}
+          className="inline-flex items-center gap-2 text-ink"
+        >
+          <Logomark className="size-6" />
+          <span className="font-display text-base">{t("app.name")}</span>
         </Link>
         <button
           type="button"
@@ -79,7 +85,10 @@ export function MobileNav({ profile }: { profile: Profile }) {
           style={{ zIndex: "var(--z-overlay)" }}
         >
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
-            <span className="text-sm font-semibold text-ink">{t("app.name")}</span>
+            <span className="inline-flex items-center gap-2 text-ink">
+              <Logomark className="size-6" />
+              <span className="font-display text-base">{t("app.name")}</span>
+            </span>
             <button
               type="button"
               onClick={close}

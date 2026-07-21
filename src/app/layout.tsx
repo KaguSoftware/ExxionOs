@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import { cookies } from "next/headers";
 
 import { ToastProvider } from "@/components/ui/toast";
@@ -10,11 +10,32 @@ import { THEME_COOKIE, resolveThemeAttr } from "@/lib/theme";
 
 import "./globals.css";
 
-// One family, multiple weights — product register. Latin only; Persian text
+// The WORKING family — labels, tables, forms, body. Latin only; Persian text
 // falls through to the system Arabic-script face declared in globals.css.
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
+});
+
+/**
+ * The DISPLAY family, matching the logo's heavy geometric grotesque.
+ *
+ * ⚠️ TITLES AND THE WORDMARK ONLY — never labels, table cells, buttons or form
+ * controls. A display face in UI chrome is a product-register anti-pattern: it
+ * costs readability exactly where someone is working, and this app is a tool
+ * before it is a brand surface. `--font-display` is wired to `.font-display`
+ * in globals.css so there is one place that decides what gets it.
+ *
+ * Latin only, deliberately: Space Grotesk has no Persian glyphs, so Farsi
+ * headings fall through to the Arabic-script stack rather than rendering as
+ * boxes. That means fa titles read in the body face, which is correct — an
+ * unstyled fallback beats a broken one.
+ */
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["500", "700"],
   display: "swap",
 });
 
@@ -43,7 +64,7 @@ export default async function RootLayout({
       // `data-theme` absent = follow the OS (globals.css makes dark the
       // :root default and light an explicit override).
       data-theme={theme}
-      className={`${inter.variable} h-full`}
+      className={`${inter.variable} ${spaceGrotesk.variable} h-full`}
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">

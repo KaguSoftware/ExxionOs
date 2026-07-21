@@ -4,6 +4,7 @@ import { LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { Logomark } from "@/components/shell/wordmark";
 import { signOut } from "@/lib/actions/auth";
 import { useT } from "@/lib/i18n/client";
 import { NAV_ITEMS } from "@/lib/nav";
@@ -33,9 +34,11 @@ export function Sidebar({ profile }: { profile: Profile }) {
       <div className="px-4 py-4">
         <Link
           href="/"
-          className="text-sm font-semibold tracking-tight text-ink transition-opacity hover:opacity-80"
+          aria-label={t("app.name")}
+          className="inline-flex items-center gap-2 rounded-lg text-ink transition-opacity hover:opacity-80"
         >
-          {t("app.name")}
+          <Logomark className="size-6" />
+          <span className="font-display text-base">{t("app.name")}</span>
         </Link>
       </div>
 

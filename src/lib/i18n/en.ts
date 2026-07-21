@@ -33,11 +33,13 @@ export const en = {
 
   auth: {
     signIn: "Sign in",
-    signInSubtitle: "Sign in to continue to ExxionOs.",
+    // ⚠️ Interpolated, not baked in — the name lives in `app.name` alone, so a
+    // rename never leaves a stale copy behind in the auth strings.
+    signInSubtitle: "Sign in to continue to {app}.",
     email: "Email",
     password: "Password",
     signingIn: "Signing in…",
-    signOutConfirm: "Sign out of ExxionOs?",
+    signOutConfirm: "Sign out of {app}?",
     invalidCredentials: "That email and password don't match.",
     genericError: "Could not sign you in. Try again.",
   },

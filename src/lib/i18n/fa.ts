@@ -29,11 +29,11 @@ export const fa: Dictionary = {
 
   auth: {
     signIn: "ورود",
-    signInSubtitle: "برای ادامه وارد اکسیون او‌اس شوید.",
+    signInSubtitle: "برای ادامه وارد {app} شوید.",
     email: "ایمیل",
     password: "رمز عبور",
     signingIn: "در حال ورود…",
-    signOutConfirm: "از اکسیون او‌اس خارج می‌شوید؟",
+    signOutConfirm: "از {app} خارج می‌شوید؟",
     invalidCredentials: "ایمیل و رمز عبور مطابقت ندارند.",
     genericError: "ورود انجام نشد. دوباره تلاش کنید.",
   },

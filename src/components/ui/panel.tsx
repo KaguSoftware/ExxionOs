@@ -62,9 +62,9 @@ export function PageHeader({
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">
-          {title}
-        </h1>
+        {/* Page titles carry the brand voice; panel titles (h2 above) stay in
+            the working face — see `.font-display` in globals.css. */}
+        <h1 className="font-display text-2xl text-ink">{title}</h1>
         {description && (
           <p className="mt-1 max-w-[70ch] text-sm text-muted">{description}</p>
         )}
