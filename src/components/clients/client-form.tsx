@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
+import { MultiComboCreate } from "@/components/ui/combo-create";
 import { CreateForm } from "@/components/ui/create";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Dropdown } from "@/components/ui/dropdown";
@@ -12,13 +13,21 @@ import {
   createClientRecord,
   updateClientRecord,
 } from "@/lib/actions/clients";
+import { createVocabulary } from "@/lib/actions/vocabulary";
 import { CLIENT_KIND_KEY, CLIENT_SOURCE_KEY } from "@/lib/clients";
 import { useI18n } from "@/lib/i18n/client";
 import { CLIENT_KINDS, CLIENT_SOURCES } from "@/lib/types";
-import type { Client, ClientKind, ClientSource } from "@/lib/types";
+import type { Client, ClientKind, ClientSource, Vocabulary } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
+import { vocabOptions } from "@/lib/vocab";
 
-export function ClientForm({ client }: { client?: Client }) {
+export function ClientForm({
+  client,
+  tagVocabulary = [],
+}: {
+  client?: Client;
+  tagVocabulary?: Vocabulary[];
+}) {
   const { t } = useI18n();
   const { run, pending } = useAction();
   const router = useRouter();
@@ -32,7 +41,14 @@ export function ClientForm({ client }: { client?: Client }) {
   const [email, setEmail] = useState(client?.email ?? "");
   const [phone, setPhone] = useState(client?.phone ?? "");
   const [instagram, setInstagram] = useState(client?.instagram ?? "");
-  const [tags, setTags] = useState((client?.tags ?? []).join(", "));
+  const [tags, setTags] = useState<string[]>(client?.tags ?? []);
+
+  // Live tags, plus any this client already carries even if archived since —
+  // otherwise saving an old client would quietly drop them.
+  const [tagWords, setTagWords] = useState(tagVocabulary);
+  const tagOptions = vocabOptions(tagWords, "client_tag", client?.tags ?? []).map(
+    (v) => ({ value: v.label, label: v.label })
+  );
   const [birthday, setBirthday] = useState<string | null>(
     client?.birthday ?? null
   );
@@ -59,8 +75,8 @@ export function ClientForm({ client }: { client?: Client }) {
       notes: notes || null,
       kind,
       source: source || null,
-      // Split here; the action lowercases, trims and de-duplicates.
-      tags: tags.split(",").map((s) => s.trim()).filter(Boolean),
+      // Already a list; the action still lowercases, trims and de-duplicates.
+      tags,
       birthday,
       address: address || null,
       postalCode: postalCode || null,
@@ -173,7 +189,26 @@ export function ClientForm({ client }: { client?: Client }) {
         label={t("clients.tags")}
         hint={t("clients.tagsHint")}
       >
-        <TextInput id={`${ids}-tags`} value={tags} onChange={(e) => setTags(e.target.value)} />
+        <MultiComboCreate
+          id={`${ids}-tags`}
+          values={tags}
+          onChange={setTags}
+          options={tagOptions}
+          label={t("clients.tags")}
+          placeholder={t("clients.tagsPlaceholder")}
+          onCreate={async (label) => {
+            const result = await createVocabulary({
+              kind: "client_tag",
+              label,
+            });
+            if (!result.ok) return null;
+            setTagWords((rows) => [
+              ...rows.filter((r) => r.id !== result.data.id),
+              result.data,
+            ]);
+            return result.data.label;
+          }}
+        />
       </Field>
 
       <div className="grid gap-5 sm:grid-cols-2">

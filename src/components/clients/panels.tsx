@@ -8,9 +8,10 @@ import { ClientDirectory } from "@/components/clients/directory";
 import { ClientInsights } from "@/components/clients/insights";
 import { TabbedPanels } from "@/components/shell/tabbed-panels";
 import { Button } from "@/components/ui/button";
+import { VocabularyManager } from "@/components/ui/vocabulary-manager";
 import { goneQuiet, revenueByClient, type ClientOrderRow } from "@/lib/clients";
 import { useI18n } from "@/lib/i18n/client";
-import type { Client, Transaction } from "@/lib/types";
+import type { Client, Transaction, Vocabulary } from "@/lib/types";
 
 export type ClientRevenueRow = Pick<
   Transaction,
@@ -22,10 +23,13 @@ export function ClientPanels({
   orders,
   revenue,
   today,
+  tagVocabulary = [],
 }: {
   clients: Client[];
   orders: ClientOrderRow[];
   revenue: ClientRevenueRow[];
+  /** The managed tag list — see the "tags" tab. */
+  tagVocabulary?: Vocabulary[];
   /**
    * ⚠️ Stamped on the server — see the call site in `(app)/clients/page.tsx`.
    * "Gone quiet" is measured in days from today, and `react-hooks/purity` is an
@@ -97,6 +101,22 @@ export function ClientPanels({
               revenue={revenueMap}
               today={today}
             />
+          ),
+        },
+        {
+          id: "tags",
+          label: t("vocab.clientTags"),
+          content: (
+            <div className="flex flex-col gap-4">
+              <p className="text-xs text-faint">{t("vocab.manageHint")}</p>
+              <VocabularyManager
+                kind="client_tag"
+                items={tagVocabulary}
+                title={t("vocab.clientTags")}
+                addLabel={t("vocab.clientTagName")}
+                emptyTitle={t("vocab.noClientTags")}
+              />
+            </div>
           ),
         },
       ]}

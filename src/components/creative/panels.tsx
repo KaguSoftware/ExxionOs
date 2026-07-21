@@ -8,19 +8,29 @@ import { IdeasPanel } from "@/components/creative/ideas-panel";
 import { LearningsPanel } from "@/components/creative/learnings-panel";
 import { TabbedPanels } from "@/components/shell/tabbed-panels";
 import { Button } from "@/components/ui/button";
+import { VocabularyManager } from "@/components/ui/vocabulary-manager";
 import { useI18n } from "@/lib/i18n/client";
-import type { Collection, Idea, Issue, Product } from "@/lib/types";
+import type {
+  Collection,
+  Idea,
+  Issue,
+  Product,
+  Vocabulary,
+} from "@/lib/types";
 
 export function CreativePanels({
   collections,
   ideas,
   issues,
   products,
+  productTypes = [],
 }: {
   collections: Collection[];
   ideas: Idea[];
   issues: Issue[];
   products: Product[];
+  /** The managed product-type list — see the "types" tab. */
+  productTypes?: Vocabulary[];
 }) {
   const { t } = useI18n();
 
@@ -96,6 +106,22 @@ export function CreativePanels({
               collections={collections}
               products={products}
             />
+          ),
+        },
+        {
+          id: "types",
+          label: t("vocab.productTypes"),
+          content: (
+            <div className="flex flex-col gap-4">
+              <p className="text-xs text-faint">{t("vocab.manageHint")}</p>
+              <VocabularyManager
+                kind="product_type"
+                items={productTypes}
+                title={t("vocab.productTypes")}
+                addLabel={t("vocab.productTypeName")}
+                emptyTitle={t("vocab.noProductTypes")}
+              />
+            </div>
           ),
         },
       ]}

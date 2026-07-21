@@ -4,7 +4,7 @@ import { rowsOrThrow, selectOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
-import type { AppSettings, Material } from "@/lib/types";
+import type { AppSettings, Material, Vocabulary } from "@/lib/types";
 
 export default async function NewProductPage({
   params,
@@ -16,7 +16,7 @@ export default async function NewProductPage({
   const t = await getT();
   const supabase = await createClient();
 
-  const [materials, settings] = await Promise.all([
+  const [materials, settings, productTypes] = await Promise.all([
     rowsOrThrow<Material>(
       "product.new.materials",
       supabase.from("materials").select("*").is("archived_at", null).order("name")
@@ -24,6 +24,15 @@ export default async function NewProductPage({
     selectOrThrow<AppSettings>(
       "product.new.settings",
       supabase.from("app_settings").select("*").eq("id", 1).maybeSingle()
+    ),
+    rowsOrThrow<Vocabulary>(
+      "product.new.types",
+      supabase
+        .from("vocabularies")
+        .select("*")
+        .eq("kind", "product_type")
+        .is("archived_at", null)
+        .order("sort_order")
     ),
   ]);
 
@@ -33,6 +42,7 @@ export default async function NewProductPage({
         collectionId={id}
         materials={materials}
         machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
+        productTypes={productTypes}
       />
     </CreatePage>
   );

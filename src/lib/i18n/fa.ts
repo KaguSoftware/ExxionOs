@@ -124,6 +124,23 @@ export const fa: Dictionary = {
     emptyConfirmOne: "{fields} خالی است",
   },
 
+  vocab: {
+    typeToCreate: "برای جستجو یا ساختن بنویسید…",
+    createLabel: '«{label}» ساخته شود',
+    saveFailed: "ذخیره نشد.",
+    deleteConfirm: '«{label}» حذف شود؟',
+    deleteConfirmBody: "جایی استفاده نشده، پس چیز دیگری تغییر نمی‌کند.",
+    archivedInstead: "در {count} مورد استفاده شده — بایگانی شد.",
+    productTypes: "نوع محصول‌ها",
+    productTypeName: "نام نوع",
+    noProductTypes: "هنوز نوعی ثبت نشده.",
+    clientTags: "برچسب‌های مشتری",
+    clientTagName: "نام برچسب",
+    noClientTags: "هنوز برچسبی ثبت نشده.",
+    manageHint:
+      "تغییر نام اینجا، همه‌جا اعمال می‌شود. کلمه‌های بایگانی‌شده روی رکوردهای قبلی می‌مانند ولی دیگر پیشنهاد نمی‌شوند.",
+  },
+
   finance: {
     title: "مالی",
     subtitle: "هر چه وارد و خارج شده است.",
@@ -605,7 +622,8 @@ export const fa: Dictionary = {
     sourceOther: "سایر",
     sourceUnknown: "ثبت نشده",
     tags: "برچسب‌ها",
-    tagsHint: "با ویرگول جدا کنید. برای پیدا کردن افراد در آینده.",
+    tagsHint: "از فهرست انتخاب کنید یا برچسب تازه بنویسید. برای پیدا کردن افراد در آینده.",
+    tagsPlaceholder: "افزودن برچسب…",
     birthday: "تاریخ تولد",
     address: "نشانی",
     postalCode: "کد پستی",

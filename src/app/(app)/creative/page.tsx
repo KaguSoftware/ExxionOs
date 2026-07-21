@@ -5,7 +5,7 @@ import { LiveRefresh } from "@/components/shell/live-refresh";
 import { rowsOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
 import { createClient } from "@/lib/supabase/server";
-import type { Collection, Idea, Issue, Product } from "@/lib/types";
+import type { Collection, Idea, Issue, Product, Vocabulary } from "@/lib/types";
 
 /**
  * Creative hub — ONE page, three tabs (Collections · Ideas · Learnings),
@@ -20,34 +20,50 @@ export default async function CreativePage() {
   await getSessionContext();
   const supabase = await createClient();
 
-  const [collections, ideas, issues, products] = await Promise.all([
-    rowsOrThrow<Collection>(
-      "creative.collections",
-      supabase.from("collections").select("*").order("created_at", { ascending: false })
-    ),
-    rowsOrThrow<Idea>(
-      "creative.ideas",
-      supabase.from("ideas").select("*").order("created_at", { ascending: false })
-    ),
-    // Learnings reads EVERY issue app-wide — that is the whole point of the
-    // lens. The collection tab filters this same set client-side.
-    rowsOrThrow<Issue>(
-      "creative.issues",
-      supabase.from("issues").select("*").order("created_at", { ascending: false })
-    ),
-    // Only what the collection cards need for their product counts, and what
-    // Learnings needs to name the product an issue points at. Costing is NOT
-    // shown on this page, so materials and rates are deliberately not fetched
-    // here — a query you don't render is still a query.
-    rowsOrThrow<Product>(
-      "creative.products",
-      supabase.from("products").select("id, collection_id, name")
-    ),
-  ]);
+  const [collections, ideas, issues, products, productTypes] =
+    await Promise.all([
+      rowsOrThrow<Collection>(
+        "creative.collections",
+        supabase
+          .from("collections")
+          .select("*")
+          .order("created_at", { ascending: false })
+      ),
+      rowsOrThrow<Idea>(
+        "creative.ideas",
+        supabase.from("ideas").select("*").order("created_at", { ascending: false })
+      ),
+      // Learnings reads EVERY issue app-wide — that is the whole point of the
+      // lens. The collection tab filters this same set client-side.
+      rowsOrThrow<Issue>(
+        "creative.issues",
+        supabase.from("issues").select("*").order("created_at", { ascending: false })
+      ),
+      // Only what the collection cards need for their product counts, and what
+      // Learnings needs to name the product an issue points at. Costing is NOT
+      // shown on this page, so materials and rates are deliberately not fetched
+      // here — a query you don't render is still a query.
+      rowsOrThrow<Product>(
+        "creative.products",
+        supabase.from("products").select("id, collection_id, name")
+      ),
+      // ALL types including archived — the manager tab has to show archived
+      // rows in order to offer un-archiving them.
+      rowsOrThrow<Vocabulary>(
+        "creative.productTypes",
+        supabase
+          .from("vocabularies")
+          .select("*")
+          .eq("kind", "product_type")
+          .order("sort_order")
+      ),
+    ]);
 
   return (
     <>
-      <LiveRefresh tables={["collections", "ideas", "issues", "products"]} />
+      <LiveRefresh
+        tables={["collections", "ideas", "issues", "products", "vocabularies"]}
+      />
       {/* useSearchParams in the tab shell requires a Suspense boundary. */}
       <Suspense>
         <CreativePanels
@@ -55,6 +71,7 @@ export default async function CreativePage() {
           ideas={ideas}
           issues={issues}
           products={products}
+          productTypes={productTypes}
         />
       </Suspense>
     </>

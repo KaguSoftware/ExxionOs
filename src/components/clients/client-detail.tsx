@@ -22,7 +22,7 @@ import {
 } from "@/lib/clients";
 import { useI18n } from "@/lib/i18n/client";
 import { STAGE_KEY } from "@/lib/shipping";
-import type { Client, Event, Order } from "@/lib/types";
+import type { Client, Event, Order, Vocabulary } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
 import { formatDate, formatMinor } from "@/lib/utils";
 
@@ -32,6 +32,7 @@ export function ClientDetail({
   revenue,
   events,
   today,
+  tagVocabulary = [],
 }: {
   client: Client;
   /** This client's orders, newest first. */
@@ -40,6 +41,7 @@ export function ClientDetail({
   revenue: number;
   events: Event[];
   today: string;
+  tagVocabulary?: Vocabulary[];
 }) {
   const { t, locale } = useI18n();
   const { run } = useAction();
@@ -201,7 +203,7 @@ export function ClientDetail({
         title={t("clients.editClient")}
         onClose={() => setEditing(false)}
       >
-        <ClientForm client={client} />
+        <ClientForm client={client} tagVocabulary={tagVocabulary} />
       </CreateOverlay>
 
       {/* ⚠️ ARCHIVE, NOT DELETE — and the dialog says what survives, because

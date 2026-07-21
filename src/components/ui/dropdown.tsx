@@ -27,8 +27,8 @@ export type DropdownOption = {
   disabled?: boolean;
 };
 
-/** Show the filter box past this many options. */
-const SEARCH_THRESHOLD = 6;
+/** Show the filter box at this many options or more. */
+const SEARCH_THRESHOLD = 5;
 
 type BaseProps = {
   options: DropdownOption[];

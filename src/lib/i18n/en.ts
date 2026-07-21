@@ -128,6 +128,23 @@ export const en = {
     emptyConfirmOne: "{fields} is empty",
   },
 
+  vocab: {
+    typeToCreate: "Type to search or create…",
+    createLabel: 'Create "{label}"',
+    saveFailed: "Couldn't save that.",
+    deleteConfirm: 'Delete "{label}"?',
+    deleteConfirmBody: "Nothing uses it, so nothing else changes.",
+    archivedInstead: "Still used by {count} — archived it instead.",
+    productTypes: "Product types",
+    productTypeName: "Type name",
+    noProductTypes: "No types yet.",
+    clientTags: "Client tags",
+    clientTagName: "Tag name",
+    noClientTags: "No tags yet.",
+    manageHint:
+      "Rename a word here and it updates everywhere it's used. Archived words stay on existing records but stop being offered.",
+  },
+
   finance: {
     title: "Finance",
     subtitle: "Everything that came in and went out.",
@@ -618,7 +635,8 @@ export const en = {
     sourceOther: "Other",
     sourceUnknown: "Not recorded",
     tags: "Tags",
-    tagsHint: "Comma separated. Lowercased, for finding people later.",
+    tagsHint: "Pick from the list, or type a new one. For finding people later.",
+    tagsPlaceholder: "Add tags…",
     birthday: "Birthday",
     address: "Address",
     postalCode: "Postal code",

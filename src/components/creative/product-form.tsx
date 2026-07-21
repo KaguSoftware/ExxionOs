@@ -6,6 +6,7 @@ import { useId, useState } from "react";
 
 import { ImageStrip } from "@/components/creative/image-strip";
 import { Button } from "@/components/ui/button";
+import { ComboCreate } from "@/components/ui/combo-create";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CreateForm } from "@/components/ui/create";
 import { Dropdown } from "@/components/ui/dropdown";
@@ -13,12 +14,14 @@ import { Field } from "@/components/ui/field";
 import { TextArea, TextInput } from "@/components/ui/input";
 import { MoneyInput, NumberInput } from "@/components/ui/number-input";
 import { createProduct, deleteProduct, updateProduct } from "@/lib/actions/creative";
+import { createVocabulary } from "@/lib/actions/vocabulary";
 import { productCost, productMargin } from "@/lib/costing";
 import { useI18n } from "@/lib/i18n/client";
 import { toMajor } from "@/lib/money";
-import type { Material, Product, StoredImage } from "@/lib/types";
+import type { Material, Product, StoredImage, Vocabulary } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
 import { cn, formatMinor } from "@/lib/utils";
+import { vocabOptions } from "@/lib/vocab";
 
 export function ProductForm({
   collectionId,
@@ -26,12 +29,14 @@ export function ProductForm({
   machineRateMinor,
   existing,
   images = [],
+  productTypes = [],
 }: {
   collectionId: string;
   materials: Material[];
   machineRateMinor: number;
   existing?: Product;
   images?: StoredImage[];
+  productTypes?: Vocabulary[];
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -46,7 +51,17 @@ export function ProductForm({
   const notesId = useId();
 
   const [name, setName] = useState(existing?.name ?? "");
-  const [kind, setKind] = useState(existing?.kind ?? "");
+  const [kind, setKind] = useState<string | null>(existing?.kind ?? null);
+
+  // Words this product may show: the live vocabulary, plus its OWN type even
+  // if that word was archived since — otherwise opening and saving an old
+  // product would quietly erase its type.
+  const [types, setTypes] = useState(productTypes);
+  const typeOptions = vocabOptions(
+    types,
+    "product_type",
+    existing?.kind ? [existing.kind] : []
+  ).map((v) => ({ value: v.label, label: v.label }));
   const [material, setMaterial] = useState<string | null>(existing?.material_id ?? null);
   const [grams, setGrams] = useState<number | null>(toNumber(existing?.grams));
   const [hours, setHours] = useState<number | null>(toNumber(existing?.print_hours));
@@ -78,7 +93,7 @@ export function ProductForm({
     const input = {
       collectionId,
       name,
-      kind: kind || null,
+      kind: kind?.trim() || null,
       materialId: material,
       grams,
       printHours: hours,
@@ -135,11 +150,28 @@ export function ProductForm({
             />
           </Field>
           <Field id={kindId} label={t("creative.productKind")} optional={t("common.optional")}>
-            <TextInput
+            <ComboCreate
               id={kindId}
               value={kind}
-              onChange={(e) => setKind(e.target.value)}
+              onChange={setKind}
+              options={typeOptions}
+              label={t("creative.productKind")}
               placeholder={t("creative.productKindPlaceholder")}
+              onCreate={async (label) => {
+                const result = await createVocabulary({
+                  kind: "product_type",
+                  label,
+                });
+                if (!result.ok) return null;
+                // Adopt the row the server returned — it may be an existing
+                // word in a different spelling, and the list must show that
+                // spelling rather than what was typed.
+                setTypes((rows) => [
+                  ...rows.filter((r) => r.id !== result.data.id),
+                  result.data,
+                ]);
+                return result.data.label;
+              }}
             />
           </Field>
         </div>

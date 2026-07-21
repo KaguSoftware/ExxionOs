@@ -25,6 +25,34 @@ export type Reminder = {
   updated_at: string;
 };
 
+// --- vocabularies ----------------------------------------------------------
+
+/**
+ * User-grown label lists. See `supabase/migrations/0011_vocabularies.sql`.
+ *
+ * ⚠️ A vocabulary row is a REGISTRY entry, never a foreign key. `products.kind`
+ * stores the label text itself and `clients.tags` stores an array of label
+ * text — this table only remembers which words exist so they can be offered
+ * back, renamed, and retired. Nothing breaks if a row references a word that
+ * was archived: the word IS the value.
+ */
+export type VocabularyKind = "product_type" | "client_tag";
+
+export const VOCABULARY_KINDS: VocabularyKind[] = ["product_type", "client_tag"];
+
+export type Vocabulary = {
+  id: string;
+  kind: VocabularyKind;
+  /** The user's own spelling — what gets written onto records. */
+  label: string;
+  /** Case/whitespace-folded dedupe key. Unique per kind. See `lib/vocab.ts`. */
+  slug: string;
+  sort_order: number;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 // --- finance ---------------------------------------------------------------
 
 export type Direction = "in" | "out";

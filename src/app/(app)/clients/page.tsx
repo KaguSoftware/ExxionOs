@@ -6,7 +6,7 @@ import type { ClientOrderRow } from "@/lib/clients";
 import { rowsOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
 import { createClient } from "@/lib/supabase/server";
-import type { Client } from "@/lib/types";
+import type { Client, Vocabulary } from "@/lib/types";
 import { todayInIstanbul } from "@/lib/utils";
 
 /**
@@ -20,7 +20,7 @@ export default async function ClientsPage() {
   await getSessionContext();
   const supabase = await createClient();
 
-  const [clients, orders, revenue] = await Promise.all([
+  const [clients, orders, revenue, tagVocabulary] = await Promise.all([
     rowsOrThrow<Client>(
       "clients.list",
       // Archived clients ARE fetched — the directory has a "show archived"
@@ -53,11 +53,21 @@ export default async function ClientsPage() {
         .select("source_id, direction, amount_minor, occurred_on")
         .eq("source_type", "order")
     ),
+    // ALL tags including archived — the manager tab has to show archived rows
+    // in order to offer un-archiving them.
+    rowsOrThrow<Vocabulary>(
+      "clients.tagVocabulary",
+      supabase
+        .from("vocabularies")
+        .select("*")
+        .eq("kind", "client_tag")
+        .order("sort_order")
+    ),
   ]);
 
   return (
     <>
-      <LiveRefresh tables={["clients", "events", "orders"]} />
+      <LiveRefresh tables={["clients", "events", "orders", "vocabularies"]} />
       <Suspense>
         <ClientPanels
           clients={clients}
@@ -71,6 +81,7 @@ export default async function ClientsPage() {
            * answers YESTERDAY between 00:00 and 03:00 local.
            */
           today={todayInIstanbul()}
+          tagVocabulary={tagVocabulary}
         />
       </Suspense>
     </>
