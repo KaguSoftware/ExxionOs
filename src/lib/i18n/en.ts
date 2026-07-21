@@ -491,14 +491,21 @@ export const en = {
 
   shipping: {
     title: "Shipping",
-    subtitle: "Every order, from first enquiry to the client's hands.",
+    // ⚠️ FRAMING, not decoration. This read "from first enquiry to the
+    // client's hands", which describes commissioned work only — and most of
+    // the money is collection pieces someone simply buys. A section that
+    // sounds custom-only makes the main revenue stream feel like an exception.
+    subtitle: "Everything sold and sent — collection pieces and commissions.",
 
     tabBoard: "Board",
     tabList: "Orders",
     tabInsights: "Insights",
 
+    inPipeline: "In pipeline",
+    stillOwed: "Still owed",
+
     newOrder: "New order",
-    newOrderSubtitle: "What are you making, and who for?",
+    newOrderSubtitle: "What's going out, and who to?",
     editOrder: "Edit order",
     order: "Order",
     orders: "Orders",

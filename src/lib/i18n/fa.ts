@@ -484,14 +484,17 @@ export const fa: Dictionary = {
 
   shipping: {
     title: "ارسال",
-    subtitle: "هر سفارش، از اولین تماس تا رسیدن به دست مشتری.",
+    subtitle: "هر چه فروخته و فرستاده می‌شود — از کالکشن‌ها تا سفارش‌های اختصاصی.",
 
     tabBoard: "تخته",
     tabList: "سفارش‌ها",
     tabInsights: "تحلیل",
 
+    inPipeline: "در جریان",
+    stillOwed: "پرداخت‌نشده",
+
     newOrder: "سفارش جدید",
-    newOrderSubtitle: "چه چیزی می‌سازید و برای چه کسی؟",
+    newOrderSubtitle: "چه چیزی ارسال می‌شود و برای چه کسی؟",
     editOrder: "ویرایش سفارش",
     order: "سفارش",
     orders: "سفارش‌ها",

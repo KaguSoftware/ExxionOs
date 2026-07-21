@@ -119,7 +119,7 @@ export function OrderList({
               >
                 <Link
                   href={`/shipping/orders/${order.id}`}
-                  className="flex flex-wrap items-center gap-3 px-4 py-3"
+                  className="row-comfortable flex flex-wrap items-center gap-3"
                 >
                   <div className="min-w-0 flex-1 basis-64">
                     <div className="flex flex-wrap items-center gap-2">

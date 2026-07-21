@@ -100,14 +100,44 @@ export function OrderBoard({
 
   const cancelledCount = orders.filter((o) => o.stage === "cancelled").length;
 
+  /**
+   * What the board is worth, and what of it is still owed.
+   *
+   * ⚠️ `delivered` is excluded from the pipeline figure — it has left the
+   * pipeline. Including it would make the number grow forever and stop meaning
+   * "work in hand". Money still OWED on delivered orders is counted though,
+   * because that is exactly the money most at risk of being forgotten.
+   */
+  const openOrders = orders.filter(
+    (o) => o.stage !== "cancelled" && o.stage !== "delivered"
+  );
+  const pipelineMinor = openOrders.reduce((sum, o) => sum + o.total_minor, 0);
+  const owedMinor = orders
+    .filter((o) => o.stage !== "cancelled")
+    .reduce(
+      (sum, o) => sum + outstandingMinor(o, paymentsByOrder.get(o.id) ?? []),
+      0
+    );
+
   return (
     <>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+        {pipelineMinor > 0 && (
+          <Figure label={t("shipping.inPipeline")} value={formatMinor(pipelineMinor)} />
+        )}
+        {owedMinor > 0 && (
+          <Figure
+            label={t("shipping.stillOwed")}
+            value={formatMinor(owedMinor)}
+            tone="owed"
+          />
+        )}
+
         {cancelledCount > 0 && (
           <button
             type="button"
             onClick={() => setShowCancelled((v) => !v)}
-            className="rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-raised hover:text-ink"
+            className="ms-auto rounded-md px-2 py-1 text-xs text-muted transition-colors hover:bg-raised hover:text-ink"
           >
             {showCancelled
               ? t("shipping.hideCancelled")
@@ -122,6 +152,7 @@ export function OrderBoard({
         <div className="flex min-w-max gap-3">
           {stages.map((stage) => {
             const column = visible.filter((o) => o.stage === stage);
+            const columnValue = column.reduce((sum, o) => sum + o.total_minor, 0);
             return (
               <section
                 key={stage}
@@ -144,11 +175,25 @@ export function OrderBoard({
                     : "border-line"
                 )}
               >
-                <header className="flex items-center justify-between gap-2 row-compact border-b border-line">
-                  <span className="text-xs font-medium text-ink">
-                    {t(STAGE_KEY[stage] as never)}
-                  </span>
-                  <span className="tnum text-2xs text-faint">{column.length}</span>
+                {/* ⚠️ THE COLUMN CARRIES ITS VALUE, not just its count. "Six
+                    orders in printing" and "₺40,000 in printing" are different
+                    facts, and only the second one tells you what a stalled
+                    column is costing. The count alone made the board a
+                    to-do list; the money makes it a pipeline. */}
+                <header className="row-compact border-b border-line">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-ink">
+                      {t(STAGE_KEY[stage] as never)}
+                    </span>
+                    <span className="tnum text-2xs text-faint">
+                      {column.length}
+                    </span>
+                  </div>
+                  {columnValue > 0 && (
+                    <p className="tnum mt-0.5 text-2xs text-muted">
+                      {formatMinor(columnValue)}
+                    </p>
+                  )}
                 </header>
 
                 <div className="flex flex-1 flex-col gap-2 p-2">
@@ -254,5 +299,35 @@ export function OrderBoard({
         />
       )}
     </>
+  );
+}
+
+/**
+ * One figure in the board summary.
+ *
+ * ⚠️ `owed` uses the RESERVED warning colour for its real meaning — money not
+ * yet collected — and pairs it with a word, never colour alone.
+ */
+function Figure({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "owed";
+}) {
+  return (
+    <span className="flex items-baseline gap-1.5">
+      <span className="text-xs text-faint">{label}</span>
+      <span
+        className={cn(
+          "tnum text-sm font-medium",
+          tone === "owed" ? "text-warning" : "text-ink"
+        )}
+      >
+        {value}
+      </span>
+    </span>
   );
 }
