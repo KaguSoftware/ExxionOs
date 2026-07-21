@@ -58,7 +58,8 @@ export const fa: Dictionary = {
     dueToday: "سررسید امروز",
     recentActivity: "فعالیت‌های اخیر",
     noActivity: "هنوز اتفاقی نیفتاده است.",
-    comingInPhase: "در مراحل بعدی اضافه می‌شود.",
+    noActivityHint: "جابه‌جایی سفارش‌ها و یادداشت‌های مشتری اینجا نشان داده می‌شود.",
+    allClearHint: "سفارش‌های عقب‌افتاده، پرداخت‌نشده‌ها و موجودی کم اینجا ظاهر می‌شوند.",
   },
 
   settings: {

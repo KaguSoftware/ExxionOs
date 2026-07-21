@@ -1,3 +1,6 @@
+import { Check } from "lucide-react";
+
+import { Activity, type ActivityItem } from "@/components/dashboard/activity";
 import { MonthSummary } from "@/components/dashboard/month-summary";
 import { NeedsYou } from "@/components/dashboard/needs-you";
 import { Reminders } from "@/components/dashboard/reminders";
@@ -16,13 +19,35 @@ import type {
   CampaignCost,
   Client,
   Direction,
+  Event,
   Order,
   OrderPayment,
+  OrderStage,
   Reminder,
   Supply,
   Transaction,
 } from "@/lib/types";
 import { todayInIstanbul } from "@/lib/utils";
+
+/**
+ * ⚠️ An embedded relation is typed as an ARRAY by the Supabase client even
+ * when the FK guarantees at most one row. Declaring it as an object compiles
+ * against a lie and then reads `undefined` at runtime — normalise instead.
+ * (Same shape as the `ProductRow` note in shipping/orders/new.)
+ */
+type StageEventRow = {
+  id: string;
+  order_id: string;
+  stage: OrderStage;
+  entered_at: string;
+  orders: { code: string | null }[] | { code: string | null } | null;
+};
+
+function orderCode(row: StageEventRow): string | null {
+  const o = row.orders;
+  if (!o) return null;
+  return Array.isArray(o) ? (o[0]?.code ?? null) : o.code;
+}
 
 export default async function DashboardPage() {
   const ctx = await getSessionContext();
@@ -51,6 +76,8 @@ export default async function DashboardPage() {
     clientOrders,
     liveCampaigns,
     campaignCosts,
+    stageEvents,
+    clientEvents,
   ] = await Promise.all([
     rowsOrThrow<Reminder>(
       "dashboard.reminders",
@@ -164,6 +191,32 @@ export default async function DashboardPage() {
       "dashboard.campaignCosts",
       supabase.from("campaign_costs").select("*")
     ),
+    /**
+     * The activity feed's two sources. Both are append-only, so "recent" is a
+     * plain `order by … desc limit`, not a computed diff.
+     *
+     * ⚠️ INSIDE this wave, not awaited above it — see the note at the top.
+     * `orders(code)` is an embedded relation, which Supabase types as an ARRAY
+     * even though the FK guarantees one row; it is normalised below rather
+     * than declared as an object, which would compile against a lie.
+     */
+    rowsOrThrow<StageEventRow>(
+      "dashboard.stageEvents",
+      supabase
+        .from("order_stage_events")
+        .select("id, order_id, stage, entered_at, orders(code)")
+        .order("entered_at", { ascending: false })
+        .limit(12)
+    ),
+    rowsOrThrow<Event>(
+      "dashboard.events",
+      supabase
+        .from("events")
+        .select("*")
+        .order("occurred_on", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(12)
+    ),
   ]);
 
   const dueCount = reminders.filter((r) => r.due_on && r.due_on <= today).length;
@@ -207,6 +260,49 @@ export default async function DashboardPage() {
     groupCosts(campaignCosts)
   ).length;
 
+  /**
+   * Merge the two activity sources into one list. Fetched 12 + 12 and cut to
+   * 10 here rather than asking the database for a union: two ordered reads on
+   * indexed columns are cheaper than a view, and the cut has to happen after
+   * the merge anyway.
+   */
+  const activity: ActivityItem[] = [
+    ...stageEvents.map(
+      (row): ActivityItem => ({
+        type: "order",
+        id: row.id,
+        orderId: row.order_id,
+        code: orderCode(row),
+        stage: row.stage,
+        at: row.entered_at,
+      })
+    ),
+    ...clientEvents.map(
+      (row): ActivityItem => ({
+        type: "event",
+        id: row.id,
+        kind: row.kind,
+        title: row.title,
+        clientId: row.client_id,
+        at: row.occurred_on,
+      })
+    ),
+  ]
+    .sort((a, b) => b.at.slice(0, 10).localeCompare(a.at.slice(0, 10)))
+    .slice(0, 10);
+
+  /** Mirrors NeedsYou's own emptiness test — see the calm state below. */
+  const needsAttention =
+    dueCount +
+      openIssues +
+      machinesDown +
+      lowSupplies +
+      ordersOverdue +
+      ordersUnpaid +
+      clientsQuiet +
+      campaignsOverBudget >
+    0;
+
   const greeting = greetingKey();
   const firstName = ctx.profile.full_name.split(/\s+/)[0] || "";
 
@@ -224,23 +320,37 @@ export default async function DashboardPage() {
           "clients",
           "campaigns",
           "campaign_costs",
+          "order_stage_events",
+          "events",
         ]}
       />
 
       <PageHeader title={t(greeting, { name: firstName })} />
 
       {/* ⚠️ Renders NOTHING when every count is zero. A permanent strip reading
-          all zeros is furniture, not an answer to "what needs my attention?" */}
-      <NeedsYou
-        dueCount={dueCount}
-        openIssues={openIssues}
-        machinesDown={machinesDown}
-        lowSupplies={lowSupplies}
-        ordersOverdue={ordersOverdue}
-        ordersUnpaid={ordersUnpaid}
-        clientsQuiet={clientsQuiet}
-        campaignsOverBudget={campaignsOverBudget}
-      />
+          all zeros is furniture, not an answer to "what needs my attention?"
+          The calm state below takes over instead — the ABSENCE of the strip is
+          the answer, but the page still has to say so out loud. */}
+      {needsAttention ? (
+        <NeedsYou
+          dueCount={dueCount}
+          openIssues={openIssues}
+          machinesDown={machinesDown}
+          lowSupplies={lowSupplies}
+          ordersOverdue={ordersOverdue}
+          ordersUnpaid={ordersUnpaid}
+          clientsQuiet={clientsQuiet}
+          campaignsOverBudget={campaignsOverBudget}
+        />
+      ) : (
+        <p className="mb-5 flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-muted">
+          <Check aria-hidden className="size-4 shrink-0 text-success" />
+          <span className="text-ink">{t("dashboard.allClear")}</span>
+          <span className="hidden text-xs text-faint sm:inline">
+            {t("dashboard.allClearHint")}
+          </span>
+        </p>
+      )}
 
       {/* This month's money, linking into Finance. ⚠️ The link uses the REAL
           filter params from `use-finance-filters.ts` — a made-up param would
@@ -253,15 +363,16 @@ export default async function DashboardPage() {
           real share of the row, and only on `xl` where there is width to give.
           Below that it is full-width and the composer breathes. */}
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(26rem,32rem)]">
-        <Reminders
-          initial={reminders}
-          className="xl:order-2 xl:col-start-2 xl:row-start-1"
-        />
+        {/* `scroll-mt` so the NeedsYou "#reminders" anchor doesn't land the
+            panel flush against the top edge of the viewport. */}
+        <div id="reminders" className="scroll-mt-4 xl:order-2 xl:col-start-2 xl:row-start-1">
+          <Reminders initial={reminders} />
+        </div>
 
-        <section className="rounded-xl border border-dashed border-line p-8 text-center xl:order-1">
-          <p className="text-sm text-muted">{t("dashboard.recentActivity")}</p>
-          <p className="mt-1 text-xs text-faint">{t("dashboard.comingInPhase")}</p>
-        </section>
+        {/* ⚠️ This slot held a dashed "coming in a later phase" box until all
+            seven phases had shipped — a panel promising something that already
+            existed, on the most valuable screen in the app. */}
+        <Activity items={activity} className="xl:order-1" />
       </div>
     </div>
   );
