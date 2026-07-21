@@ -5,9 +5,16 @@ import Link from "next/link";
 
 import { PrintRunButton } from "@/components/creative/print-run-button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Badge } from "@/components/ui/badge";
 import { productCost, productMargin } from "@/lib/costing";
 import { useI18n } from "@/lib/i18n/client";
-import type { Material, Product, StoredImage } from "@/lib/types";
+import { isLow, onHandByProduct } from "@/lib/stock";
+import type {
+  Material,
+  Product,
+  ProductStockMovement,
+  StoredImage,
+} from "@/lib/types";
 import { cn, formatMinor } from "@/lib/utils";
 
 export function ProductsPanel({
@@ -17,6 +24,7 @@ export function ProductsPanel({
   images,
   collectionId,
   supplies = [],
+  stockMovements = [],
 }: {
   products: Product[];
   materials: Material[];
@@ -25,8 +33,12 @@ export function ProductsPanel({
   collectionId: string;
   /** Used to name the stock a print run will draw from. */
   supplies?: { id: string; name: string }[];
+  /** The stock ledger; on-hand is summed from it, never stored. */
+  stockMovements?: ProductStockMovement[];
 }) {
   const { t } = useI18n();
+
+  const onHand = onHandByProduct(stockMovements);
 
   if (products.length === 0) {
     return (
@@ -48,6 +60,8 @@ export function ProductsPanel({
         const margin = productMargin(product, cost);
         const material = materials.find((m) => m.id === product.material_id);
         const photoCount = images.filter((i) => i.product_id === product.id).length;
+        // Summed from the ledger, like cost above — never a stored column.
+        const units = onHand.get(product.id) ?? 0;
 
         return (
           <li
@@ -81,6 +95,27 @@ export function ProductsPanel({
                     {formatMinor(product.price_minor)}
                   </span>
                 )}
+              </Row>
+
+              {/* ⚠️ Stock sits ABOVE cost: "do we have one" is the question
+                  asked far more often than "what did it cost", and it is the
+                  one that decides whether you can promise an order today. */}
+              <Row label={t("creative.onHand")}>
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "tnum",
+                      units <= 0 ? "text-danger" : "text-ink"
+                    )}
+                  >
+                    {units}
+                  </span>
+                  {units <= 0 ? (
+                    <Badge tone="danger">{t("creative.outOfStock")}</Badge>
+                  ) : isLow(units) ? (
+                    <Badge tone="warning">{t("creative.lowStock")}</Badge>
+                  ) : null}
+                </span>
               </Row>
 
               <Row label={t("creative.unitCost")}>

@@ -160,15 +160,51 @@ export type Material = {
   updated_at: string;
 };
 
+/**
+ * What came off the plate.
+ *
+ * ⚠️ ALL THREE DEDUCT FILAMENT — a failed print burns real material. Only
+ * `good` adds sellable units. See `0012_product_stock.sql`.
+ */
+export type PrintOutcome = "good" | "test" | "failed";
+export const PRINT_OUTCOMES: PrintOutcome[] = ["good", "test", "failed"];
+
 export type PrintRun = {
   id: string;
   product_id: string;
   printed_on: string;
   units: number;
+  outcome: PrintOutcome;
   /** Snapshot of what was actually deducted — not recomputed from the product. */
   grams_used: string | number | null;
   supply_id: string | null;
   notes: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type StockReason = "print_run" | "order" | "sample" | "correction";
+
+/**
+ * One row of the append-only stock ledger.
+ *
+ * ⚠️ On-hand is `sum(delta)` over these rows — never a stored column. See
+ * `lib/stock.ts` and `0012_product_stock.sql`.
+ */
+export type ProductStockMovement = {
+  id: string;
+  product_id: string;
+  /** Signed: positive adds units, negative removes them. Never zero. */
+  delta: number;
+  reason: StockReason;
+  /** The row that caused this. Null means a manual correction. */
+  source_id: string | null;
+  /**
+   * Which application of this source this is: 0 the original, 1 its reversal,
+   * 2 the re-application. Part of the idempotency key — see 0012.
+   */
+  apply_seq: number;
+  note: string | null;
   created_by: string | null;
   created_at: string;
 };

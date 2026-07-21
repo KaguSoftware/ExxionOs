@@ -6,6 +6,7 @@ import { syncTransaction } from "@/lib/actions/finance-link";
 import { getSessionContext } from "@/lib/data/session";
 import { toMinor } from "@/lib/money";
 import { outstandingMinor } from "@/lib/shipping";
+import { appendMovement } from "@/lib/stock-write";
 import { createClient } from "@/lib/supabase/server";
 import type {
   ActionResult,
@@ -20,6 +21,17 @@ import { todayInIstanbul } from "@/lib/utils";
 function pick<T extends string>(value: unknown, allowed: T[], fallback: T): T {
   return allowed.includes(value as T) ? (value as T) : fallback;
 }
+
+/**
+ * Stages where the goods have physically left the building.
+ *
+ * ⚠️ A SET, NOT A SINGLE STAGE. `shipped → delivered` is a normal move, and
+ * deducting on each one separately would deduct twice. Stock moves when the
+ * order ENTERS this set and returns when it LEAVES — the transition between
+ * two members of the set changes nothing.
+ */
+const GONE_STAGES: OrderStage[] = ["shipped", "delivered"];
+const isGone = (stage: OrderStage) => GONE_STAGES.includes(stage);
 
 function refresh(orderId?: string) {
   revalidatePath("/shipping");
@@ -218,6 +230,51 @@ export async function setOrderStage(
       note: note?.trim().slice(0, 200) || null,
       created_by: ctx.userId,
     });
+  }
+
+  // ⚠️ FINISHED-UNIT STOCK FOLLOWS THE ORDER, IN BOTH DIRECTIONS.
+  //
+  // The board is drag-and-drop and `setOrderStage` imposes no ordering, so
+  // `delivered → printing` is a normal thing that happens — usually a misdrop.
+  // Shipping deducts; dragging it back puts the units straight back, as its
+  // own positive row. Both rows stay, so the history reads truthfully
+  // ("shipped, then un-shipped") rather than pretending it never happened.
+  //
+  // A double-drag onto `shipped` cannot deduct twice: the partial unique index
+  // in 0012 rejects the repeat, and `appendMovement` treats that rejection as
+  // success — the units are already gone, which is what the caller wanted.
+  const wasGone = isGone(order.stage);
+  const nowGone = isGone(next);
+  if (wasGone !== nowGone) {
+    const { data: lines } = await supabase
+      .from("order_lines")
+      .select("product_id, quantity")
+      .eq("order_id", id)
+      .not("product_id", "is", null);
+
+    for (const line of (lines ?? []) as {
+      product_id: string | null;
+      quantity: number;
+    }[]) {
+      // ⚠️ A null product is a NORMAL historical state, not an error: the FK
+      // is `on delete set null` (0008) precisely so deleting a design cannot
+      // rewrite a past order. There is no product left whose stock to move.
+      if (!line.product_id) continue;
+
+      const movement = await appendMovement(supabase, ctx.userId, {
+        productId: line.product_id,
+        delta: nowGone ? -line.quantity : line.quantity,
+        reason: "order",
+        sourceId: id,
+      });
+      // ⚠️ Stock failing must NOT fail the stage move. The order genuinely
+      // shipped; refusing to record that because a ledger row misbehaved would
+      // leave the board lying about where the work is — the more visible and
+      // more expensive of the two wrongs.
+      if (!movement.ok) {
+        console.error("stock: order movement failed", id, movement.error);
+      }
+    }
   }
 
   const { data: payments } = await supabase

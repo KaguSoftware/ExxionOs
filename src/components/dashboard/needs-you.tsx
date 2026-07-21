@@ -8,6 +8,7 @@ import {
   Boxes,
   Clock,
   Megaphone,
+  Package,
   Users,
   Wrench,
   type LucideIcon,
@@ -87,6 +88,7 @@ export function NeedsYou({
   ordersUnpaid = 0,
   clientsQuiet = 0,
   campaignsOverBudget = 0,
+  productsOutOfStock = 0,
 }: {
   dueCount: number;
   openIssues?: number;
@@ -100,6 +102,8 @@ export function NeedsYou({
   clientsQuiet?: number;
   /** Live campaigns whose logged spend has passed their planned budget. */
   campaignsOverBudget?: number;
+  /** Products with no finished units left on the shelf. */
+  productsOutOfStock?: number;
 }) {
   const t = useT();
 
@@ -148,6 +152,21 @@ export function NeedsYou({
           ? t("equipment.lowOne")
           : t("equipment.lowCount", { count: lowSupplies }),
       href: "/equipment?tab=supplies",
+    });
+  }
+  // ⚠️ OUT, not merely low. A product with one left is a nudge; a product with
+  // none is the thing that makes you tell a customer "no" — which is the same
+  // class of blocked as a machine down, and belongs in the same band.
+  // Low-but-not-out lives on the Stock tab, where it can be acted on without
+  // competing with genuine blockers here.
+  if (productsOutOfStock > 0) {
+    signals.push({
+      key: "stock",
+      tone: "blocked",
+      icon: Package,
+      label: t("dashboard.productsOutOfStock", { count: productsOutOfStock }),
+      // The Stock tab's real param — see creative/panels.tsx.
+      href: "/creative?tab=stock",
     });
   }
 

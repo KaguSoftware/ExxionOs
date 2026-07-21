@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { getSessionContext } from "@/lib/data/session";
 import { toMinor } from "@/lib/money";
+import { appendMovement } from "@/lib/stock-write";
 import { createClient } from "@/lib/supabase/server";
 import { todayInIstanbul } from "@/lib/utils";
 import type {
@@ -15,6 +16,7 @@ import type {
   Issue,
   Material,
   MaterialKind,
+  PrintOutcome,
   Product,
   Severity,
 } from "@/lib/types";
@@ -22,6 +24,7 @@ import {
   COLLECTION_STATUSES,
   IDEA_STATUSES,
   MATERIAL_KINDS,
+  PRINT_OUTCOMES,
   SEVERITIES,
 } from "@/lib/types";
 
@@ -394,13 +397,21 @@ export async function deleteIssue(id: string): Promise<ActionResult> {
 export async function recordPrintRun(input: {
   productId: string;
   units: number;
+  outcome?: PrintOutcome;
   printedOn?: string;
   notes?: string | null;
-}): Promise<ActionResult<{ gramsUsed: number | null; supplyName: string | null }>> {
+}): Promise<
+  ActionResult<{
+    gramsUsed: number | null;
+    supplyName: string | null;
+    unitsAdded: number;
+  }>
+> {
   const ctx = await getSessionContext();
   const supabase = await createClient();
 
   const units = Math.max(1, Math.round(input.units));
+  const outcome = pick(input.outcome, PRINT_OUTCOMES, "good");
 
   const { data: product } = await supabase
     .from("products")
@@ -440,17 +451,37 @@ export async function recordPrintRun(input: {
   const gramsUsed =
     Number.isFinite(gramsEach) && gramsEach > 0 ? gramsEach * units : null;
 
-  const { error: runError } = await supabase.from("print_runs").insert({
-    product_id: product.id,
-    printed_on: input.printedOn ?? todayInIstanbul(),
-    units,
-    grams_used: gramsUsed,
-    supply_id: supply?.id ?? null,
-    notes: input.notes?.trim().slice(0, 500) || null,
-    created_by: ctx.userId,
-  });
+  const { data: run, error: runError } = await supabase
+    .from("print_runs")
+    .insert({
+      product_id: product.id,
+      printed_on: input.printedOn ?? todayInIstanbul(),
+      units,
+      outcome,
+      grams_used: gramsUsed,
+      supply_id: supply?.id ?? null,
+      notes: input.notes?.trim().slice(0, 500) || null,
+      created_by: ctx.userId,
+    })
+    .select("id")
+    .single<{ id: string }>();
 
   if (runError) return { ok: false, error: runError.message };
+
+  // ⚠️ ONLY A GOOD RUN ADDS SELLABLE UNITS. A test or failed print still
+  // deducts filament below — it burned real material — but nothing came off
+  // the plate that anyone can ship. Counting failures as stock is the error
+  // that makes you promise an order against plastic that does not exist.
+  const unitsAdded = outcome === "good" ? units : 0;
+  if (unitsAdded > 0) {
+    const movement = await appendMovement(supabase, ctx.userId, {
+      productId: product.id,
+      delta: unitsAdded,
+      reason: "print_run",
+      sourceId: run.id,
+    });
+    if (!movement.ok) return { ok: false, error: movement.error };
+  }
 
   if (supply && gramsUsed != null) {
     const current = Number(supply.quantity) || 0;
@@ -468,24 +499,43 @@ export async function recordPrintRun(input: {
   revalidatePath("/equipment");
   return {
     ok: true,
-    data: { gramsUsed, supplyName: supply?.name ?? null },
+    data: { gramsUsed, supplyName: supply?.name ?? null, unitsAdded },
   };
 }
 
-/** Undo a print run and put the filament back. */
+/** Undo a print run: put the filament back, and take the units away again. */
 export async function deletePrintRun(id: string): Promise<ActionResult> {
-  await getSessionContext();
+  const ctx = await getSessionContext();
   const supabase = await createClient();
 
   const { data: run } = await supabase
     .from("print_runs")
-    .select("grams_used, supply_id, product_id")
+    .select("grams_used, supply_id, product_id, outcome, units")
     .eq("id", id)
     .maybeSingle<{
       grams_used: string | number | null;
       supply_id: string | null;
       product_id: string;
+      outcome: PrintOutcome;
+      units: number;
     }>();
+
+  // ⚠️ REMOVE THE UNITS BEFORE DELETING THE RUN. The movement's `source_id`
+  // points at this run, and reading it after the delete would leave phantom
+  // stock — units on the shelf that no print run explains.
+  //
+  // Written as its own NEGATIVE row rather than deleting the original, because
+  // the ledger is append-only: "printed 5, then un-logged it" is the truth, and
+  // erasing the first row would claim the print never happened.
+  if (run && run.outcome === "good" && run.units > 0) {
+    const reversal = await appendMovement(supabase, ctx.userId, {
+      productId: run.product_id,
+      delta: -run.units,
+      reason: "print_run",
+      sourceId: id,
+    });
+    if (!reversal.ok) return { ok: false, error: reversal.error };
+  }
 
   const { error } = await supabase.from("print_runs").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };

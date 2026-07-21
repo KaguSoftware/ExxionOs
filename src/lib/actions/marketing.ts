@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { syncTransaction } from "@/lib/actions/finance-link";
 import { getSessionContext } from "@/lib/data/session";
 import { toMinor } from "@/lib/money";
+import { appendMovement } from "@/lib/stock-write";
 import { createClient } from "@/lib/supabase/server";
 import type {
   ActionResult,
@@ -317,16 +318,62 @@ export async function recordSample(
     .single<Sample>();
 
   if (error) return { ok: false, error: error.message };
+
+  // ⚠️ A GIVEAWAY MOVES REAL INVENTORY, even though it moves no money. The
+  // unit physically left the building exactly as a sale does, so stock must
+  // say so — otherwise the shelf count reads high and an order gets promised
+  // against a keychain that is already in someone else's hand.
+  //
+  // This is NOT in tension with the no-transaction rule above: that rule is
+  // about MONEY (the filament was expensed when it was bought). Units and lira
+  // are different ledgers.
+  if (data.product_id) {
+    const movement = await appendMovement(supabase, ctx.userId, {
+      productId: data.product_id,
+      delta: -data.quantity,
+      reason: "sample",
+      sourceId: data.id,
+    });
+    if (!movement.ok) {
+      console.error("stock: sample movement failed", data.id, movement.error);
+    }
+  }
+
   refresh(input.campaignId ?? undefined);
+  revalidatePath("/creative");
   return { ok: true, data };
 }
 
 export async function deleteSample(id: string): Promise<ActionResult> {
-  await getSessionContext();
+  const ctx = await getSessionContext();
   const supabase = await createClient();
+
+  // Read before deleting: the movement's source points at this row, and after
+  // the delete there would be nothing left to say what to put back.
+  const { data: sample } = await supabase
+    .from("samples")
+    .select("product_id, quantity")
+    .eq("id", id)
+    .maybeSingle<{ product_id: string | null; quantity: number }>();
 
   const { error } = await supabase.from("samples").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
+
+  // Un-logging a giveaway puts the unit back — as its own positive row, since
+  // the ledger is append-only.
+  if (sample?.product_id) {
+    const reversal = await appendMovement(supabase, ctx.userId, {
+      productId: sample.product_id,
+      delta: sample.quantity,
+      reason: "sample",
+      sourceId: id,
+    });
+    if (!reversal.ok) {
+      console.error("stock: sample reversal failed", id, reversal.error);
+    }
+  }
+
   refresh();
+  revalidatePath("/creative");
   return { ok: true, data: undefined };
 }

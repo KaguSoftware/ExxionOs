@@ -23,6 +23,7 @@ import type {
   Order,
   OrderPayment,
   OrderStage,
+  ProductStockMovement,
   Reminder,
   Supply,
   Transaction,
@@ -78,6 +79,7 @@ export default async function DashboardPage() {
     campaignCosts,
     stageEvents,
     clientEvents,
+    stockMovements,
   ] = await Promise.all([
     rowsOrThrow<Reminder>(
       "dashboard.reminders",
@@ -217,11 +219,44 @@ export default async function DashboardPage() {
         .order("created_at", { ascending: false })
         .limit(12)
     ),
+    /**
+     * Phase 3: products with nothing left on the shelf.
+     *
+     * ⚠️ CANNOT BE A SQL COUNT, and cannot be limited. On-hand is
+     * `sum(delta)` per product, so answering "how many are at zero" needs
+     * every row — a `limit` here would produce a partial sum, i.e. a wrong
+     * number that still looks like an answer. Same reason low stock above is
+     * compared in JS. Inside the wave either way.
+     */
+    rowsOrThrow<Pick<ProductStockMovement, "product_id" | "delta">>(
+      "dashboard.stockMovements",
+      supabase.from("product_stock_movements").select("product_id, delta")
+    ),
   ]);
 
   const dueCount = reminders.filter((r) => r.due_on && r.due_on <= today).length;
   const monthTotals = totals(monthRows as Transaction[]);
   const lowSupplies = supplyRows.filter(isLowStock).length;
+
+  /**
+   * Products that have run OUT — not products that were never made.
+   *
+   * ⚠️ COUNTED FROM THE LEDGER ONLY, deliberately. A design with no movements
+   * at all has never been printed, so it is not "out of stock"; it is an idea.
+   * Counting those would put every unprinted design in the strip on day one
+   * and train the reader to ignore it. A product appears here only once it has
+   * moved and come back to zero.
+   */
+  const stockByProduct = new Map<string, number>();
+  for (const m of stockMovements) {
+    stockByProduct.set(
+      m.product_id,
+      (stockByProduct.get(m.product_id) ?? 0) + Number(m.delta)
+    );
+  }
+  const productsOutOfStock = [...stockByProduct.values()].filter(
+    (units) => units <= 0
+  ).length;
 
   // Fold payments per order once, then answer both order questions from it.
   const paidByOrder = new Map<string, number>();
@@ -300,7 +335,8 @@ export default async function DashboardPage() {
       ordersOverdue +
       ordersUnpaid +
       clientsQuiet +
-      campaignsOverBudget >
+      campaignsOverBudget +
+      productsOutOfStock >
     0;
 
   const greeting = greetingKey();
@@ -322,6 +358,7 @@ export default async function DashboardPage() {
           "campaign_costs",
           "order_stage_events",
           "events",
+          "product_stock_movements",
         ]}
       />
 
@@ -341,6 +378,7 @@ export default async function DashboardPage() {
           ordersUnpaid={ordersUnpaid}
           clientsQuiet={clientsQuiet}
           campaignsOverBudget={campaignsOverBudget}
+          productsOutOfStock={productsOutOfStock}
         />
       ) : (
         <p className="mb-5 flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-muted">

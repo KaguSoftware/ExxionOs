@@ -15,6 +15,7 @@ import type {
   Issue,
   Material,
   Product,
+  ProductStockMovement,
   StoredImage,
 } from "@/lib/types";
 
@@ -34,6 +35,7 @@ export function CollectionDetail({
   images,
   supplies,
   soldLines,
+  stockMovements = [],
 }: {
   collection: Collection;
   products: Product[];
@@ -44,6 +46,8 @@ export function CollectionDetail({
   supplies: { id: string; name: string }[];
   /** Every order line app-wide; filtered to this collection by the P&L panel. */
   soldLines: SoldLine[];
+  /** The stock ledger; on-hand per product is summed from it. */
+  stockMovements?: ProductStockMovement[];
 }) {
   const { t } = useI18n();
 
@@ -97,6 +101,7 @@ export function CollectionDetail({
                 images={images}
                 collectionId={collection.id}
                 supplies={supplies}
+                stockMovements={stockMovements}
               />
             ),
           },

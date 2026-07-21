@@ -13,6 +13,7 @@ import type {
   Issue,
   Material,
   Product,
+  ProductStockMovement,
   StoredImage,
 } from "@/lib/types";
 
@@ -41,6 +42,7 @@ export default async function CollectionPage({
     images,
     supplies,
     soldLines,
+    stockMovements,
   ] = await Promise.all([
       selectOrThrow<Collection>(
         "collection.row",
@@ -99,6 +101,13 @@ export default async function CollectionPage({
           .select("product_id, quantity, unit_price_minor")
           .not("product_id", "is", null)
       ),
+      // On-hand for the product cards. Same wave, and the same reason the
+      // whole table is read: on-hand is `sum(delta)`, so a partial read is a
+      // wrong number that still looks like an answer.
+      rowsOrThrow<ProductStockMovement>(
+        "collection.stockMovements",
+        supabase.from("product_stock_movements").select("*")
+      ),
     ]);
 
   const collection = collectionResult.data;
@@ -106,7 +115,14 @@ export default async function CollectionPage({
 
   return (
     <>
-      <LiveRefresh tables={["products", "issues", "collections"]} />
+      <LiveRefresh
+        tables={[
+          "products",
+          "issues",
+          "collections",
+          "product_stock_movements",
+        ]}
+      />
       <Suspense>
         <CollectionDetail
           collection={collection}
@@ -117,6 +133,7 @@ export default async function CollectionPage({
           images={images}
           supplies={supplies}
           soldLines={soldLines}
+          stockMovements={stockMovements}
         />
       </Suspense>
     </>
