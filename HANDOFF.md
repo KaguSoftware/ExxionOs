@@ -713,7 +713,9 @@ toggle light/dark/system.
   `insights`.
 - `supabase/migrations/0001_foundation.sql` · `0002_backfill_profiles.sql` · `0003_finance.sql` ·
   `0004_creative.sql` · `0005_equipment.sql` · `0006_machine_purchase_expense.sql` ·
-  `0007_material_stock.sql` · `0008_shipping.sql` · `0009_clients.sql` · `0010_marketing.sql`.
+  `0007_material_stock.sql` · `0008_shipping.sql` · `0009_clients.sql` · `0010_marketing.sql` ·
+  `0011_vocabularies.sql` · **`0012_product_stock.sql`** · **`0013_drop_profile_color.sql`**
+  (the last two are ⚠️ **NOT YET APPLIED** — see the roadmap).
 - `scripts/apply-migration.mjs` — Management-API applier (alternative to `db push`).
 
 ## Roadmap / next steps
@@ -733,9 +735,33 @@ toggle light/dark/system.
 7. ✅ **Marketing** — campaigns with budget vs actual, the schedule (a LENS over `events`), free
    samples, honest insights. **A sample is COSTED, never EXPENSED**; **the budget is the plan,
    `transactions` is the money** — both proven against prod.
-8. ⬅️ **NEXT — "Make it ours"** — the reshaping pass. **Not a spec to build; a conversation to
-   have.** See the section at the top of this file, then ask Parsa what is wrong with what he has
-   been using.
+8. ✅ **"Make it ours"** — the reshaping pass. All 14 items Parsa raised after using the system,
+   in four phases:
+   - **Vocabularies** (`11e26d5`) — `vocabularies` registry with database-enforced dedupe;
+     `ComboCreate` type-to-create; product types and client tags; search on any list ≥5.
+   - **Identity + UI** (`b376172` `5dd300f` `f44247d` `53c8ab7` `fd7793a` `900603c` `e6f0d31`) —
+     EXXION blue + amber accent with **`npm run contrast`** guarding 44 measured pairs; wordmark
+     and app icon; the four reported layout bugs; two row densities replacing six ad-hoc pairs;
+     a defect pass over all seven sections.
+   - **Product stock** (`067af91`) — append-only `product_stock_movements` ledger, print
+     outcomes, order/sample/correction wiring. See the ⚠️ block below.
+   - **Shell** (`4f523da`) — user colour removed, Finance category safe-delete, language toggle
+     in the sidebar and mobile sheet.
+
+⚠️ **TWO MIGRATIONS ARE WRITTEN BUT NOT APPLIED** — `SUPABASE_ACCESS_TOKEN` is empty in
+`.env.local`, so `npm run migrate` cannot run and **only Parsa can push these**:
+- **`0012_product_stock.sql`** — until it lands, the Creative **Stock** tab and the dashboard
+  out-of-stock signal throw `PGRST205`. That is deliberate (see `lib/data/query.ts`): a missing
+  migration must be loud, not an empty state.
+- **`0013_drop_profile_color.sql`** — drops `profiles.color` and **re-issues the column-grant
+  list without it**. The app already ignores the column, so this is safe to run at any time;
+  running it is what makes the grants correct. See the grant note in `0001_foundation.sql`.
+
+**⚠️ The stock idempotency key is subtler than it looks.** `product_stock_movements_once_idx` is
+`(reason, source_id, product_id, delta_sign, apply_seq)` and every part earns its place — four
+simpler keys were tried and each let a real double-write through. The reasoning is recorded in
+`src/lib/stock-write.ts`; **read it before "simplifying" that index.** On-hand is always
+`sum(delta)`, never a stored column.
 
 Finance is second **on purpose**: every later section writes into its `transactions` contract, so
 that contract must exist before anything can honour it.
