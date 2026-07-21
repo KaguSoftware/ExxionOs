@@ -62,20 +62,15 @@ export async function updatePreferences(input: {
 
 export async function updateProfile(input: {
   fullName: string;
-  color: string;
 }): Promise<ActionResult> {
   const ctx = await getSessionContext();
   const supabase = await createClient();
 
   const fullName = input.fullName.trim().slice(0, 80);
-  // Validate the colour rather than trusting the client: this string is
-  // interpolated into a style attribute downstream.
-  const color = /^#[0-9a-fA-F]{6}$/.test(input.color) ? input.color : null;
-  if (!color) return { ok: false, error: "That colour isn't valid." };
 
   const { error } = await supabase
     .from("profiles")
-    .update({ full_name: fullName, color })
+    .update({ full_name: fullName })
     .eq("id", ctx.userId);
 
   if (error) return { ok: false, error: error.message };

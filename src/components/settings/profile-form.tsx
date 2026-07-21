@@ -3,7 +3,6 @@
 import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { ColorPicker } from "@/components/ui/color-picker";
 import { Field } from "@/components/ui/field";
 import { TextInput } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
@@ -24,12 +23,11 @@ export function ProfileForm({
   const nameId = useId();
 
   const [fullName, setFullName] = useState(profile.full_name);
-  const [color, setColor] = useState(profile.color);
 
-  const dirty = fullName !== profile.full_name || color !== profile.color;
+  const dirty = fullName !== profile.full_name;
 
   const save = () => {
-    void run(() => updateProfile({ fullName, color }), {
+    void run(() => updateProfile({ fullName }), {
       // Here the success message IS the feedback — nothing else on screen
       // changes when you rename yourself.
       successMessage: t("settings.saved"),
@@ -48,14 +46,6 @@ export function ProfileForm({
             maxLength={80}
           />
         </Field>
-
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted">
-            {t("settings.yourColor")}
-          </span>
-          <ColorPicker value={color} onChange={setColor} />
-          <p className="text-xs text-faint">{t("settings.colorHint")}</p>
-        </div>
 
         <p className="text-xs text-faint">{email}</p>
 

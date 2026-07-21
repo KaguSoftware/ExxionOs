@@ -179,10 +179,86 @@ export async function updateCategory(
 }
 
 /**
- * ⚠️ ARCHIVE, NEVER DELETE. A deleted category would null out `category_id` on
- * every historical transaction that used it, silently changing what past
- * months were spent on. Archiving removes it from pickers and leaves the
- * history it explains intact.
+ * How many records still point at this category.
+ *
+ * ⚠️ COUNTS **TWO** TABLES, and both matter. `transactions.category_id` is the
+ * obvious one; `recurring_items.category_id` (0003:97) is the one that gets
+ * forgotten — a template can carry a category that no transaction has used
+ * yet, so a transactions-only count would report zero and green-light a delete
+ * that silently breaks next month's rent.
+ *
+ * Head-only `count: "exact"` queries: the number is wanted, not the rows.
+ * Returns the two separately because they are fixed in different places, so
+ * the message can say which.
+ */
+export async function countCategoryUsage(
+  id: string
+): Promise<ActionResult<{ transactions: number; recurring: number }>> {
+  await getSessionContext();
+  const supabase = await createClient();
+
+  const [tx, rec] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("category_id", id),
+    supabase
+      .from("recurring_items")
+      .select("id", { count: "exact", head: true })
+      .eq("category_id", id),
+  ]);
+
+  if (tx.error) return { ok: false, error: tx.error.message };
+  if (rec.error) return { ok: false, error: rec.error.message };
+
+  return {
+    ok: true,
+    data: { transactions: tx.count ?? 0, recurring: rec.count ?? 0 },
+  };
+}
+
+/**
+ * Delete a category outright — ONLY when nothing references it.
+ *
+ * ⚠️ BOTH FKs ARE `on delete set null` (0003:52, 0003:97), so the database
+ * will NOT stop this: a delete succeeds and quietly un-categorises history
+ * instead of failing. That is exactly why the guard has to live here.
+ *
+ * ⚠️ RE-COUNTS SERVER-SIDE even though the client already asked. The client's
+ * number is for the MESSAGE; this one is the GUARD. They are seconds apart,
+ * and in that gap the other person can categorise a transaction — at which
+ * point the client's "0 uses" is stale and acting on it would lose data.
+ */
+export async function deleteCategory(id: string): Promise<ActionResult> {
+  await getSessionContext();
+  const supabase = await createClient();
+
+  const usage = await countCategoryUsage(id);
+  if (!usage.ok) return usage;
+
+  const total = usage.data.transactions + usage.data.recurring;
+  if (total > 0) {
+    return {
+      ok: false,
+      error: `Still used by ${total} record${total === 1 ? "" : "s"}. Archive it instead.`,
+    };
+  }
+
+  const { error } = await supabase.from("categories").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/finance/categories");
+  refresh();
+  return { ok: true, data: undefined };
+}
+
+/**
+ * ⚠️ ARCHIVE, NOT DELETE, whenever the category is in use. A deleted category
+ * would null out `category_id` on every historical transaction that used it,
+ * silently changing what past months were spent on. Archiving removes it from
+ * pickers and leaves the history it explains intact.
+ *
+ * `deleteCategory` above handles the one safe case: nothing references it.
  */
 export async function archiveCategory(
   id: string,

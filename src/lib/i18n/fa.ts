@@ -68,8 +68,6 @@ export const fa: Dictionary = {
     subtitle: "پروفایل شما و ظاهر برنامه.",
     profile: "پروفایل",
     fullName: "نام کامل",
-    yourColor: "رنگ شما",
-    colorHint: "برای مشخص کردن مواردی که شما ساخته‌اید استفاده می‌شود.",
     appearance: "ظاهر",
     language: "زبان",
     theme: "پوسته",
@@ -78,6 +76,7 @@ export const fa: Dictionary = {
     themeSystem: "سیستم",
     english: "English",
     farsi: "فارسی",
+    switchTo: "تغییر به {language}",
     saved: "تنظیمات ذخیره شد.",
     saveFailed: "ذخیره نشد. دوباره تلاش کنید.",
   },
@@ -202,6 +201,14 @@ export const fa: Dictionary = {
     archived: "بایگانی‌شده",
     archivedHint: "دسته‌های بایگانی‌شده روی تراکنش‌های گذشته می‌مانند اما در فهرست انتخاب نشان داده نمی‌شوند.",
     noCategories: "هنوز دسته‌ای وجود ندارد.",
+    deleteCategory: 'حذف «{name}»؟',
+    deleteCategoryBody: "چیزی از آن استفاده نمی‌کند، پس چیز دیگری تغییر نمی‌کند.",
+    categoryInUse:
+      "هنوز در {transactions} تراکنش و {recurring} مورد تکرارشونده استفاده می‌شود — به‌جای حذف بایگانی شد.",
+    categoryInUseTransactions:
+      "هنوز در {transactions} تراکنش استفاده می‌شود — به‌جای حذف بایگانی شد.",
+    categoryInUseRecurring:
+      "هنوز در {recurring} مورد تکرارشونده استفاده می‌شود — به‌جای حذف بایگانی شد.",
 
     recurring: "تکرارشونده",
     recurringItems: "موارد تکرارشونده",

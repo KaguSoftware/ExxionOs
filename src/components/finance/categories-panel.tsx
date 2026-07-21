@@ -1,16 +1,29 @@
 "use client";
 
-import { Archive, ArchiveRestore, Check, Pencil, Plus, Tags, X } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Check,
+  Pencil,
+  Plus,
+  Tags,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TextInput } from "@/components/ui/input";
 import { Panel } from "@/components/ui/panel";
+import { useToast } from "@/components/ui/toast";
 import {
   archiveCategory,
+  countCategoryUsage,
   createCategory,
+  deleteCategory,
   updateCategory,
 } from "@/lib/actions/finance";
 import { useI18n } from "@/lib/i18n/client";
@@ -20,6 +33,7 @@ import { cn } from "@/lib/utils";
 
 export function CategoriesPanel({ categories }: { categories: Category[] }) {
   const { t } = useI18n();
+  const toast = useToast();
   const { run, pending } = useAction();
 
   const [items, setItems] = useState(categories);
@@ -27,6 +41,7 @@ export function CategoriesPanel({ categories }: { categories: Category[] }) {
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [confirming, setConfirming] = useState<Category | null>(null);
 
   // Adopt server truth DURING RENDER — never in an effect, which would commit
   // the stale list for a frame and make the row visibly bounce after a save.
@@ -72,6 +87,75 @@ export function CategoriesPanel({ categories }: { categories: Category[] }) {
               : c
           )
         ),
+      rollback: () => setItems(previous),
+      errorMessage: t("finance.saveFailed"),
+    });
+  };
+
+  /**
+   * Ask the server how many records use the category BEFORE offering to
+   * delete, so the confirm states what will happen instead of asking blind.
+   *
+   * ⚠️ The in-use path is NOT a dialog — there is nothing to confirm. Archive
+   * is the only sensible action, so it just happens and the toast says why.
+   * Offering a confirm for a choice the user does not have is theatre.
+   */
+  const askDelete = async (category: Category) => {
+    const usage = await run(() => countCategoryUsage(category.id), {
+      errorMessage: t("finance.saveFailed"),
+    });
+    if (!usage.ok) return;
+
+    const { transactions, recurring } = usage.data;
+    if (transactions + recurring > 0) {
+      // Name only the tables that actually have rows — "and 0 recurring items"
+      // is noise that makes the real number harder to read.
+      const message =
+        transactions > 0 && recurring > 0
+          ? t("finance.categoryInUse", {
+              transactions: String(transactions),
+              recurring: String(recurring),
+            })
+          : transactions > 0
+            ? t("finance.categoryInUseTransactions", {
+                transactions: String(transactions),
+              })
+            : t("finance.categoryInUseRecurring", {
+                recurring: String(recurring),
+              });
+
+      // Already archived — say so, but don't re-write the timestamp.
+      if (category.archived_at) {
+        toast.success(message);
+        return;
+      }
+
+      await run(() => archiveCategory(category.id, true), {
+        optimistic: () =>
+          setItems((list) =>
+            list.map((c) =>
+              c.id === category.id
+                ? { ...c, archived_at: new Date().toISOString() }
+                : c
+            )
+          ),
+        successMessage: message,
+        errorMessage: t("finance.saveFailed"),
+      });
+      return;
+    }
+
+    setConfirming(category);
+  };
+
+  const confirmDelete = async () => {
+    const category = confirming;
+    setConfirming(null);
+    if (!category) return;
+    const previous = items;
+    await run(() => deleteCategory(category.id), {
+      optimistic: () =>
+        setItems((list) => list.filter((c) => c.id !== category.id)),
       rollback: () => setItems(previous),
       errorMessage: t("finance.saveFailed"),
     });
@@ -191,9 +275,6 @@ export function CategoriesPanel({ categories }: { categories: Category[] }) {
                     >
                       <Pencil aria-hidden className="size-3.5" />
                     </IconButton>
-                    {/* ⚠️ ARCHIVE, NEVER DELETE — deleting would strip the
-                        category off every historical transaction and silently
-                        change what past months were spent on. */}
                     <IconButton
                       onClick={() => toggleArchive(category)}
                       label={
@@ -207,6 +288,18 @@ export function CategoriesPanel({ categories }: { categories: Category[] }) {
                       ) : (
                         <Archive aria-hidden className="size-3.5" />
                       )}
+                    </IconButton>
+                    {/* ⚠️ DELETES ONLY WHEN NOTHING USES IT. Both FKs are
+                        `on delete set null`, so the database would let a
+                        delete succeed and quietly un-categorise history —
+                        `askDelete` counts first and archives instead. The
+                        button never just fails. */}
+                    <IconButton
+                      onClick={() => askDelete(category)}
+                      label={t("common.delete")}
+                      danger
+                    >
+                      <Trash2 aria-hidden className="size-3.5" />
                     </IconButton>
                   </>
                 )}
@@ -225,6 +318,16 @@ export function CategoriesPanel({ categories }: { categories: Category[] }) {
         {render("expense")}
         {render("income")}
       </div>
+
+      <ConfirmDialog
+        open={confirming !== null}
+        title={t("finance.deleteCategory", { name: confirming?.name ?? "" })}
+        body={t("finance.deleteCategoryBody")}
+        confirmLabel={t("common.delete")}
+        loading={pending}
+        onCancel={() => setConfirming(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
@@ -232,10 +335,12 @@ export function CategoriesPanel({ categories }: { categories: Category[] }) {
 function IconButton({
   onClick,
   label,
+  danger,
   children,
 }: {
   onClick: () => void;
   label: string;
+  danger?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -244,7 +349,10 @@ function IconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="rounded p-1.5 text-faint transition-colors hover:bg-raised hover:text-ink"
+      className={cn(
+        "rounded p-1.5 text-faint transition-colors hover:bg-raised",
+        danger ? "hover:text-danger" : "hover:text-ink"
+      )}
     >
       {children}
     </button>

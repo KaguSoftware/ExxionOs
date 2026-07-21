@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { LocaleToggle } from "@/components/shell/locale-toggle";
 import { Logomark } from "@/components/shell/wordmark";
 import { signOut } from "@/lib/actions/auth";
 import { useT } from "@/lib/i18n/client";
@@ -153,10 +154,10 @@ export function MobileNav({ profile }: { profile: Profile }) {
               onClick={close}
               className="flex items-center gap-3 rounded-lg px-3 py-3 text-base text-muted active:bg-raised"
             >
+              {/* Matches the sidebar chip — see the note there. */}
               <span
                 aria-hidden
-                className="grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold text-white"
-                style={{ backgroundColor: profile.color }}
+                className="grid size-7 shrink-0 place-items-center rounded-full bg-brand text-xs font-semibold text-brand-ink"
               >
                 {initials(profile.full_name)}
               </span>
@@ -165,6 +166,9 @@ export function MobileNav({ profile }: { profile: Profile }) {
               </span>
               <Settings aria-hidden className="size-4 text-faint" />
             </Link>
+
+            {/* `md` size to match the taller touch rows around it. */}
+            <LocaleToggle locale={profile.locale} size="md" />
 
             <form action={signOut}>
               <button

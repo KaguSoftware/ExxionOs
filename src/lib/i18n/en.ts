@@ -74,8 +74,6 @@ export const en = {
     subtitle: "Your profile and how the app looks.",
     profile: "Profile",
     fullName: "Full name",
-    yourColor: "Your colour",
-    colorHint: "Used to mark things you created.",
     appearance: "Appearance",
     language: "Language",
     theme: "Theme",
@@ -84,6 +82,9 @@ export const en = {
     themeSystem: "System",
     english: "English",
     farsi: "فارسی",
+    // Accessible name for the sidebar toggle — the visible label is only the
+    // language name, which says nothing about what the button does.
+    switchTo: "Switch to {language}",
     saved: "Settings saved.",
     saveFailed: "Could not save. Try again.",
   },
@@ -208,6 +209,16 @@ export const en = {
     archived: "Archived",
     archivedHint: "Archived categories stay on past transactions but stop appearing in pickers.",
     noCategories: "No categories yet.",
+    deleteCategory: 'Delete "{name}"?',
+    deleteCategoryBody: "Nothing uses it, so nothing else changes.",
+    // ⚠️ Names both tables — a transaction and a recurring template are fixed
+    // in different places, so "14 records" would not tell you where to look.
+    categoryInUse:
+      "Still used by {transactions} transactions and {recurring} recurring items — archived it instead.",
+    categoryInUseTransactions:
+      "Still used by {transactions} transactions — archived it instead.",
+    categoryInUseRecurring:
+      "Still used by {recurring} recurring items — archived it instead.",
 
     recurring: "Recurring",
     recurringItems: "Recurring items",

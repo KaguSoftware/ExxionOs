@@ -4,6 +4,7 @@ import { LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { LocaleToggle } from "@/components/shell/locale-toggle";
 import { Logomark } from "@/components/shell/wordmark";
 import { signOut } from "@/lib/actions/auth";
 import { useT } from "@/lib/i18n/client";
@@ -62,10 +63,13 @@ export function Sidebar({ profile }: { profile: Profile }) {
               : "text-muted hover:bg-raised hover:text-ink"
           )}
         >
+          {/* One brand colour for everyone — the INITIALS distinguish people,
+              not the fill. A per-user colour was a setting that existed only to
+              be configured, and an arbitrary hue competes with the reserved
+              state colours the rest of the UI depends on. */}
           <span
             aria-hidden
-            className="grid size-6 shrink-0 place-items-center rounded-full text-2xs font-semibold text-white"
-            style={{ backgroundColor: profile.color }}
+            className="grid size-6 shrink-0 place-items-center rounded-full bg-brand text-2xs font-semibold text-brand-ink"
           >
             {initials(profile.full_name)}
           </span>
@@ -74,6 +78,8 @@ export function Sidebar({ profile }: { profile: Profile }) {
           </span>
           <Settings aria-hidden className="size-3.5 shrink-0 text-faint" />
         </Link>
+
+        <LocaleToggle locale={profile.locale} />
 
         <form action={signOut}>
           <button
