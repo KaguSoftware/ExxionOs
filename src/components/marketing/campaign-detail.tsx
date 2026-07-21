@@ -153,7 +153,7 @@ export function CampaignDetail({
               {costs.map((cost) => (
                 <li
                   key={cost.id}
-                  className="flex items-baseline gap-3 rounded-md px-1.5 py-1.5 hover:bg-raised"
+                  className="flex items-baseline gap-3 rounded-md px-1.5 py-1.5 transition-colors hover:bg-raised"
                 >
                   <span className="min-w-0 flex-1 truncate text-sm text-ink">
                     {cost.label}

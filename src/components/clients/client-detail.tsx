@@ -177,7 +177,7 @@ export function ClientDetail({
                 <li key={order.id}>
                   <Link
                     href={`/shipping/orders/${order.id}`}
-                    className="flex items-baseline justify-between gap-3 rounded-md px-1.5 py-1.5 hover:bg-raised"
+                    className="flex items-baseline justify-between gap-3 rounded-md px-1.5 py-1.5 transition-colors hover:bg-raised"
                   >
                     <span className="min-w-0 truncate text-sm text-ink">
                       {order.code ? `${order.code} · ` : ""}

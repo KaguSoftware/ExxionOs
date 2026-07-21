@@ -135,7 +135,7 @@ export function ClientInsights({
               <li key={client.id}>
                 <Link
                   href={`/clients/${client.id}`}
-                  className="flex items-baseline justify-between gap-3 rounded-md px-1.5 py-1 text-sm hover:bg-raised"
+                  className="flex items-baseline justify-between gap-3 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-raised"
                 >
                   <span className="min-w-0 truncate text-ink">{client.name}</span>
                   <span className="shrink-0 text-xs text-muted tnum">

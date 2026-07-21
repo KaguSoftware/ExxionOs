@@ -165,14 +165,20 @@ export function ClientDirectory({
         </button>
       </div>
 
+      {/* ⚠️ The list below is `overflow-hidden`, and that is what CLIPS the row
+          hover to the rounded corners. The radius lives on the <ul> but
+          `hover:bg-raised` lives on each <li>, which has no radius of its own —
+          without the clip, the highlight paints square corners over the rounded
+          container on the first and last rows. Same fix as the stat grid in
+          equipment/machine-detail.tsx. */}
       {rows.length === 0 ? (
         <EmptyState title={t("clients.noMatches")} />
       ) : (
-        <ul className="rounded-xl border border-line">
+        <ul className="overflow-hidden rounded-xl border border-line">
           {rows.map(({ client, stats }) => (
             <li
               key={client.id}
-              className="border-b border-line last:border-0 hover:bg-raised"
+              className="border-b border-line transition-colors last:border-0 hover:bg-raised"
             >
               <Link
                 href={`/clients/${client.id}`}

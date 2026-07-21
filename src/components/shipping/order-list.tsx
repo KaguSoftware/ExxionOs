@@ -96,10 +96,12 @@ export function OrderList({
         )}
       </div>
 
+      {/* `overflow-hidden` on the list clips the row hover to the rounded
+          corners — see the fuller note in clients/directory.tsx. */}
       {filtered.length === 0 ? (
         <EmptyState title={t("shipping.noOrders")} />
       ) : (
-        <ul className="rounded-xl border border-line">
+        <ul className="overflow-hidden rounded-xl border border-line">
           {filtered.map((order) => {
             const client = order.client_id
               ? clientsById.get(order.client_id)
@@ -115,7 +117,7 @@ export function OrderList({
             return (
               <li
                 key={order.id}
-                className="border-b border-line last:border-0 hover:bg-raised"
+                className="border-b border-line transition-colors last:border-0 hover:bg-raised"
               >
                 <Link
                   href={`/shipping/orders/${order.id}`}
