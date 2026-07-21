@@ -187,7 +187,7 @@ export function OrderBoard({
                         >
                           <Link
                             href={`/shipping/orders/${order.id}`}
-                            className="block rounded text-sm text-ink hover:text-brand"
+                            className="block rounded text-sm text-ink hover:text-brand-text"
                           >
                             <span className="line-clamp-2 leading-snug">
                               {order.code ? `${order.code} · ` : ""}

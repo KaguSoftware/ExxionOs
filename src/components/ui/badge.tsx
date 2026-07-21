@@ -15,7 +15,7 @@ type Tone = "neutral" | "brand" | "accent" | "success" | "warning" | "danger";
 
 const TONES: Record<Tone, string> = {
   neutral: "bg-raised text-muted border-line",
-  brand: "bg-brand-soft text-brand border-brand-line",
+  brand: "bg-brand-soft text-brand-text border-brand-line",
   accent: "bg-accent-soft text-accent border-transparent",
   success: "bg-success-soft text-success border-transparent",
   warning: "bg-warning-soft text-warning border-transparent",

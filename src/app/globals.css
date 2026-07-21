@@ -26,21 +26,37 @@
 @layer base {
   :root {
     /* --- brand ------------------------------------------------------------
-       A deep magenta-rose. Chroma stays ≤ 0.23 so it never glows, and white
-       text sits on the filled variant (Helmholtz-Kohlrausch: dark text on a
-       saturated mid-tone reads muddy no matter what WCAG says). */
-    --brand: oklch(0.58 0.19 344);
-    --brand-hover: oklch(0.63 0.19 344);
-    --brand-active: oklch(0.53 0.18 344);
-    --brand-ink: oklch(0.99 0.005 344); /* text ON a brand fill */
-    --brand-soft: oklch(0.58 0.19 344 / 0.14); /* tinted background */
-    --brand-line: oklch(0.58 0.19 344 / 0.34);
+       EXXION blue, hue 262. The LOGO is oklch(0.524 0.239 262) (#0B57F0) and
+       keeps its full chroma — a mark should be loud. The UI holds chroma at
+       0.19 so a screen full of it never glows next to running printers.
 
-    /* Accent: cool cyan-teal, far from brand in BOTH hue and lightness, so
-       links and info never read as a dimmer primary button. */
-    --accent: oklch(0.72 0.13 205);
-    --accent-ink: oklch(0.18 0.03 205);
-    --accent-soft: oklch(0.72 0.13 205 / 0.14);
+       ⚠️ FILL AND TEXT ARE DIFFERENT TOKENS, and at this hue they must be.
+       Measured: white on the OLD magenta at L 0.58 passed; white on BLUE at
+       the same lightness is 4.43:1, BELOW the 4.5 floor. Blue is darker at
+       equal lightness than magenta is. So `--brand` is tuned for white text
+       sitting ON it, and `--brand-text` is the lighter value for blue text
+       sitting on the background. Using one for the other fails contrast in
+       one direction or the other, every time. */
+    /* Ratios below are measured against --brand-ink (the real token), NOT
+       pure white — the 0.99 off-white costs ~0.13 and hover failed on it. */
+    --brand: oklch(0.52 0.19 262); /* brand-ink on this: 5.55:1 */
+    --brand-hover: oklch(0.555 0.19 262); /* brand-ink on this: 4.77:1 */
+    --brand-active: oklch(0.47 0.18 262); /* brand-ink on this: 6.88:1 */
+    --brand-ink: oklch(0.99 0.005 262); /* text ON a brand fill */
+    --brand-text: oklch(0.66 0.16 262); /* brand AS text on --bg: 6.18:1 */
+    --brand-soft: oklch(0.52 0.19 262 / 0.16); /* tinted background */
+    --brand-line: oklch(0.55 0.19 262 / 0.38);
+
+    /* Accent: warm amber. The brand moved to blue (262), which left only 57°
+       to the old cyan (205) — close enough that a link would have read as a
+       dimmer primary button, the exact failure the previous comment guarded
+       against. Amber at 65 restores ~163° of separation and is warm against a
+       cool brand, so "informational" never competes with "primary".
+       ⚠️ It is NOT --warning (78): different hue, and warning stays reserved
+       for state. Amber-as-accent is decoration-free — links and info only. */
+    --accent: oklch(0.78 0.13 65); /* as text on --bg: 9.51:1 */
+    --accent-ink: oklch(0.20 0.03 65); /* dark text ON an accent fill: 9.5:1 */
+    --accent-soft: oklch(0.78 0.13 65 / 0.15);
 
     /* --- state (reserved) ------------------------------------------------- */
     --success: oklch(0.70 0.15 155);
@@ -80,27 +96,31 @@
   /* --- DARK (default) -----------------------------------------------------
      Near-black at chroma 0.008 toward the brand hue — a whisper of tint so
      the greys don't read as dead LCD, well under the 0.015 that would make
-     the surface itself "warm" or "cool". */
+     the surface itself "warm" or "cool". The hue follows the brand: these
+     were tinted toward 320 when the brand was magenta, and a grey tinted
+     toward the OLD brand is what makes a rebrand look half-finished. */
   :root,
   [data-theme="dark"] {
     color-scheme: dark;
 
-    --bg: oklch(0.155 0.008 320);
-    --surface: oklch(0.195 0.009 320);
-    --raised: oklch(0.235 0.010 320);
-    --overlay: oklch(0.235 0.010 320 / 0.86);
-    --line: oklch(0.315 0.010 320);
-    --line-strong: oklch(0.40 0.012 320);
+    --bg: oklch(0.155 0.008 262);
+    --surface: oklch(0.195 0.009 262);
+    --raised: oklch(0.235 0.010 262);
+    --overlay: oklch(0.235 0.010 262 / 0.86);
+    --line: oklch(0.315 0.010 262);
+    --line-strong: oklch(0.40 0.012 262);
 
     /* Text ramp — MEASURED against --bg (not estimated):
-       ink 17.7:1 · muted 9.1:1 · faint 5.6:1.
+       ink 17.7:1 · muted 9.1:1 · faint 5.6:1 (and 5.2:1 on --surface).
        ⚠️ Do not lower these for "elegance". Small muted text is the single
        most common contrast failure and this ramp is the floor. */
-    --ink: oklch(0.965 0.003 320);
-    --muted: oklch(0.760 0.010 320);
-    --faint: oklch(0.630 0.012 320);
+    --ink: oklch(0.965 0.003 262);
+    --muted: oklch(0.760 0.010 262);
+    --faint: oklch(0.630 0.012 262);
 
-    --focus: oklch(0.72 0.13 205);
+    /* Follows the ACCENT, not the brand: a focus ring in the brand colour is
+       invisible on a focused primary button. Amber on --bg is 9.5:1. */
+    --focus: oklch(0.78 0.13 65);
     --shadow-1: 0 1px 2px oklch(0 0 0 / 0.4);
     --shadow-2: 0 4px 12px -2px oklch(0 0 0 / 0.5);
     --shadow-3: 0 16px 40px -8px oklch(0 0 0 / 0.62);
@@ -120,24 +140,32 @@
     color-scheme: light;
 
     --bg: oklch(1 0 0);
-    --surface: oklch(0.981 0.002 320);
+    --surface: oklch(0.981 0.002 262);
     --raised: oklch(1 0 0);
     --overlay: oklch(1 0 0 / 0.86);
-    --line: oklch(0.912 0.004 320);
-    --line-strong: oklch(0.845 0.006 320);
+    --line: oklch(0.912 0.004 262);
+    --line-strong: oklch(0.845 0.006 262);
 
-    /* MEASURED on white: ink 18.0:1 · muted 6.7:1 · faint 4.7:1. */
-    --ink: oklch(0.205 0.010 320);
-    --muted: oklch(0.475 0.012 320);
-    --faint: oklch(0.560 0.012 320);
+    /* MEASURED on white: ink 17.9:1 · muted 6.7:1 · faint 5.1:1.
+       ⚠️ --faint was 0.560, which measured 4.65:1 on --bg but only 4.41:1 on
+       --surface — under the floor on the surface that hint text usually sits
+       on. This predates the rebrand; 0.540 clears both (5.06:1 / 4.79:1). */
+    --ink: oklch(0.205 0.010 262);
+    --muted: oklch(0.475 0.012 262);
+    --faint: oklch(0.540 0.012 262);
 
     /* The dark-mode brand is slightly too light to carry white text on white
        backgrounds at small sizes; the light theme deepens it. */
-    --brand: oklch(0.525 0.195 344);
-    --brand-hover: oklch(0.475 0.190 344);
-    --brand-active: oklch(0.435 0.180 344);
-    --accent: oklch(0.545 0.115 205);
-    --accent-ink: oklch(0.99 0.005 205);
+    --brand: oklch(0.50 0.20 262); /* white on this: 6.27:1 */
+    --brand-hover: oklch(0.45 0.19 262); /* white on this: 7.78:1 */
+    --brand-active: oklch(0.41 0.18 262); /* white on this: 9.22:1 */
+    /* On white, brand-as-text and brand-as-fill can be the SAME value — both
+       want a dark blue here. Only dark mode needs them to diverge. */
+    --brand-text: oklch(0.50 0.20 262); /* as text on white: 6.27:1 */
+    /* Amber is hard on white: 0.545 measured 5.01:1 at chroma 0.12, and any
+       lighter fails. Deeper and warmer than the dark-mode value by necessity. */
+    --accent: oklch(0.55 0.12 65); /* as text on white: 5.01:1 */
+    --accent-ink: oklch(0.99 0.005 65);
     --success: oklch(0.545 0.135 155);
     /* Yellow-orange is the hardest hue to make readable on white; 0.605 came
        out at 4.01:1, so it drops to 0.545 to clear AA. */
@@ -145,10 +173,10 @@
     --danger: oklch(0.545 0.195 22);
     --danger-fill: oklch(0.505 0.185 22);
 
-    --focus: oklch(0.545 0.115 205);
-    --shadow-1: 0 1px 2px oklch(0.2 0.01 320 / 0.07);
-    --shadow-2: 0 4px 12px -2px oklch(0.2 0.01 320 / 0.10);
-    --shadow-3: 0 16px 40px -8px oklch(0.2 0.01 320 / 0.16);
+    --focus: oklch(0.55 0.12 65);
+    --shadow-1: 0 1px 2px oklch(0.2 0.01 262 / 0.07);
+    --shadow-2: 0 4px 12px -2px oklch(0.2 0.01 262 / 0.10);
+    --shadow-3: 0 16px 40px -8px oklch(0.2 0.01 262 / 0.16);
   }
 
   /* The "system" case. The server writes NO data-theme attribute when the
@@ -164,30 +192,31 @@
       color-scheme: light;
 
       --bg: oklch(1 0 0);
-      --surface: oklch(0.981 0.002 320);
+      --surface: oklch(0.981 0.002 262);
       --raised: oklch(1 0 0);
       --overlay: oklch(1 0 0 / 0.86);
-      --line: oklch(0.912 0.004 320);
-      --line-strong: oklch(0.845 0.006 320);
+      --line: oklch(0.912 0.004 262);
+      --line-strong: oklch(0.845 0.006 262);
 
-      --ink: oklch(0.205 0.010 320);
-      --muted: oklch(0.475 0.012 320);
-      --faint: oklch(0.560 0.012 320);
+      --ink: oklch(0.205 0.010 262);
+      --muted: oklch(0.475 0.012 262);
+      --faint: oklch(0.540 0.012 262);
 
-      --brand: oklch(0.525 0.195 344);
-      --brand-hover: oklch(0.475 0.190 344);
-      --brand-active: oklch(0.435 0.180 344);
-      --accent: oklch(0.545 0.115 205);
-      --accent-ink: oklch(0.99 0.005 205);
+      --brand: oklch(0.50 0.20 262);
+      --brand-hover: oklch(0.45 0.19 262);
+      --brand-active: oklch(0.41 0.18 262);
+      --brand-text: oklch(0.50 0.20 262);
+      --accent: oklch(0.55 0.12 65);
+      --accent-ink: oklch(0.99 0.005 65);
       --success: oklch(0.545 0.135 155);
       --warning: oklch(0.545 0.135 62);
       --danger: oklch(0.545 0.195 22);
       --danger-fill: oklch(0.505 0.185 22);
 
-      --focus: oklch(0.545 0.115 205);
-      --shadow-1: 0 1px 2px oklch(0.2 0.01 320 / 0.07);
-      --shadow-2: 0 4px 12px -2px oklch(0.2 0.01 320 / 0.10);
-      --shadow-3: 0 16px 40px -8px oklch(0.2 0.01 320 / 0.16);
+      --focus: oklch(0.55 0.12 65);
+      --shadow-1: 0 1px 2px oklch(0.2 0.01 262 / 0.07);
+      --shadow-2: 0 4px 12px -2px oklch(0.2 0.01 262 / 0.10);
+      --shadow-3: 0 16px 40px -8px oklch(0.2 0.01 262 / 0.16);
     }
   }
 }
@@ -209,6 +238,10 @@
   --color-brand-hover: var(--brand-hover);
   --color-brand-active: var(--brand-active);
   --color-brand-ink: var(--brand-ink);
+  /* ⚠️ Use `text-brand-text` for brand-coloured TEXT, never `text-brand` —
+     `--brand` is tuned as a FILL for white labels and is too dark to read as
+     text on --bg in dark mode. See the token block for the measurements. */
+  --color-brand-text: var(--brand-text);
   --color-brand-soft: var(--brand-soft);
   --color-brand-line: var(--brand-line);
 

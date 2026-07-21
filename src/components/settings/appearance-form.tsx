@@ -127,7 +127,7 @@ function OptionChip({
       {/* Reserves its slot so selecting doesn't resize the chip. */}
       <Check
         aria-hidden
-        className={cn("size-3.5 text-brand", !selected && "invisible")}
+        className={cn("size-3.5 text-brand-text", !selected && "invisible")}
       />
     </button>
   );

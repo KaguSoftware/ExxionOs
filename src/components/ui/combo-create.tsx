@@ -427,7 +427,7 @@ function ComboShell({
                   creating && "opacity-55"
                 )}
               >
-                <Plus aria-hidden className="size-3.5 shrink-0 text-brand" />
+                <Plus aria-hidden className="size-3.5 shrink-0 text-brand-text" />
                 <span className="min-w-0 flex-1 truncate text-ink">
                   {t("vocab.createLabel", { label: trimmed })}
                 </span>
@@ -462,7 +462,7 @@ function ComboShell({
                     <Check
                       aria-hidden
                       className={cn(
-                        "size-3.5 shrink-0 text-brand",
+                        "size-3.5 shrink-0 text-brand-text",
                         !active && "invisible"
                       )}
                     />

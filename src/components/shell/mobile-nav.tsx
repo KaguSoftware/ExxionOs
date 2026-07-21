@@ -128,7 +128,7 @@ export function MobileNav({ profile }: { profile: Profile }) {
                     >
                       <Icon
                         aria-hidden
-                        className={cn("size-5 shrink-0", active && "text-brand")}
+                        className={cn("size-5 shrink-0", active && "text-brand-text")}
                       />
                       {t(item.labelKey)}
                     </Link>

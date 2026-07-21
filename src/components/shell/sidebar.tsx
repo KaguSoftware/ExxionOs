@@ -128,7 +128,7 @@ function NavLink({
     >
       <Icon
         aria-hidden
-        className={cn("size-4 shrink-0", active && "text-brand")}
+        className={cn("size-4 shrink-0", active && "text-brand-text")}
       />
       <span className="min-w-0 flex-1 truncate">{t(item.labelKey)}</span>
     </Link>
