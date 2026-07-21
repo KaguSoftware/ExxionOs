@@ -25,12 +25,19 @@ export type NavItem = {
  * sidebar. Order is deliberate: Dashboard, then the daily-work surfaces
  * (Creative, Shipping), then the records they feed (Finance, Equipment,
  * Clients, Marketing).
+ *
+ * ⚠️ `ready` FLIPS TO TRUE IN THE SAME COMMIT THAT SHIPS THE SECTION. An
+ * unbuilt section renders visible-but-disabled with a "soon" chip, so the
+ * shape of the finished app is legible from day one — but a built section
+ * that is still marked `false` is invisible work, and a `true` one that isn't
+ * built is a dead link. Update this line as part of the phase, not after it.
  */
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", labelKey: "nav.dashboard", icon: LayoutDashboard, ready: true },
   { href: "/creative", labelKey: "nav.creative", icon: Palette, ready: false },
   { href: "/shipping", labelKey: "nav.shipping", icon: Package, ready: false },
-  { href: "/finance", labelKey: "nav.finance", icon: Wallet, ready: false },
+  // Phase 2 — shipped.
+  { href: "/finance", labelKey: "nav.finance", icon: Wallet, ready: true },
   { href: "/equipment", labelKey: "nav.equipment", icon: Boxes, ready: false },
   { href: "/clients", labelKey: "nav.clients", icon: Users, ready: false },
   { href: "/marketing", labelKey: "nav.marketing", icon: Megaphone, ready: false },

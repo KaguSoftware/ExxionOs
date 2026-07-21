@@ -1,12 +1,14 @@
-import { LiveRefresh } from "@/components/shell/live-refresh";
+import { MonthSummary } from "@/components/dashboard/month-summary";
 import { NeedsYou } from "@/components/dashboard/needs-you";
 import { Reminders } from "@/components/dashboard/reminders";
+import { LiveRefresh } from "@/components/shell/live-refresh";
 import { PageHeader } from "@/components/ui/panel";
 import { rowsOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
+import { totals } from "@/lib/finance-series";
 import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
-import type { Reminder } from "@/lib/types";
+import type { Direction, Reminder, Transaction } from "@/lib/types";
 import { todayInIstanbul } from "@/lib/utils";
 
 export default async function DashboardPage() {
@@ -21,7 +23,10 @@ export default async function DashboardPage() {
    * this array — never in an `await` above it. Do not count queries; count
    * waves.
    */
-  const [reminders] = await Promise.all([
+  const today = todayInIstanbul();
+  const monthStart = `${today.slice(0, 7)}-01`;
+
+  const [reminders, monthRows] = await Promise.all([
     rowsOrThrow<Reminder>(
       "dashboard.reminders",
       supabase
@@ -35,17 +40,27 @@ export default async function DashboardPage() {
         .order("created_at", { ascending: false })
         .limit(50)
     ),
+    // Phase 2: this month's money. Added INSIDE the existing wave — ~3ms, not
+    // a second round-trip. Only the two columns the totals need.
+    rowsOrThrow<{ direction: Direction; amount_minor: number }>(
+      "dashboard.month",
+      supabase
+        .from("transactions")
+        .select("direction, amount_minor")
+        .gte("occurred_on", monthStart)
+        .lte("occurred_on", today)
+    ),
   ]);
 
-  const today = todayInIstanbul();
   const dueCount = reminders.filter((r) => r.due_on && r.due_on <= today).length;
+  const monthTotals = totals(monthRows as Transaction[]);
 
   const greeting = greetingKey();
   const firstName = ctx.profile.full_name.split(/\s+/)[0] || "";
 
   return (
     <div className="animate-fade-rise px-4 py-6 md:px-8">
-      <LiveRefresh tables={["reminders"]} />
+      <LiveRefresh tables={["reminders", "transactions"]} />
 
       <PageHeader title={t(greeting, { name: firstName })} />
 
@@ -53,7 +68,12 @@ export default async function DashboardPage() {
           all zeros is furniture, not an answer to "what needs my attention?" */}
       <NeedsYou dueCount={dueCount} />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      {/* This month's money, linking into Finance. ⚠️ The link uses the REAL
+          filter params from `use-finance-filters.ts` — a made-up param would
+          silently land on an unfiltered view. */}
+      <MonthSummary totals={monthTotals} monthStart={monthStart} today={today} />
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Reminders
           initial={reminders}
           className="lg:order-2 lg:col-start-2 lg:row-start-1"

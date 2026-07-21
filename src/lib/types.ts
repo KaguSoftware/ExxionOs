@@ -25,6 +25,72 @@ export type Reminder = {
   updated_at: string;
 };
 
+// --- finance ---------------------------------------------------------------
+
+export type Direction = "in" | "out";
+export type CategoryKind = "income" | "expense";
+export type Cadence = "monthly" | "quarterly" | "yearly";
+
+export const CADENCES: Cadence[] = ["monthly", "quarterly", "yearly"];
+
+export type Category = {
+  id: string;
+  name: string;
+  kind: CategoryKind;
+  color: string | null;
+  icon: string | null;
+  sort_order: number;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * ⚠️ `amount_minor` is an integer number of KURUŞ and always POSITIVE —
+ * `direction` carries the sign. Use `signedMinor()` / `netMinor()` from
+ * `lib/money.ts` to total them, and `formatMinor()` to display.
+ */
+export type Transaction = {
+  id: string;
+  occurred_on: string;
+  direction: Direction;
+  amount_minor: number;
+  description: string;
+  category_id: string | null;
+  note: string | null;
+  receipt_path: string | null;
+  /** The cross-section back-link: what caused this row. */
+  source_type: string | null;
+  source_id: string | null;
+  /** Set when produced by a recurring template; null = entered by hand. */
+  recurring_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type RecurringItem = {
+  id: string;
+  label: string;
+  direction: Direction;
+  amount_minor: number;
+  category_id: string | null;
+  cadence: Cadence;
+  day_of_month: number;
+  starts_on: string;
+  ends_on: string | null;
+  last_generated_on: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * Which section created a transaction. Extended as phases 4-7 land; the DB
+ * column is deliberately loose text so adding one needs no migration.
+ */
+export type TransactionSource = "equipment" | "shipping" | "marketing" | "client";
+
 /** The signed-in context every page and action resolves once per request. */
 export type SessionContext = {
   userId: string;

@@ -132,6 +132,64 @@ These come from KaguOs, where each was **measured**. They are why that system is
 
 ## Current status (2026-07-21)
 
+### 🟢 PHASE 2 — FINANCE: BUILT + VERIFIED AGAINST PROD, **not yet driven in a browser by Parsa**
+`tsc` · `lint` · `build` green. **Migration 0003 applied and schema-verified.** Routes: `/finance`
+(three tabs), `/finance/new`, `/finance/[id]`. Sidebar entry is **live**.
+
+**Finance is the hub — `transactions` is a CONTRACT.** Equipment (4), Shipping (5), Clients (6) and
+Marketing (7) all insert into it with `source_type` + `source_id`, so every figure traces back to
+its cause. Don't reshape that table casually; later phases depend on it.
+
+**Architecture, and why:**
+- **ONE page, THREE tabs** (Transactions · Recurring · Categories) via
+  `components/shell/tabbed-panels.tsx`. Every tab's data arrives in the page's **single
+  `Promise.all`**, and switching is **pure client state** — no navigation, no refetch. Separate
+  routes would have traded ~3ms for ~305ms on every switch.
+- **Filtering is 100% client-side** (`useMemo` over rows already in memory). The URL mirrors filters
+  via `replaceState`, **never `router.push`** — a push is a server round-trip plus one history entry
+  per keystroke.
+- **Optimistic + rollback** on every mutation that has an id (rename/archive category, pause/delete
+  recurring). Create is deliberately not optimistic — there's no server id to render yet.
+- Recurring materialisation runs in **`after()`**, so bookkeeping never blocks the response.
+
+**⚠️ MONEY IS INTEGER KURUŞ** (`amount_minor bigint`). 1250.50 TRY = `125050`. Converted **exactly
+once**, in the server action (`toMinor`). `amount_minor` is a **positive magnitude**; `direction`
+carries the sign — a signed amount *plus* a direction is two sources of truth and they drift.
+Display with **`formatMinor()`**, never `formatMoney()` (which takes lira and would render
+₺125.050,00 for ₺1.250,50 — plausible and wrong).
+
+**⚠️ THE +/− SIGNS ARE AN ACCESSIBILITY REQUIREMENT, NOT DECORATION.** Measured with the dataviz
+validator against this project's real surfaces: **green↔red scores ΔE 6.5 under protanopia** (the
+6–8 "floor band"), where blue↔red scores 19.2. Green/red is kept because it's the money convention,
+but the floor band is legal **only with secondary encoding** — the sign and the text label ARE that
+encoding. Do not strip them to tidy a layout. See `lib/chart-palette.ts`.
+
+**⚠️ Charts stay LTR in Farsi** (`dir="ltr"` on the plot). recharts doesn't mirror, and it
+shouldn't: a time axis running right-to-left reads as reversed chronology.
+
+**Verified against prod, not just built:**
+- ✅ Schema column-by-column; negative amount **refused (23514)**; `receipts` bucket private.
+- ✅ **Idempotency, the one that matters most**: the unique index
+  `(recurring_id, occurred_on) where recurring_id is not null` **refuses a duplicate (23505)** while
+  still allowing two identical *hand-entered* rows. Rent cannot double-charge.
+- ✅ **Catch-up**: a template 3 months behind generated exactly 3 rows dated **2026-05-01,
+  06-01, 07-01** — the months they belong to, not all today. Re-running changed nothing.
+- ✅ **Date logic, 9 cases** incl. day-31 clamping to **Feb 28 (2026) and Feb 29 (2028)**, and
+  quarterly anchoring on the *start* month (Feb/May/Aug/Nov, not Jan/Apr/Jul).
+- ✅ **Money precision**: `1250.50` → `125050` → renders `₺1.250,50`; `0.10+0.20+0.07` = exactly
+  `0.37` where float gives `0.37000000000000005`.
+- ✅ **The cross-section contract**: an `equipment`-sourced transaction inserts, is retrievable by
+  source, and its badge renders in the list.
+- ✅ **Deep-link filters for real** — the dashboard link was parsed through the page's own reader
+  (`from`/`to` populated). It imports `FINANCE_PARAMS` rather than hardcoding, so a rename is a
+  compile error. A made-up param yields an unfiltered view; that's the bug this prevents.
+- ✅ **Farsi**: `dir=rtl lang=fa`, translated, money still Latin digits, chart plot still LTR.
+- ✅ Design detector clean; no physical-direction classes, no raw colours.
+
+**Not driven in a browser yet.** Worth Parsa's eyes: add a transaction and watch the charts move;
+switch tabs and confirm it's instant; create a recurring item dated in the past and confirm the
+back-months appear.
+
 ### 🟢 PHASE 1 — FOUNDATION: BUILT, VERIFIED AGAINST PROD, **not yet driven in a browser by Parsa**
 `tsc` · `lint` · `build` all green. Migrations **0001 + 0002 applied via `db push` and
 schema-verified**. Routes: `/login`, `/` (dashboard), `/settings`.
@@ -189,16 +247,32 @@ toggle light/dark/system.
 - `src/app/(app)/error.tsx` — the boundary the throws land on. Shows `digest`, **not**
   `error.message` (Next redacts it in production, so it would print an empty string).
 - `src/lib/nav.ts` — the six sections. Unbuilt ones render disabled with a "soon" chip rather than
-  being hidden.
-- `supabase/migrations/0001_foundation.sql` · `0002_backfill_profiles.sql`.
+  being hidden. ⚠️ **Flip `ready: true` in the SAME commit that ships the section** — a built
+  section left `false` is invisible work; a `true` one that isn't built is a dead link.
+- `src/components/shell/tabbed-panels.tsx` — **the instant-tab shell.** Server-rendered content per
+  tab, switched in pure client state, `?tab=` via `replaceState`. Use this for every tabbed section.
+
+**Finance (phase 2):**
+- `src/lib/money.ts` — `toMinor`/`toMajor`/`signedMinor`/`netMinor`. **The only conversion points.**
+- `src/lib/chart-palette.ts` — validated colours + the ΔE measurements behind them. **Re-run the
+  dataviz validator for both modes if you change a value.**
+- `src/lib/finance-series.ts` — pure aggregation (monthly series, category breakdown, totals). No
+  React, no Supabase, so the arithmetic is directly testable — which for money it must be.
+- `src/lib/use-finance-filters.ts` — **`FINANCE_PARAMS` is the deep-link contract.** Import it; a
+  hardcoded param string is how you ship a link that silently filters nothing.
+- `src/lib/data/recurring.ts` — the materialiser. Idempotent, catches up, never generates the future.
+- `src/lib/finance-export.ts` — CSV. Escapes leading `=+-@` (Excel would treat them as formulas)
+  and writes a BOM so Turkish/Persian characters survive.
+- `src/components/finance/*` — panels (ledger/recurring/categories), charts, forms, receipt field.
+- `supabase/migrations/0001_foundation.sql` · `0002_backfill_profiles.sql` · `0003_finance.sql`.
 - `scripts/apply-migration.mjs` — Management-API applier (alternative to `db push`).
 
 ## Roadmap / next steps
 **7 phases. Say "next phase" to start the next unbuilt one.**
 
 1. ✅ **Foundation** — auth, shell, i18n+RTL, tokens, UI kit, data layer, dashboard, settings.
-2. ⬅️ **NEXT — Finance** — `transactions` (the hub), categories, recurring items, charts.
-3. **Creative hub** — ideas · collections → products · issues → learnings.
+2. ✅ **Finance** — transactions (the hub), categories, recurring, charts, CSV, receipts.
+3. ⬅️ **NEXT — Creative hub** — ideas · collections → products · issues → learnings.
 4. **Equipment** — machines, maintenance, supplies, reminders. First real finance link.
 5. **Shipping** — order lifecycle board, staged + timestamped.
 6. **Clients** — CRM + pattern analytics + events.
@@ -226,7 +300,10 @@ that contract must exist before anything can honour it.
 ## Deliberately partial — grows later (scope ledger)
 | Area | What shipped now | Intended full shape | Grows in |
 |---|---|---|---|
-| Sections 2–7 | Nav entries render **disabled with a "soon" chip** — visible so the shape of the app is legible, not hidden | Six full sections | Phases 2–7 |
+| Sections 3–7 | Nav entries render **disabled with a "soon" chip** — visible so the shape of the app is legible, not hidden | Five remaining sections | Phases 3–7 |
+| Finance charts | 12-month in/out bars · category breakdown · net line | Budgets, per-collection P&L, forecasting — deliberately deferred until there's real data to budget against | Later |
+| Receipts | One file per transaction (5 MB, image/PDF), private bucket, signed at click | Multiple attachments; OCR of totals | Later |
+| Transaction window | The page loads ~13 months (cap 2000 rows) so filtering is instant client-side | Pagination or a server-side query once that cap is realistic — at ~50 rows/month it's ~3 years away | When the cap bites |
 | Branding | Neutral placeholder tokens, measured for contrast, all in one CSS block | Real Exxion identity — a variable swap, not a rewrite | When branding exists |
 | Dashboard | "Needs you" strip (reminders only) + reminders panel; activity area is a dashed placeholder | Per-section signals in the SAME `Promise.all` wave; real activity feed | Phases 2–7 |
 | Reminders | Personal, optional due date, optional `source_type`/`source_id` back-link | Equipment maintenance auto-creates them via the back-link | Phase 4 |
@@ -237,6 +314,14 @@ that contract must exist before anything can honour it.
 | Storage | None; `SignedFileLink` exists ready for it | Private buckets for product photos, equipment docs, order photos | Phase 3+ |
 
 ## Gotchas / open issues
+- ⚠️ **Never call `formatMoney()` on an `amount_minor`.** It takes LIRA. `formatMoney(125050)`
+  renders ₺125.050,00 for what is actually ₺1.250,50 — plausible enough to ship unnoticed. Use
+  **`formatMinor()`** for anything out of the database.
+- ⚠️ **Don't "simplify" the recurring generator's unique-index reliance.** The index is what makes
+  it safe, not the JS checks — those would lose a race between two tabs. A 23505 from the insert is
+  the guarantee working and is deliberately swallowed.
+- ⚠️ **Categories archive, never delete.** Deleting one nulls `category_id` on every historical
+  transaction and silently changes what past months were spent on.
 - ⚠️ **The `system` theme writes NO `data-theme` attribute.** The server can't know the OS scheme,
   so CSS decides via `prefers-color-scheme` scoped to `:root:not([data-theme])`. An explicit choice
   has higher specificity and always wins. ⚠️ The light tokens are therefore **duplicated** in that

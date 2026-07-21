@@ -139,6 +139,32 @@ export function formatMoney(amount: number | null | undefined): string {
   }).format(amount);
 }
 
+/**
+ * Format an integer number of KURUŞ. This is the one every Finance surface
+ * should call, because everything inside the app is already kuruş — a
+ * `formatMoney(row.amount_minor)` would silently render ₺125.050,00 for
+ * ₺1.250,50, and it would look plausible.
+ */
+export function formatMinor(minor: number | null | undefined): string {
+  if (minor == null || Number.isNaN(minor)) return "—";
+  return formatMoney(minor / 100);
+}
+
+/**
+ * Money with an explicit sign, for the income/expense pair.
+ *
+ * ⚠️ NOT decoration — REQUIRED. The green/red pair measures ΔE 6.5 under
+ * protanopia (the 6–8 "floor band"), which is only legal WITH secondary
+ * encoding. This sign IS that encoding: it is what stops the two series from
+ * being distinguished by colour alone. Do not strip it to tidy the layout.
+ */
+export function formatSignedMinor(
+  minor: number,
+  direction: "in" | "out"
+): string {
+  return `${direction === "in" ? "+" : "−"}${formatMoney(Math.abs(minor) / 100)}`;
+}
+
 /** Bare number, no currency mark — for chart axes and tight tables. */
 export function formatNumber(value: number | null | undefined, locale: Locale = "en"): string {
   if (value == null || Number.isNaN(value)) return "—";
