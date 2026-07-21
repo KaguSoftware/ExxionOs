@@ -416,14 +416,29 @@
    into a task, and nobody wants to watch it arrive.
    =========================================================================== */
 
+/* `transform: none` at the end — see the note on fade-rise below. */
 @keyframes pop-in {
   from { opacity: 0; transform: scale(0.97) translateY(-2px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 1; transform: none; }
 }
 
+/* ⚠️ ENDS AT `transform: none`, NOT `translateY(0)`. THIS IS NOT COSMETIC.
+   These two are visually identical, but only `none` releases the CONTAINING
+   BLOCK: per the CSS positioning spec, any ancestor with a transform other
+   than `none` becomes the containing block for `position: fixed` descendants,
+   which then resolve `inset-0` against THAT BOX instead of the viewport.
+
+   These utilities use `both` fill mode, so the final keyframe persists for the
+   life of the element — a page wrapper animated once at mount stayed a
+   containing block forever. Every full-screen overlay nested inside one
+   (client edit, print run, all confirm dialogs) was therefore clipped to the
+   wrapper's height and cut off mid-form.
+
+   The same applies to `pop-in` and `toast-in` below. Do not "tidy" any of
+   these back to a zero-valued transform. */
 @keyframes fade-rise {
   from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: none; }
 }
 
 @keyframes fade-in {
@@ -440,9 +455,10 @@
   to   { opacity: 0; }
 }
 
+/* `transform: none` at the end — see the note on fade-rise above. */
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 1; transform: none; }
 }
 
 @keyframes shimmer {

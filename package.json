@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "migrate": "node scripts/apply-migration.mjs",
     "wipe": "node scripts/wipe-data.mjs",
-    "contrast": "node scripts/check-contrast.mjs"
+    "contrast": "node scripts/check-contrast.mjs",
+    "overlays": "node scripts/check-overlays.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
