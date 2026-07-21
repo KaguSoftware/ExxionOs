@@ -36,7 +36,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/", labelKey: "nav.dashboard", icon: LayoutDashboard, ready: true },
   // Phase 3 — shipped.
   { href: "/creative", labelKey: "nav.creative", icon: Palette, ready: true },
-  { href: "/shipping", labelKey: "nav.shipping", icon: Package, ready: false },
+  // Phase 5 — shipped.
+  { href: "/shipping", labelKey: "nav.shipping", icon: Package, ready: true },
   // Phase 2 — shipped.
   { href: "/finance", labelKey: "nav.finance", icon: Wallet, ready: true },
   // Phase 4 — shipped.

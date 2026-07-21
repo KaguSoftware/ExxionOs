@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { syncTransaction } from "@/lib/actions/finance-link";
 import { getSessionContext } from "@/lib/data/session";
 import { toMinor } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
@@ -16,8 +17,6 @@ import type {
 import { MACHINE_STATUSES, MAINTENANCE_KINDS } from "@/lib/types";
 import { todayInIstanbul } from "@/lib/utils";
 
-type Supa = Awaited<ReturnType<typeof createClient>>;
-
 function pick<T extends string>(value: unknown, allowed: T[], fallback: T): T {
   return allowed.includes(value as T) ? (value as T) : fallback;
 }
@@ -31,103 +30,13 @@ function refresh(machineId?: string) {
 }
 
 /**
- * Find a Finance category by name, creating it if a fresh database lacks it.
- *
- * The seed in migration 0003 provides "Maintenance" and "Equipment", but a
- * database restored without the seed must still work rather than silently
- * filing expenses with no category.
+ * ⚠️ `syncTransaction()` USED TO LIVE HERE. It moved to
+ * `src/lib/actions/finance-link.ts` in Phase 5, when Shipping became its second
+ * writer — it is the contract every section honours, not Equipment's private
+ * helper. Behaviour is unchanged; the only difference is that `costMinor` is
+ * now called `amountMinor` and a `direction` can be passed (Equipment always
+ * writes 'out', which is the default).
  */
-async function categoryIdByName(supabase: Supa, name: string): Promise<string | null> {
-  const { data: existing } = await supabase
-    .from("categories")
-    .select("id")
-    .eq("name", name)
-    .maybeSingle<{ id: string }>();
-  if (existing) return existing.id;
-
-  const { data: created } = await supabase
-    .from("categories")
-    .insert({ name, kind: "expense", sort_order: 40 })
-    .select("id")
-    .single<{ id: string }>();
-  return created?.id ?? null;
-}
-
-/**
- * ⚠️ THE CONTRACT, IN ONE FUNCTION.
- *
- * Keeps a Finance transaction in step with a cost recorded elsewhere in the
- * app. This is what `transactions.source_type` / `source_id` (migration 0003)
- * was built for — Equipment is its first real writer.
- *
- * The four cases, and why each is what it is:
- *  - cost set, no transaction yet  → CREATE one.
- *  - cost changed, transaction exists → UPDATE it.
- *  - cost CLEARED → DELETE it. An expense of ₺0 is noise in the ledger, and
- *    leaving a stale one would overstate what the shop spent.
- *  - no cost, no transaction → nothing.
- *
- * ⚠️ The returned id is the ONLY link. The caller must store it, or the next
- * edit will create a second transaction instead of updating the first.
- */
-async function syncTransaction(
-  supabase: Supa,
-  opts: {
-    existingTransactionId: string | null;
-    costMinor: number | null;
-    occurredOn: string;
-    description: string;
-    categoryName: string;
-    sourceType: string;
-    sourceId: string;
-    userId: string;
-  }
-): Promise<string | null> {
-  const { existingTransactionId, costMinor } = opts;
-
-  if (costMinor == null || costMinor <= 0) {
-    if (existingTransactionId) {
-      await supabase.from("transactions").delete().eq("id", existingTransactionId);
-    }
-    return null;
-  }
-
-  const categoryId = await categoryIdByName(supabase, opts.categoryName);
-
-  if (existingTransactionId) {
-    const { error } = await supabase
-      .from("transactions")
-      .update({
-        occurred_on: opts.occurredOn,
-        amount_minor: costMinor,
-        description: opts.description,
-        category_id: categoryId,
-      })
-      .eq("id", existingTransactionId);
-
-    // If the transaction was deleted in Finance, the update matches nothing —
-    // fall through and create a fresh one rather than losing the expense.
-    if (!error) return existingTransactionId;
-  }
-
-  const { data, error } = await supabase
-    .from("transactions")
-    .insert({
-      occurred_on: opts.occurredOn,
-      direction: "out",
-      amount_minor: costMinor,
-      description: opts.description,
-      category_id: categoryId,
-      source_type: opts.sourceType,
-      source_id: opts.sourceId,
-      created_by: opts.userId,
-    })
-    .select("id")
-    .single<{ id: string }>();
-
-  if (error) return null;
-  return data.id;
-}
 
 // --- machines --------------------------------------------------------------
 
@@ -184,7 +93,7 @@ export async function createMachine(
   if (input.logPurchaseExpense && input.purchasePrice) {
     const transactionId = await syncTransaction(supabase, {
       existingTransactionId: null,
-      costMinor: Math.abs(toMinor(input.purchasePrice)),
+      amountMinor: Math.abs(toMinor(input.purchasePrice)),
       // ⚠️ The PURCHASE date, not today: a machine bought in March and entered
       // in July must charge March, or both months read wrong.
       occurredOn: input.purchasedOn ?? todayInIstanbul(),
@@ -228,7 +137,7 @@ export async function updateMachine(
   if (existing?.purchase_transaction_id || input.logPurchaseExpense) {
     const transactionId = await syncTransaction(supabase, {
       existingTransactionId: existing?.purchase_transaction_id ?? null,
-      costMinor:
+      amountMinor:
         input.logPurchaseExpense && input.purchasePrice
           ? Math.abs(toMinor(input.purchasePrice))
           : null,
@@ -310,7 +219,7 @@ export async function createMaintenance(
 
   const transactionId = await syncTransaction(supabase, {
     existingTransactionId: null,
-    costMinor,
+    amountMinor: costMinor,
     occurredOn: input.performedOn,
     // Names the machine, so the Finance row reads on its own without needing
     // to follow the link back.
@@ -371,7 +280,7 @@ export async function updateMaintenance(
 
   const transactionId = await syncTransaction(supabase, {
     existingTransactionId: existing?.transaction_id ?? null,
-    costMinor,
+    amountMinor: costMinor,
     occurredOn: input.performedOn,
     description: `${description || "Maintenance"} — ${machine?.name ?? "machine"}`,
     categoryName: "Maintenance",
@@ -527,7 +436,7 @@ export async function restockSupply(input: {
 
   const transactionId = await syncTransaction(supabase, {
     existingTransactionId: null,
-    costMinor,
+    amountMinor: costMinor,
     occurredOn: restockedOn,
     description: `${supply.name} restock`,
     categoryName: "Equipment",

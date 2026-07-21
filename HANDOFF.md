@@ -1,7 +1,44 @@
 # ExxionOs — Handoff
 
 > Read this first when starting a fresh chat.
-> Companion: the plan at `C:\Users\p.mansouri\.claude\plans\ok-were-building-an-zesty-parrot.md`.
+> Companion: the plan at `C:\Users\p.mansouri\.claude\plans\ok-were-building-an-zesty-parrot.md`
+> (that path is Parsa's WORK laptop — on any other machine this file is the whole context).
+
+## 👋 START HERE — resuming in a brand-new chat
+
+**If Parsa says "next", "next phase", or "continue": read this file top to bottom, then start
+PHASE 6 — CLIENTS.** Everything you need is here; no other file is required.
+
+- **Phases 1–5 are DONE, verified against prod, and pushed.** 5 of 7.
+- **Phase 6 is CLIENTS** — the CRM surfaces, pattern analytics, and the `events` table.
+  ⚠️ **The `clients` TABLE ALREADY EXISTS** (built in Phase 5 so orders had a real foreign key).
+  Phase 6 ADDS to it — surfaces, more columns, analytics — it does **not** reshape it. Orders
+  already carry `client_id`, so "what does this client buy, how often, how much" are real queries
+  on day one.
+- Then Phase 7 is Marketing, then the reshaping pass (see the next section).
+- **Ask Parsa the design questions first** (as every previous phase did) rather than assuming.
+- **Commit as Parsa alone. NEVER add `Co-Authored-By`, never mention Claude or AI** in a commit
+  message or PR body. This is an absolute rule.
+
+## ⚠️ RESHAPING EXPECTED — "it's a system, but it's not OUR system yet"
+
+Parsa, 2026-07-21: *"this system will need ALOT of changes. and not only visual. cuz like now its
+a system. but its not OUR system you know?"*
+
+**Read this as a standing instruction, not a complaint.** Phases 1–7 build a **correct, verified
+SCAFFOLD**: the schema, the money contracts, the performance rules, the i18n discipline. Those are
+the parts that are expensive to get wrong later, and they are done properly.
+
+What is deliberately **NOT** settled yet:
+- **Naming and vocabulary** — "collections", "issues", "learnings", "supplies" are reasonable
+  guesses at how Exxion actually talks. Expect Parsa to rename things once he uses it.
+- **What is on each screen, and in what order** — the tab layouts are informed guesses.
+- **Branding** — see the branding section below. Not started, by design.
+- **Which numbers matter** — the charts show what seemed useful; real usage will disagree.
+
+**So: do not treat any surface as finished, and do not defend a layout choice because it shipped.**
+When Parsa says "change this", that is the plan working, not scope creep. The reshaping pass
+happens after Phase 7, when there is real usage to reshape against.
 
 ## Working style
 - **Git authorship — ABSOLUTE RULE**: Parsa is the SOLE author of every commit. NEVER add Claude as
@@ -131,6 +168,90 @@ These come from KaguOs, where each was **measured**. They are why that system is
   an unbreakable login loop — that's what `0002_backfill_profiles.sql` fixes (idempotent).
 
 ## Current status (2026-07-21)
+
+### 🟢 PHASE 5 — SHIPPING: BUILT + VERIFIED AGAINST PROD (the revenue half of the system)
+`tsc` · `lint` · `build` green (**23 routes**). **Migration 0008 applied and schema-verified.**
+Sidebar entry is **live**. Routes: `/shipping` (3 tabs), `/shipping/orders/[id]`,
+`/shipping/orders/new`.
+
+**⚠️ THIS PHASE CLOSED THE LOOP: Finance now has INCOME.** Phases 1–4 only recorded money going
+out. Orders are the first `direction:'in'` writer into the `transactions` contract.
+
+**⚠️⚠️ THE MOST IMPORTANT RULE IN THIS SECTION — DEPOSITS.**
+Parsa confirmed deposits are normal for Exxion, and that **overturned the original design**. The
+plan said "revenue on delivered"; that is WRONG when a deposit already arrived, because it either
+ignores the deposit or counts it twice.
+
+> **THE STAGE IS THE WORK; THE PAYMENT IS THE MONEY.**
+
+- `orders.total_minor` is the **AGREED PRICE**. `order_payments` is the **MONEY**.
+  **NEVER sum `orders.total_minor` for revenue** — a quoted order that was never paid would be
+  booked as income. ✅ Proven: a ₺5.000 quote with no payment writes **nothing** to Finance.
+- Each payment writes ONE Finance transaction (`source_type:'order'`, category *Sales*).
+- Reaching `delivered` prompts for the **OUTSTANDING BALANCE** (total − payments so far),
+  pre-filled, and says out loud that the deposit was subtracted. If already paid in full it says
+  so and writes nothing.
+- ✅ **Proven end to end against prod**: ₺3.000 order → ₺1.000 deposit → outstanding reads
+  **₺2.000, not ₺3.000** → balance recorded → Finance holds **exactly ₺3.000 across 2
+  transactions, not ₺4.000**. The test also demonstrates that summing the total *plus* the
+  payments would report **₺6.000 for a ₺3.000 order** — the bug this design avoids.
+- A **refund** is `kind:'refund'`, written as an OUT transaction: positive magnitude, direction
+  carries the sign, exactly as the ledger does.
+
+**⚠️ `syncTransaction()` MOVED.** It was lifted out of `actions/equipment.ts` into
+**`src/lib/actions/finance-link.ts`** because Shipping became its second writer. It is the
+contract every section honours, not one section's helper. It gained a `direction` parameter
+(defaults to `'out'`, so Equipment is unchanged). ✅ **Phase 4's ₺450 repair verification was
+re-run as a regression and still passes**, including the ₺450-not-₺900 no-double-count proof.
+
+**Stage history is append-only.** `orders.stage` says *where*; `order_stage_events` says *when*.
+**Both are written on every transition** — updating only the column loses history silently and
+cycle-time quietly becomes wrong. ✅ Proven: 5 transitions → 5 rows with distinct timestamps.
+
+**⚠️ Cycle time uses the MEDIAN, not the mean.** One order that sat in "quoted" for six months
+while a client went quiet would drag an average into uselessness. ✅ Unit-tested: a 365-day
+outlier among 2-day quotes still reports **2 days**.
+
+**⚠️ Three SET NULL guarantees, all proven against prod:**
+- Delete the Finance transaction → the **payment row survives**, link nulled.
+- Delete a Creative **product** → the **order line survives** with its description intact
+  (`description` is denormalised at write time for exactly this).
+- Delete a **client** → the **order and its revenue survive**.
+- Delete the **order** → lines and stage events cascade away, but **the Finance income stays** —
+  that money really was received. The confirm dialog says so.
+
+**`clients` was built HERE, not in Phase 6**, so orders had a real FK from day one instead of a
+text field to migrate later. `/clients` stays `ready: false` — the table exists, the section
+doesn't.
+
+**Per-collection P&L shipped** (the item deferred since Phase 3). Third tab on a collection.
+Revenue = what SOLD; cost = `productCost() × quantity sold`, **still computed at read time**. A
+design nobody bought costs nothing. Lines whose product was deleted are counted in revenue but
+can't be costed — the panel says so rather than flattering the margin.
+
+**Two bugs found and fixed while building:**
+1. **`NeedsYou` accepted `machinesDown` and `lowSupplies` and never rendered them** — a broken
+   machine reached the dashboard in Phase 4 and then vanished. Now rendered, with deep links.
+2. **The Reminders composer was crushed** (Parsa reported with a screenshot): the panel was pinned
+   in a fixed `20rem` rail, so the text input collapsed to a few characters. The rail is now
+   `xl:minmax(26rem,32rem)` and the input has `basis-48` instead of `min-w-0` — a basis gives it a
+   floor to defend instead of shrinking to nothing.
+
+**⚠️ `react-hooks/purity` is an ERROR here.** `Date.now()` / `todayInIstanbul()` **cannot** be
+called during render — an impure read gives a different answer on each re-render, so a stage's
+measured duration would creep upward as you click around. `today` is stamped once in
+`(app)/shipping/page.tsx` and passed down as a prop. Do not "simplify" that back.
+
+**❌ NOT VERIFIED — Farsi and light/dark on the new surfaces.** Every earlier phase confirmed this
+by driving the real page; this time the harness could not forge a valid `@supabase/ssr` session
+cookie (it chunks and signs them), so every protected route returned 307. **The signed-out
+redirect is correct behaviour, not a bug** — but it means the Farsi pass is genuinely outstanding.
+`tsc` proves both dictionaries have every key; it does **not** prove they render. **Worth doing
+first thing next session**, ideally by Parsa just switching to Farsi in Settings and opening
+`/shipping`.
+
+**Also not driven in a browser yet.** Worth Parsa's eyes: make an order with two items, take a
+deposit, drag it to Delivered, and confirm the prompt asks for the REMAINDER.
 
 ### 🟢 PHASE 4 — EQUIPMENT: BUILT + VERIFIED AGAINST PROD (+ deploy unblocked, Farsi now LTR, filament stock)
 `tsc` · `lint` · `build` green (20 routes). **Migrations 0005 · 0006 · 0007 applied.** Sidebar live.
@@ -400,10 +521,29 @@ toggle light/dark/system.
   strings), status rank/tone.
 - `src/components/equipment/*` — panels, machine detail, forms.
 - `src/components/creative/print-run-button.tsx` — **where filament leaves stock.**
-- `scripts/wipe-data.mjs` — `npm run wipe`. Dry-run by default.
+**Shipping (phase 5):**
+- `src/lib/actions/finance-link.ts` — **`syncTransaction()` + `categoryIdByName()`, THE
+  CROSS-SECTION CONTRACT.** Lifted here from `equipment.ts` so Equipment and Shipping share one
+  implementation. Takes a `direction` (`'out'` default). ⚠️ The returned id is the only link —
+  store it or the next edit creates a second transaction.
+- `src/lib/shipping.ts` — pure order arithmetic. **`outstandingMinor()` is the number the whole
+  phase turns on.** Also `paidMinor` (refunds subtract), `medianStageDurations` (median, not
+  mean), `lostRate` (null when nothing has finished — a rate over zero orders reads as good news).
+  No React, no Supabase, so the money logic is directly testable.
+- `src/lib/actions/shipping.ts` — orders, lines, stage events, **`recordPayment` (the Finance
+  writer)**. `setOrderStage` writes BOTH the column and the event row, and returns the outstanding
+  balance so the UI can prompt.
+- `src/components/shipping/balance-prompt.tsx` — **the dialog that keeps deposits right.**
+- `src/components/shipping/order-board.tsx` — the board. ⚠️ Drag-and-drop is a convenience; the
+  **stage dropdown on every card is the real control** and the only one reachable by keyboard.
+- `src/components/creative/collection-pnl.tsx` — per-collection P&L.
+- `src/components/finance/charts.tsx` — ⚠️ `useChartMode`, `AXIS`, `compactMinor`, `monthLabel`
+  and `ChartTooltip` are **exported and reused** by Shipping's charts. Don't copy them.
+- `scripts/wipe-data.mjs` — `npm run wipe`. Dry-run by default. ⚠️ **Needs the five new tables
+  added — done, verified by dry run.
 - `supabase/migrations/0001_foundation.sql` · `0002_backfill_profiles.sql` · `0003_finance.sql` ·
   `0004_creative.sql` · `0005_equipment.sql` · `0006_machine_purchase_expense.sql` ·
-  `0007_material_stock.sql`.
+  `0007_material_stock.sql` · `0008_shipping.sql`.
 - `scripts/apply-migration.mjs` — Management-API applier (alternative to `db push`).
 
 ## Roadmap / next steps
@@ -415,14 +555,24 @@ toggle light/dark/system.
 4. ✅ **Equipment** — machines, maintenance, supplies, filament stock. **The first real writer
    into `transactions`**: a repair logs an expense with `source_type='equipment'`, which is the
    contract Phase 2 was built to honour.
-5. ⬅️ **NEXT — Shipping** — order lifecycle board, staged + timestamped.
-6. **Clients** — CRM + pattern analytics + events.
+5. ✅ **Shipping** — order lifecycle board, staged + timestamped, **payments → Finance income**,
+   per-collection P&L. The revenue half of the system.
+6. ⬅️ **NEXT — Clients** — CRM surfaces + pattern analytics + events. ⚠️ The `clients` TABLE
+   already exists (Phase 5) and orders already link to it — Phase 6 adds surfaces and columns,
+   it does not reshape the table.
 7. **Marketing** — campaigns, samples, filming schedule, networking.
+8. *(implied)* **"Make it ours"** — the reshaping pass. See the section at the top of this file.
 
 Finance is second **on purpose**: every later section writes into its `transactions` contract, so
 that contract must exist before anything can honour it.
 
 **Also outstanding:**
+- ⚠️ **Farsi + light/dark pass on the Phase 5 surfaces** — the one verification this phase could
+  not complete (see the Phase 5 status note). Quickest check: switch to Farsi in Settings and open
+  `/shipping`.
+- ⚠️ **Set the Vercel env vars** — `NEXT_PUBLIC_SUPABASE_URL`,
+  `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. The first two are read at
+  BUILD time, so the deploy fails without them. **Only Parsa can do this.**
 - Disable public signups in the Supabase dashboard (**not verified**).
 - Change `cgheydary@gmail.com`'s temp password.
 - Deploy to Vercel and confirm `x-vercel-id` shows `arn1`.
@@ -444,7 +594,10 @@ that contract must exist before anything can honour it.
 | Sections 4–7 | Nav entries render **disabled with a "soon" chip** — visible so the shape of the app is legible, not hidden | Four remaining sections | Phases 4–7 |
 | Materials | Name, kind, cost per kg, archive | **Stock levels deliberately excluded** — tracking grams remaining turns this into an inventory system, and Equipment (Phase 4) owns supplies. Decide it there | Phase 4 |
 | Product photos | Upload/remove on the product EDIT form only (a new product has no id to attach to yet) | Staged upload on create, reordering, a lightbox | Later |
-| Per-collection P&L | Computed cost + price per product | Real revenue meeting computed cost, once orders exist | Phase 5 |
+| Per-collection P&L | ✅ **Shipped (Phase 5).** Revenue from order lines meeting computed cost | Time series, per-product margin trends | Later |
+| Clients | **Table only** — name, email, phone, instagram, city, notes. No surfaces; `/clients` is `ready: false` | CRM surfaces, pattern analytics, events | Phase 6 |
+| Carrier / tracking | Plain text fields, by decision | No carrier API integration is planned | Not planned |
+| Order codes | Typed by hand (`EX-014`) | Auto-generated sequence if Parsa wants one | If asked |
 | Finance charts | 12-month in/out bars · category breakdown · net line | Budgets, per-collection P&L, forecasting — deliberately deferred until there's real data to budget against | Later |
 | Receipts | One file per transaction (5 MB, image/PDF), private bucket, signed at click | Multiple attachments; OCR of totals | Later |
 | Transaction window | The page loads ~13 months (cap 2000 rows) so filtering is instant client-side | Pagination or a server-side query once that cap is realistic — at ~50 rows/month it's ~3 years away | When the cap bites |
@@ -466,6 +619,19 @@ that contract must exist before anything can honour it.
   the guarantee working and is deliberately swallowed.
 - ⚠️ **Categories AND materials archive, never delete.** Deleting either nulls a foreign key on
   every historical row and silently changes what past months were spent on / what a product costs.
+- ⚠️⚠️ **NEVER SUM `orders.total_minor` FOR REVENUE.** It is the AGREED PRICE. The money is
+  `order_payments`, and authoritatively the `transactions` rows they wrote. Summing totals books
+  quoted-but-unpaid orders as income. Same family of bug as summing `maintenance_logs.cost_minor`.
+- ⚠️ **Deposits mean "log the total on delivery" is WRONG.** Reaching `delivered` must prompt for
+  the OUTSTANDING BALANCE (`outstandingMinor()` in `lib/shipping.ts`), never the total. This was
+  Parsa's own answer overturning the original plan — don't let a later refactor "simplify" it back.
+- ⚠️ **`setOrderStage` must write BOTH** the `stage` column and an `order_stage_events` row.
+  Updating only the column loses history silently and cycle-time becomes quietly wrong.
+- ⚠️ **`react-hooks/purity` is an ERROR.** Never call `Date.now()` or `todayInIstanbul()` during
+  render — stamp it on the server and pass it as a prop (see `(app)/shipping/page.tsx`).
+- ⚠️ **A Supabase embedded relation is typed as an ARRAY** even when the FK guarantees one row
+  (`products.collections`). Declaring it as an object compiles against a lie and reads `undefined`
+  at runtime. Normalise with a helper — see `shipping/orders/new/page.tsx`.
 - ⚠️ **Never sum `maintenance_logs.cost_minor` (or `supply_restocks.cost_minor`) for a total.**
   The linked `transactions` row is the money; the cost column is only the input that created it.
   Summing both reports double. Machine spend queries `transactions` by `source_id`.

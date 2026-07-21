@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { CollectionDetail } from "@/components/creative/collection-detail";
+import type { SoldLine } from "@/components/creative/collection-pnl";
 import { LiveRefresh } from "@/components/shell/live-refresh";
 import { rowsOrThrow, selectOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
@@ -26,13 +27,21 @@ export default async function CollectionPage({
   const supabase = await createClient();
 
   /**
-   * ⚠️ ONE WAVE, including both tabs' data. The collection row itself is
+   * ⚠️ ONE WAVE, including every tab's data. The collection row itself is
    * fetched alongside everything else rather than first — nothing here depends
    * on its contents, only on the id from the URL, so making it sequential
    * would add ~305ms to buy nothing.
    */
-  const [collectionResult, products, issues, materials, settings, images, supplies] =
-    await Promise.all([
+  const [
+    collectionResult,
+    products,
+    issues,
+    materials,
+    settings,
+    images,
+    supplies,
+    soldLines,
+  ] = await Promise.all([
       selectOrThrow<Collection>(
         "collection.row",
         supabase.from("collections").select("*").eq("id", id).maybeSingle()
@@ -74,6 +83,22 @@ export default async function CollectionPage({
         "collection.supplies",
         supabase.from("supplies").select("id, name").is("archived_at", null)
       ),
+      /**
+       * Phase 5: what has actually SOLD, for the P&L tab. Inside the existing
+       * wave — ~3ms, not a second round-trip.
+       *
+       * ⚠️ Every order line in the database is fetched and filtered to this
+       * collection's products in the component, because PostgREST cannot filter
+       * a child table by a grandparent's column in one request. The alternative
+       * is a second round-trip; at this scale the filter is free.
+       */
+      rowsOrThrow<SoldLine>(
+        "collection.soldLines",
+        supabase
+          .from("order_lines")
+          .select("product_id, quantity, unit_price_minor")
+          .not("product_id", "is", null)
+      ),
     ]);
 
   const collection = collectionResult.data;
@@ -91,6 +116,7 @@ export default async function CollectionPage({
           machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
           images={images}
           supplies={supplies}
+          soldLines={soldLines}
         />
       </Suspense>
     </>

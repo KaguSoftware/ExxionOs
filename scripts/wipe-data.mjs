@@ -49,6 +49,14 @@ const wipeSetupToo = args.includes("--all");
  * if the script is interrupted.
  */
 const CONTENT = [
+  // Shipping (phase 5) — before `transactions`, which its payments point at.
+  // ⚠️ `clients` goes too: it holds customer data, so a "wipe the business
+  // data" that left the customer list behind would be a nasty surprise.
+  "order_payments",
+  "order_stage_events",
+  "order_lines",
+  "orders",
+  "clients",
   // Equipment (phase 4)
   "supply_restocks",
   "maintenance_logs",

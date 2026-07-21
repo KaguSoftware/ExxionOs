@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# throwaway verification harness (must resolve node_modules, so it lives here
+# rather than in a temp dir — but it is never committed)
+/.verify

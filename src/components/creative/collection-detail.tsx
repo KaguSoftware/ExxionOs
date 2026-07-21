@@ -3,6 +3,7 @@
 import { ArrowLeft, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 
+import { CollectionPnl, type SoldLine } from "@/components/creative/collection-pnl";
 import { LearningsPanel } from "@/components/creative/learnings-panel";
 import { ProductsPanel } from "@/components/creative/products-panel";
 import { TabbedPanels } from "@/components/shell/tabbed-panels";
@@ -32,6 +33,7 @@ export function CollectionDetail({
   machineRateMinor,
   images,
   supplies,
+  soldLines,
 }: {
   collection: Collection;
   products: Product[];
@@ -40,6 +42,8 @@ export function CollectionDetail({
   machineRateMinor: number;
   images: (StoredImage & { product_id: string })[];
   supplies: { id: string; name: string }[];
+  /** Every order line app-wide; filtered to this collection by the P&L panel. */
+  soldLines: SoldLine[];
 }) {
   const { t } = useI18n();
 
@@ -120,6 +124,18 @@ export function CollectionDetail({
                 collections={[collection]}
                 products={products}
                 collectionId={collection.id}
+              />
+            ),
+          },
+          {
+            id: "pnl",
+            label: t("creative.pnl"),
+            content: (
+              <CollectionPnl
+                products={products}
+                materials={materials}
+                machineRateMinor={machineRateMinor}
+                soldLines={soldLines}
               />
             ),
           },

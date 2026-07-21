@@ -89,7 +89,12 @@ export type RecurringItem = {
  * Which section created a transaction. Extended as phases 4-7 land; the DB
  * column is deliberately loose text so adding one needs no migration.
  */
-export type TransactionSource = "equipment" | "shipping" | "marketing" | "client";
+export type TransactionSource =
+  | "equipment"
+  | "supply"
+  | "order"
+  | "marketing"
+  | "client";
 
 // --- creative --------------------------------------------------------------
 
@@ -302,6 +307,123 @@ export type SupplyRestock = {
   quantity: string | number;
   cost_minor: number | null;
   transaction_id: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+// --- shipping --------------------------------------------------------------
+
+/**
+ * The order lifecycle. Order matters — the board renders these as columns in
+ * sequence and cycle-time reads consecutive pairs.
+ *
+ * ⚠️ `cancelled` is TERMINAL and deliberately part of the same field: an
+ * enquiry that never converts must leave the active board without being
+ * deleted, or the lost-quote rate is unknowable.
+ */
+export type OrderStage =
+  | "enquiry"
+  | "quoted"
+  | "printing"
+  | "post_processing"
+  | "packed"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
+
+/** The working pipeline, in order. Excludes the two terminal stages. */
+export const ORDER_FLOW: OrderStage[] = [
+  "enquiry",
+  "quoted",
+  "printing",
+  "post_processing",
+  "packed",
+  "shipped",
+];
+
+export const ORDER_STAGES: OrderStage[] = [
+  ...ORDER_FLOW,
+  "delivered",
+  "cancelled",
+];
+
+export type PaymentKind = "deposit" | "balance" | "refund";
+export const PAYMENT_KINDS: PaymentKind[] = ["deposit", "balance", "refund"];
+
+export type Client = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  instagram: string | null;
+  city: string | null;
+  notes: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * ⚠️ `total_minor` IS THE AGREED PRICE, NOT REVENUE. The money is in
+ * `order_payments` (and, authoritatively, in `transactions`). Summing this
+ * column would book a quoted-but-never-paid order as income. See
+ * `outstandingMinor()` in `lib/shipping.ts`.
+ */
+export type Order = {
+  id: string;
+  code: string | null;
+  client_id: string | null;
+  stage: OrderStage;
+  title: string;
+  notes: string | null;
+  total_minor: number;
+  promised_on: string | null;
+  carrier: string | null;
+  tracking_number: string | null;
+  shipping_cost_minor: number | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * ⚠️ `description` is denormalised at write time so the line still reads after
+ * its product is deleted (`product_id` is SET NULL, never cascade — deleting a
+ * design must not rewrite what a past order contained).
+ */
+export type OrderLine = {
+  id: string;
+  order_id: string;
+  product_id: string | null;
+  description: string;
+  quantity: number;
+  unit_price_minor: number;
+  sort_order: number;
+  created_at: string;
+};
+
+/** Append-only. `orders.stage` says where; this says when. */
+export type OrderStageEvent = {
+  id: string;
+  order_id: string;
+  stage: OrderStage;
+  entered_at: string;
+  note: string | null;
+  created_by: string | null;
+};
+
+/**
+ * A real receipt of money. ⚠️ `amount_minor` is a positive magnitude; `kind`
+ * 'refund' is what makes it an OUT transaction in Finance.
+ */
+export type OrderPayment = {
+  id: string;
+  order_id: string;
+  paid_on: string;
+  amount_minor: number;
+  kind: PaymentKind;
+  transaction_id: string | null;
+  note: string | null;
   created_by: string | null;
   created_at: string;
 };

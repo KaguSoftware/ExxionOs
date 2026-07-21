@@ -24,11 +24,17 @@ export function NeedsYou({
   openIssues = 0,
   machinesDown = 0,
   lowSupplies = 0,
+  ordersOverdue = 0,
+  ordersUnpaid = 0,
 }: {
   dueCount: number;
   openIssues?: number;
   machinesDown?: number;
   lowSupplies?: number;
+  /** Past their promised date and not yet delivered or cancelled. */
+  ordersOverdue?: number;
+  /** Delivered with money still owed — the one that costs real money. */
+  ordersUnpaid?: number;
 }) {
   const t = useT();
 
@@ -37,7 +43,9 @@ export function NeedsYou({
     dueCount === 0 &&
     openIssues === 0 &&
     machinesDown === 0 &&
-    lowSupplies === 0
+    lowSupplies === 0 &&
+    ordersOverdue === 0 &&
+    ordersUnpaid === 0
   )
     return null;
 
@@ -66,6 +74,48 @@ export function NeedsYou({
           {openIssues === 1
             ? t("creative.openIssue")
             : t("creative.openIssues", { count: openIssues })}
+        </Link>
+      )}
+
+      {/* ⚠️ Phase 4 passed these two in but never rendered them, so a broken
+          machine reached the dashboard and then vanished. Caught in Phase 5. */}
+      {machinesDown > 0 && (
+        <Link
+          href="/equipment?tab=machines"
+          className="text-sm text-ink underline-offset-2 hover:underline"
+        >
+          {machinesDown === 1
+            ? t("equipment.brokenOne")
+            : t("equipment.brokenCount", { count: machinesDown })}
+        </Link>
+      )}
+
+      {lowSupplies > 0 && (
+        <Link
+          href="/equipment?tab=supplies"
+          className="text-sm text-ink underline-offset-2 hover:underline"
+        >
+          {lowSupplies === 1
+            ? t("equipment.lowOne")
+            : t("equipment.lowCount", { count: lowSupplies })}
+        </Link>
+      )}
+
+      {ordersOverdue > 0 && (
+        <Link
+          href="/shipping?tab=board"
+          className="text-sm text-ink underline-offset-2 hover:underline"
+        >
+          {t("dashboard.ordersOverdue", { count: ordersOverdue })}
+        </Link>
+      )}
+
+      {ordersUnpaid > 0 && (
+        <Link
+          href="/shipping?tab=list"
+          className="text-sm text-ink underline-offset-2 hover:underline"
+        >
+          {t("dashboard.ordersUnpaid", { count: ordersUnpaid })}
         </Link>
       )}
     </div>

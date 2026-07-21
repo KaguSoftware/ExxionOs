@@ -84,6 +84,10 @@ export function Reminders({
   return (
     <Panel title={t("dashboard.reminders")} className={className}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
+        {/* ⚠️ `basis-48` + `flex-1`, NOT `min-w-0 flex-1`. With `min-w-0` the
+            input is allowed to shrink to nothing, so in a narrow container it
+            collapsed to a few characters wide instead of forcing the row to
+            wrap. A basis gives it a floor to defend. */}
         <TextInput
           id={inputId}
           value={body}
@@ -96,11 +100,11 @@ export function Reminders({
           }}
           placeholder={t("dashboard.reminderPlaceholder")}
           aria-label={t("dashboard.addReminder")}
-          className="min-w-0 flex-1"
+          className="flex-1 basis-48"
         />
-        {/* ⚠️ FIXED WIDTH. The input beside it is `flex-1`, so a control that
-            grows when it gains a value would shove the input sideways as you
-            pick a date. Keep the width fixed regardless of content. */}
+        {/* ⚠️ FIXED WIDTH. The input beside it grows, so a control that widened
+            when it gained a value would shove the input sideways as you pick a
+            date. Keep the width fixed regardless of content. */}
         <DatePicker
           value={dueOn}
           onChange={setDueOn}

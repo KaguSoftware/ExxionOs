@@ -34,10 +34,16 @@ import { formatMinor } from "@/lib/utils";
  * direction is a property of time, not of language. Financial charts in Farsi
  * publications keep the same convention.
  */
-const PLOT_DIR = "ltr" as const;
+export const PLOT_DIR = "ltr" as const;
 
-/** Which palette column to use. Re-reads on OS theme change. */
-function useChartMode(): ChartMode {
+/**
+ * Which palette column to use. Re-reads on OS theme change.
+ *
+ * ⚠️ Exported for Shipping's charts (Phase 5) rather than copied. A second
+ * implementation would drift the moment the theme logic changes, and the two
+ * sections' charts would disagree about dark mode.
+ */
+export function useChartMode(): ChartMode {
   const prefersDark = useSyncExternalStore(
     (cb) => {
       if (typeof window === "undefined") return () => {};
@@ -57,7 +63,7 @@ function useChartMode(): ChartMode {
   return prefersDark ? "dark" : "light";
 }
 
-const AXIS = {
+export const AXIS = {
   stroke: "var(--faint)",
   fontSize: 11,
   tickLine: false,
@@ -65,7 +71,7 @@ const AXIS = {
 } as const;
 
 /** Compact axis money: ₺12.5k rather than ₺12.500,00 on every tick. */
-function compactMinor(minor: number): string {
+export function compactMinor(minor: number): string {
   const lira = minor / 100;
   const abs = Math.abs(lira);
   if (abs >= 1_000_000) return `${(lira / 1_000_000).toFixed(1)}M`;
@@ -73,14 +79,14 @@ function compactMinor(minor: number): string {
   return `${Math.round(lira)}`;
 }
 
-function monthLabel(month: string, locale: string): string {
+export function monthLabel(month: string, locale: string): string {
   const [y, m] = month.split("-").map(Number);
   return new Intl.DateTimeFormat(locale === "fa" ? "fa-IR-u-ca-gregory" : "en-GB", {
     month: "short",
   }).format(new Date(y, m - 1, 1));
 }
 
-function ChartTooltip({
+export function ChartTooltip({
   active,
   payload,
   label,
