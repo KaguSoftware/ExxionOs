@@ -18,7 +18,18 @@ export function Sidebar({ profile }: { profile: Profile }) {
     // `hidden md:flex` — the mobile bar carries navigation below this width.
     // `border-e`, not `border-r`: in Farsi the sidebar sits on the right and
     // the border must follow it.
-    <aside className="hidden w-56 shrink-0 flex-col border-e border-line bg-surface md:flex">
+    //
+    // ⚠️ STICKY + h-dvh, and both halves matter. Without a height the <aside>
+    // stretches to match the page, so on a long page the account/sign-out
+    // footer ends up thousands of pixels down and the whole rail scrolls away.
+    // Pinned to the viewport, only the NAV LIST scrolls (below), so the logo
+    // and the account footer are always reachable.
+    <aside
+      className={cn(
+        "hidden w-56 shrink-0 flex-col border-e border-line bg-surface md:flex",
+        "sticky top-0 h-dvh"
+      )}
+    >
       <div className="px-4 py-4">
         <Link
           href="/"

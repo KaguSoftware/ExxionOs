@@ -3,7 +3,7 @@ import { NeedsYou } from "@/components/dashboard/needs-you";
 import { Reminders } from "@/components/dashboard/reminders";
 import { LiveRefresh } from "@/components/shell/live-refresh";
 import { PageHeader } from "@/components/ui/panel";
-import { rowsOrThrow } from "@/lib/data/query";
+import { countOrThrow, rowsOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
 import { totals } from "@/lib/finance-series";
 import { getT } from "@/lib/i18n/server";
@@ -26,7 +26,7 @@ export default async function DashboardPage() {
   const today = todayInIstanbul();
   const monthStart = `${today.slice(0, 7)}-01`;
 
-  const [reminders, monthRows] = await Promise.all([
+  const [reminders, monthRows, openIssues] = await Promise.all([
     rowsOrThrow<Reminder>(
       "dashboard.reminders",
       supabase
@@ -50,6 +50,16 @@ export default async function DashboardPage() {
         .gte("occurred_on", monthStart)
         .lte("occurred_on", today)
     ),
+    // Phase 3: unsolved issues. Head-only count — the dashboard needs the
+    // NUMBER, not the rows, and fetching rows to call `.length` on them would
+    // pull data across the wire for nothing.
+    countOrThrow(
+      "dashboard.openIssues",
+      supabase
+        .from("issues")
+        .select("*", { count: "exact", head: true })
+        .is("resolved_at", null)
+    ),
   ]);
 
   const dueCount = reminders.filter((r) => r.due_on && r.due_on <= today).length;
@@ -60,13 +70,13 @@ export default async function DashboardPage() {
 
   return (
     <div className="animate-fade-rise px-4 py-6 md:px-8">
-      <LiveRefresh tables={["reminders", "transactions"]} />
+      <LiveRefresh tables={["reminders", "transactions", "issues"]} />
 
       <PageHeader title={t(greeting, { name: firstName })} />
 
       {/* ⚠️ Renders NOTHING when every count is zero. A permanent strip reading
           all zeros is furniture, not an answer to "what needs my attention?" */}
-      <NeedsYou dueCount={dueCount} />
+      <NeedsYou dueCount={dueCount} openIssues={openIssues} />
 
       {/* This month's money, linking into Finance. ⚠️ The link uses the REAL
           filter params from `use-finance-filters.ts` — a made-up param would

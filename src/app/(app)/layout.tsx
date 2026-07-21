@@ -14,7 +14,11 @@ export default async function AppLayout({
   const t = await getT();
 
   return (
-    <div className="flex min-h-dvh flex-col md:flex-row">
+    // ⚠️ `md:items-start` is what lets the sidebar's `sticky top-0 h-dvh`
+    // work. A flex row defaults to `items-stretch`, which forces the <aside>
+    // to the full PAGE height — so on a long page the rail scrolls away and
+    // the account/sign-out footer sits thousands of pixels down.
+    <div className="flex min-h-dvh flex-col md:flex-row md:items-start">
       {/* Skip link: without it every navigation puts 7+ tab stops in front of
           the content, on every page. It's visually hidden until focused. */}
       <a
@@ -30,7 +34,9 @@ export default async function AppLayout({
       <Sidebar profile={ctx.profile} />
       <MobileNav profile={ctx.profile} />
 
-      <main id="main" className="min-w-0 flex-1">
+      {/* `self-stretch` because the row is now `items-start` (see above) —
+          without it the main column would only be as tall as its content. */}
+      <main id="main" className="min-w-0 flex-1 self-stretch">
         {children}
       </main>
     </div>

@@ -91,6 +91,114 @@ export type RecurringItem = {
  */
 export type TransactionSource = "equipment" | "shipping" | "marketing" | "client";
 
+// --- creative --------------------------------------------------------------
+
+export type MaterialKind = "filament" | "resin" | "other";
+export type CollectionStatus = "planned" | "in_progress" | "done" | "archived";
+export type IdeaStatus = "new" | "exploring" | "dropped" | "made";
+export type Severity = "low" | "medium" | "high";
+
+export const COLLECTION_STATUSES: CollectionStatus[] = [
+  "planned",
+  "in_progress",
+  "done",
+  "archived",
+];
+export const IDEA_STATUSES: IdeaStatus[] = ["new", "exploring", "dropped", "made"];
+export const SEVERITIES: Severity[] = ["low", "medium", "high"];
+export const MATERIAL_KINDS: MaterialKind[] = ["filament", "resin", "other"];
+
+export type Material = {
+  id: string;
+  name: string;
+  kind: MaterialKind;
+  /** Integer kuruş per kilogram. */
+  cost_per_kg_minor: number;
+  color: string | null;
+  notes: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AppSettings = {
+  id: number;
+  /** Integer kuruş per hour of machine time. */
+  machine_hour_rate_minor: number;
+  updated_at: string;
+};
+
+export type Collection = {
+  id: string;
+  name: string;
+  description: string | null;
+  status: CollectionStatus;
+  cover_path: string | null;
+  started_on: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Idea = {
+  id: string;
+  title: string;
+  body: string | null;
+  status: IdeaStatus;
+  /** Set when promoted, so a collection can point back at the idea it began as. */
+  collection_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * ⚠️ `grams` and `print_hours` are Postgres `numeric`, which arrives over
+ * PostgREST as a STRING. Unit cost is NOT a column — it is computed from these
+ * by `lib/costing.ts` at read time.
+ */
+export type Product = {
+  id: string;
+  collection_id: string;
+  name: string;
+  kind: string | null;
+  material_id: string | null;
+  grams: string | number | null;
+  print_hours: string | number | null;
+  price_minor: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * The Learnings spine. One table, two lenses: a collection's Issues tab and the
+ * app-wide Learnings list.
+ *
+ * ⚠️ `resolution` IS the solved state — there is no separate boolean, because a
+ * flag and a written fix would drift, and "solved" with no explanation teaches
+ * nobody.
+ */
+export type Issue = {
+  id: string;
+  title: string;
+  body: string | null;
+  collection_id: string | null;
+  product_id: string | null;
+  severity: Severity;
+  resolution: string | null;
+  resolved_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StoredImage = {
+  id: string;
+  path: string;
+  sort_order: number;
+};
+
 /** The signed-in context every page and action resolves once per request. */
 export type SessionContext = {
   userId: string;

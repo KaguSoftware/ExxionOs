@@ -132,6 +132,62 @@ These come from KaguOs, where each was **measured**. They are why that system is
 
 ## Current status (2026-07-21)
 
+### 🟢 PHASE 3 — CREATIVE HUB: BUILT + VERIFIED AGAINST PROD, **not yet driven in a browser by Parsa**
+`tsc` · `lint` · `build` green (15 routes). **Migration 0004 applied and schema-verified.**
+Sidebar entry is **live**. Seed data left in prod so there's something to look at.
+
+**The section's whole purpose is Parsa's phrase "keeps us consistent"** — so the design question
+that mattered was how issues reach Learnings.
+
+**⚠️ LEARNINGS IS A LENS, NOT A TABLE.** One `issues` table; a collection's Issues tab and the
+app-wide Learnings list are two views of the same rows, rendered by the SAME component
+(`learnings-panel.tsx`, scoped by an optional `collectionId`). Nothing is copied, so nothing can
+drift and an issue can never be missing from Learnings. ✅ Proven: 2 issues app-wide, 1 in the
+collection tab — the general workshop issue belongs in Learnings but names no collection.
+
+**⚠️ `issues.collection_id` / `product_id` are `on delete SET NULL`, never cascade.** Deleting a
+collection must not delete the lessons learned making it — that knowledge outlives the project.
+✅ Proven against prod: collection deleted → **issue survived with its resolution intact**, while
+its products correctly cascaded away (a product has no meaning without its collection).
+
+**⚠️ `resolution` IS the solved state.** No separate boolean: a flag and a written fix would drift,
+and "solved" with no explanation teaches nobody. Clearing the text reopens the issue, and the UI
+says so.
+
+**⚠️ COST IS COMPUTED AT READ TIME, NEVER STORED** (`lib/costing.ts`):
+`round(grams/1000 × material rate) + round(hours × machine rate)`, integer kuruş, rounded per term.
+A stored cost goes stale the moment a filament price changes, leaving numbers that are quietly
+wrong. ✅ Proven: re-pricing PLA ₺800→₺1200/kg moved the keychain ₺38.75→₺48.75 **with the product
+row unchanged** — there is no cost column to go stale.
+⚠️ **Unknown cost returns `null`, never 0** — rendering ₺0,00 would claim the thing is *free*,
+which is a different and worse statement than "not costed".
+⚠️ **No transaction is written when a product is costed.** You logged the expense when you bought
+the filament; writing one per print would double-count it.
+⚠️ `grams`/`print_hours` are Postgres `numeric`, which arrives over PostgREST as a **string** —
+`costing.ts` parses it. ✅ Tested that strings and numbers cost identically.
+
+**Verified against prod:**
+- ✅ Schema column-by-column; `app_settings` singleton enforced (a second row is refused, 23514).
+- ✅ Costing: **12 unit cases** incl. string inputs, null-not-zero, per-term rounding, re-pricing.
+- ✅ Live page render: keychain shows cost **₺38,75** vs price **₺90,00**, margin **₺51,25**, and the
+  breakdown **₺20,00 + ₺18,75** — matching the unit tests exactly.
+- ✅ Promote: idea → collection, `status=made`, "Became a collection" link renders and points back.
+- ✅ Farsi: `dir=rtl lang=fa`, translated; light/dark tokens unchanged.
+- ✅ No physical-direction classes, no raw hex.
+- ⚠️ **One KNOWN-FALSE detector warning**: `detect.mjs` flags a "broken image" in
+  `image-strip.tsx`. It is a regex that can't follow a JSX conditional — the `<img>` only renders
+  when a signed URL exists, and a skeleton shows otherwise. Verified by reading; do not "fix" it.
+
+**Sidebar fix (same session, Parsa reported):** the rail scrolled away on long pages. It had no
+height, so `items-stretch` on the flex row grew it to the full PAGE height and the account/sign-out
+footer ended up thousands of pixels down. Now `sticky top-0 h-dvh` on the `<aside>` +
+**`md:items-start` on the layout row** (without which sticky can't work) + `self-stretch` on
+`<main>`. Only the nav list scrolls.
+
+**Not driven in a browser yet.** Worth Parsa's eyes: change the machine rate in Settings and watch
+every product re-cost; answer "how did we fix it" on an open issue and see it flip to solved;
+upload a product photo (the one path not exercised with a real file).
+
 ### 🟢 PHASE 2 — FINANCE: BUILT + VERIFIED AGAINST PROD, **not yet driven in a browser by Parsa**
 `tsc` · `lint` · `build` green. **Migration 0003 applied and schema-verified.** Routes: `/finance`
 (three tabs), `/finance/new`, `/finance/[id]`. Sidebar entry is **live**.
@@ -264,7 +320,20 @@ toggle light/dark/system.
 - `src/lib/finance-export.ts` — CSV. Escapes leading `=+-@` (Excel would treat them as formulas)
   and writes a BOM so Turkish/Persian characters survive.
 - `src/components/finance/*` — panels (ledger/recurring/categories), charts, forms, receipt field.
-- `supabase/migrations/0001_foundation.sql` · `0002_backfill_profiles.sql` · `0003_finance.sql`.
+
+**Creative (phase 3):**
+- `src/lib/costing.ts` — `productCost` / `productMargin`. **Computed at read time, never stored.**
+  Returns `null` (not 0) when uncosted. Parses `numeric`-as-string.
+- `src/components/creative/learnings-panel.tsx` — **ONE component, two lenses.** Pass
+  `collectionId` for a collection's Issues tab; omit it for app-wide Learnings. Do not fork this
+  into a second implementation — they would drift, which is the failure this section exists to
+  prevent.
+- `src/components/creative/image-strip.tsx` — product/issue photos. Thumbnails signed WITH a
+  `transform` (a transform appended to an already-signed URL silently returns the full-size image).
+- `src/components/settings/costing-form.tsx` — machine rate + materials. Editing either re-costs
+  every product, which is why its actions revalidate `/creative` too.
+- `supabase/migrations/0001_foundation.sql` · `0002_backfill_profiles.sql` · `0003_finance.sql` ·
+  `0004_creative.sql`.
 - `scripts/apply-migration.mjs` — Management-API applier (alternative to `db push`).
 
 ## Roadmap / next steps
@@ -272,8 +341,10 @@ toggle light/dark/system.
 
 1. ✅ **Foundation** — auth, shell, i18n+RTL, tokens, UI kit, data layer, dashboard, settings.
 2. ✅ **Finance** — transactions (the hub), categories, recurring, charts, CSV, receipts.
-3. ⬅️ **NEXT — Creative hub** — ideas · collections → products · issues → learnings.
-4. **Equipment** — machines, maintenance, supplies, reminders. First real finance link.
+3. ✅ **Creative hub** — ideas · collections → products · issues → learnings · costing.
+4. ⬅️ **NEXT — Equipment** — machines, maintenance, supplies, reminders. **The first real writer
+   into `transactions`**: a repair logs an expense with `source_type='equipment'`, which is the
+   contract Phase 2 was built to honour.
 5. **Shipping** — order lifecycle board, staged + timestamped.
 6. **Clients** — CRM + pattern analytics + events.
 7. **Marketing** — campaigns, samples, filming schedule, networking.
@@ -300,7 +371,10 @@ that contract must exist before anything can honour it.
 ## Deliberately partial — grows later (scope ledger)
 | Area | What shipped now | Intended full shape | Grows in |
 |---|---|---|---|
-| Sections 3–7 | Nav entries render **disabled with a "soon" chip** — visible so the shape of the app is legible, not hidden | Five remaining sections | Phases 3–7 |
+| Sections 4–7 | Nav entries render **disabled with a "soon" chip** — visible so the shape of the app is legible, not hidden | Four remaining sections | Phases 4–7 |
+| Materials | Name, kind, cost per kg, archive | **Stock levels deliberately excluded** — tracking grams remaining turns this into an inventory system, and Equipment (Phase 4) owns supplies. Decide it there | Phase 4 |
+| Product photos | Upload/remove on the product EDIT form only (a new product has no id to attach to yet) | Staged upload on create, reordering, a lightbox | Later |
+| Per-collection P&L | Computed cost + price per product | Real revenue meeting computed cost, once orders exist | Phase 5 |
 | Finance charts | 12-month in/out bars · category breakdown · net line | Budgets, per-collection P&L, forecasting — deliberately deferred until there's real data to budget against | Later |
 | Receipts | One file per transaction (5 MB, image/PDF), private bucket, signed at click | Multiple attachments; OCR of totals | Later |
 | Transaction window | The page loads ~13 months (cap 2000 rows) so filtering is instant client-side | Pagination or a server-side query once that cap is realistic — at ~50 rows/month it's ~3 years away | When the cap bites |
@@ -320,8 +394,13 @@ that contract must exist before anything can honour it.
 - ⚠️ **Don't "simplify" the recurring generator's unique-index reliance.** The index is what makes
   it safe, not the JS checks — those would lose a race between two tabs. A 23505 from the insert is
   the guarantee working and is deliberately swallowed.
-- ⚠️ **Categories archive, never delete.** Deleting one nulls `category_id` on every historical
-  transaction and silently changes what past months were spent on.
+- ⚠️ **Categories AND materials archive, never delete.** Deleting either nulls a foreign key on
+  every historical row and silently changes what past months were spent on / what a product costs.
+- ⚠️ **Never store a computed product cost.** It is derived from the material's current price and
+  the machine rate on purpose; a cached copy is wrong the moment either changes.
+- ⚠️ **`detect.mjs` reports one KNOWN-FALSE "broken image"** in `image-strip.tsx` — its regex
+  can't follow the JSX conditional that guards the `src`. Verified correct; don't refactor to
+  silence it.
 - ⚠️ **The `system` theme writes NO `data-theme` attribute.** The server can't know the OS scheme,
   so CSS decides via `prefers-color-scheme` scoped to `:root:not([data-theme])`. An explicit choice
   has higher specificity and always wins. ⚠️ The light tokens are therefore **duplicated** in that
