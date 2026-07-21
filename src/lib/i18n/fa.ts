@@ -23,6 +23,7 @@ export const fa: Dictionary = {
     signOut: "خروج",
     account: "حساب کاربری",
     skipToContent: "پرش به محتوا",
+    soon: "به‌زودی",
     openMenu: "باز کردن منو",
     closeMenu: "بستن منو",
   },
@@ -121,6 +122,9 @@ export const fa: Dictionary = {
     notFound: "یافت نشد",
     notFoundBody: "چنین صفحه‌ای وجود ندارد.",
     backToDashboard: "بازگشت به داشبورد",
+    decrease: "کاهش",
+    increase: "افزایش",
+    couldNotOpenFile: "باز کردن این فایل ممکن نشد.",
   },
 
   create: {

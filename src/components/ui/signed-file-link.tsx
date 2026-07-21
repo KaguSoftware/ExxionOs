@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +50,7 @@ export function SignedFileLink({
   className?: string;
 }) {
   const toast = useToast();
+  const t = useT();
   const [busy, setBusy] = useState(false);
 
   const open = async () => {
@@ -62,7 +64,12 @@ export function SignedFileLink({
       if (error || !data?.signedUrl) {
         // Announced, never silent — the original bug's worst quality was that
         // a click appeared not to register at all.
-        toast.error(error?.message ?? "Could not open that file.");
+        //
+        // ⚠️ The translated string, NOT `error.message`: Supabase errors are
+        // always English and often internal ("InvalidJWT: \"exp\" claim
+        // timestamp check failed"), which tells a Farsi user nothing and a
+        // Turkish workshop nothing either.
+        toast.error(t("common.couldNotOpenFile"));
         return;
       }
       window.location.assign(data.signedUrl);

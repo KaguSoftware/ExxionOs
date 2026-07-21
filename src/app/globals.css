@@ -45,6 +45,7 @@
     --brand-ink: oklch(0.99 0.005 262); /* text ON a brand fill */
     --brand-text: oklch(0.66 0.16 262); /* brand AS text on --bg: 6.18:1 */
     --brand-soft: oklch(0.52 0.19 262 / 0.16); /* tinted background */
+    --brand-badge: oklch(0.66 0.16 262); /* on --brand-soft: 5.09:1 */
     --brand-line: oklch(0.55 0.19 262 / 0.38);
 
     /* Accent: warm amber. The brand moved to blue (262), which left only 57°
@@ -56,15 +57,30 @@
        for state. Amber-as-accent is decoration-free — links and info only. */
     --accent: oklch(0.78 0.13 65); /* as text on --bg: 9.51:1 */
     --accent-ink: oklch(0.20 0.03 65); /* dark text ON an accent fill: 9.5:1 */
-    --accent-soft: oklch(0.78 0.13 65 / 0.15);
+    --accent-soft: oklch(0.78 0.13 65 / 0.16);
+    --accent-badge: oklch(0.78 0.13 65); /* on --accent-soft: 6.63:1 */
 
-    /* --- state (reserved) ------------------------------------------------- */
+    /* --- state (reserved) -------------------------------------------------
+       ⚠️ EACH FAMILY HAS *THREE* TOKENS, AND THE THIRD IS NOT OPTIONAL.
+       `--x` is the colour as TEXT ON THE PAGE. `--x-soft` is the tinted badge
+       FIELD. `--x-badge` is the text that sits ON that field — and it must be
+       its own value, because the field is darker (light theme) or lighter
+       (dark theme) than the page, so the on-page token does not survive the
+       move. Measured with the soft tint composited over --surface, the worst
+       case: using `--x` on `--x-soft` gave 3.91:1 for success in light and
+       4.18:1 for danger in dark. Both under the floor, on every badge in the
+       app. See the light block for the light-theme values. */
     --success: oklch(0.70 0.15 155);
-    --success-soft: oklch(0.70 0.15 155 / 0.14);
+    --success-soft: oklch(0.70 0.15 155 / 0.16);
+    --success-badge: oklch(0.70 0.15 155); /* on --success-soft: 5.65:1 */
     --warning: oklch(0.78 0.14 78);
-    --warning-soft: oklch(0.78 0.14 78 / 0.14);
+    --warning-soft: oklch(0.78 0.14 78 / 0.16);
+    --warning-badge: oklch(0.78 0.14 78); /* on --warning-soft: 6.68:1 */
     --danger: oklch(0.64 0.19 22);
-    --danger-soft: oklch(0.64 0.19 22 / 0.14);
+    --danger-soft: oklch(0.64 0.19 22 / 0.16);
+    /* Lifted from 0.64: the on-page danger measured only 4.18:1 on its own
+       tint over --surface. 0.665 clears it at 4.62:1. */
+    --danger-badge: oklch(0.665 0.19 22); /* on --danger-soft: 4.62:1 */
     /* The FILL behind white text on a destructive button. Deliberately darker
        than --danger (which is a text/border colour on --bg): measured, white
        on oklch(0.64 …) is only 3.58:1, and the one button whose consequences
@@ -121,6 +137,10 @@
     /* Follows the ACCENT, not the brand: a focus ring in the brand colour is
        invisible on a focused primary button. Amber on --bg is 9.5:1. */
     --focus: oklch(0.78 0.13 65);
+    /* The veil behind a modal. Distinct from --overlay (a translucent SURFACE
+       that holds content); this one only darkens what's behind. Near-black
+       tinted toward the brand hue, like every other dark neutral here. */
+    --scrim: oklch(0.10 0.008 262 / 0.62);
     --shadow-1: 0 1px 2px oklch(0 0 0 / 0.4);
     --shadow-2: 0 4px 12px -2px oklch(0 0 0 / 0.5);
     --shadow-3: 0 16px 40px -8px oklch(0 0 0 / 0.62);
@@ -173,7 +193,33 @@
     --danger: oklch(0.545 0.195 22);
     --danger-fill: oklch(0.505 0.185 22);
 
+    /* ⚠️ THE SOFT TINTS AND THEIR INKS MUST BE RE-STATED HERE. They were
+       previously declared ONLY in the shared `:root` block, so light theme
+       composited a DARK-theme tint (built from a light, high-lightness base)
+       over white and then put the deep light-theme text token on it. Measured
+       on --surface, that shipped: success 3.91:1, danger 4.38:1, warning
+       4.45:1, accent 4.30:1 — four of five badge tones under AA, in the theme
+       used for daylight desk work.
+
+       The tint is rebuilt from the LIGHT family colour (a deep value tinting
+       white, not a pale one), and each badge ink is solved against that
+       composited field rather than against the page. */
+    --brand-soft: oklch(0.50 0.20 262 / 0.13);
+    --brand-badge: oklch(0.50 0.20 262); /* on --brand-soft: 4.89:1 */
+    --brand-line: oklch(0.50 0.20 262 / 0.32);
+    --accent-soft: oklch(0.55 0.12 65 / 0.13);
+    --accent-badge: oklch(0.515 0.12 65); /* on --accent-soft: 4.65:1 */
+    --success-soft: oklch(0.545 0.135 155 / 0.13);
+    --success-badge: oklch(0.49 0.135 155); /* on --success-soft: 4.61:1 */
+    --warning-soft: oklch(0.545 0.135 62 / 0.13);
+    --warning-badge: oklch(0.515 0.135 62); /* on --warning-soft: 4.65:1 */
+    --danger-soft: oklch(0.545 0.195 22 / 0.13);
+    --danger-badge: oklch(0.525 0.195 22); /* on --danger-soft: 4.63:1 */
+
     --focus: oklch(0.55 0.12 65);
+    /* Lighter than the dark theme's veil: on a white page a 62% black scrim
+       reads as a blackout, not a dimming. */
+    --scrim: oklch(0.20 0.010 262 / 0.42);
     --shadow-1: 0 1px 2px oklch(0.2 0.01 262 / 0.07);
     --shadow-2: 0 4px 12px -2px oklch(0.2 0.01 262 / 0.10);
     --shadow-3: 0 16px 40px -8px oklch(0.2 0.01 262 / 0.16);
@@ -213,7 +259,21 @@
       --danger: oklch(0.545 0.195 22);
       --danger-fill: oklch(0.505 0.185 22);
 
+      /* Mirrors the block above — see the note there. */
+      --brand-soft: oklch(0.50 0.20 262 / 0.13);
+      --brand-badge: oklch(0.50 0.20 262);
+      --brand-line: oklch(0.50 0.20 262 / 0.32);
+      --accent-soft: oklch(0.55 0.12 65 / 0.13);
+      --accent-badge: oklch(0.515 0.12 65);
+      --success-soft: oklch(0.545 0.135 155 / 0.13);
+      --success-badge: oklch(0.49 0.135 155);
+      --warning-soft: oklch(0.545 0.135 62 / 0.13);
+      --warning-badge: oklch(0.515 0.135 62);
+      --danger-soft: oklch(0.545 0.195 22 / 0.13);
+      --danger-badge: oklch(0.525 0.195 22);
+
       --focus: oklch(0.55 0.12 65);
+      --scrim: oklch(0.20 0.010 262 / 0.42);
       --shadow-1: 0 1px 2px oklch(0.2 0.01 262 / 0.07);
       --shadow-2: 0 4px 12px -2px oklch(0.2 0.01 262 / 0.10);
       --shadow-3: 0 16px 40px -8px oklch(0.2 0.01 262 / 0.16);
@@ -255,6 +315,15 @@
   --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+
+  /* ⚠️ Text sitting ON a `-soft` field uses `text-*-badge`, NEVER `text-*`.
+     The plain token is measured against the PAGE; on the tinted field it
+     drops as low as 3.91:1. See the state-token comment in @layer base. */
+  --color-brand-badge: var(--brand-badge);
+  --color-accent-badge: var(--accent-badge);
+  --color-success-badge: var(--success-badge);
+  --color-warning-badge: var(--warning-badge);
+  --color-danger-badge: var(--danger-badge);
   --color-danger-fill: var(--danger-fill);
   --color-danger-ink: var(--danger-ink);
 
@@ -367,10 +436,19 @@
 
   /* One focus treatment app-wide. `data-no-ring` opts out for controls that
      draw their own (search fields inside a bordered shell). */
+  /* One focus treatment app-wide.
+     ⚠️ THE SECOND RING IS NOT DECORATION. The amber ring is measured against
+     the PAGE (9.5:1 dark / 5.0:1 light), which is where `outline-offset: 2px`
+     usually puts it. But a focused PRIMARY or DANGER button sits in a toolbar
+     or panel where the amber lands adjacent to the saturated fill instead:
+     2.78:1 in dark and 1.25:1 in light — effectively invisible on the exact
+     controls that matter most. A 4px ring in the page colour separates the
+     two. On a page-coloured backdrop it is invisible and costs nothing. */
   :focus-visible:not([data-no-ring]) {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
     border-radius: var(--radius-sm);
+    box-shadow: 0 0 0 4px var(--bg);
   }
 
   ::selection {
@@ -504,5 +582,14 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* ⚠️ The blanket rule above is wrong for an INFINITE animation. Clamping the
+     shimmer to 0.01ms doesn't stop it — it runs one iteration that lands on an
+     arbitrary frame, freezing a diagonal gradient stripe mid-sweep. A loading
+     placeholder should be a flat block, so say that explicitly. */
+  .skeleton {
+    animation: none !important;
+    background: var(--surface);
   }
 }

@@ -113,12 +113,16 @@ function NavLink({
         // Not a link and not focusable — but visible, so the shape of the
         // finished app is legible from day one.
         aria-disabled
-        className="flex cursor-default items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-faint/70"
+        // `text-faint`, NOT `text-faint/70`. --faint IS the documented contrast
+        // floor (5.6:1 dark / 5.1:1 light); the /70 dropped it to 3.19:1 and
+        // 2.73:1. A roadmap item still has to be readable — the `soon` chip and
+        // `cursor-default` already say it isn't available.
+        className="flex cursor-default items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-faint"
       >
         <Icon aria-hidden className="size-4 shrink-0" />
         <span className="min-w-0 flex-1 truncate">{t(item.labelKey)}</span>
         <span className="rounded border border-line px-1 py-px text-[0.625rem] text-faint">
-          soon
+          {t("nav.soon")}
         </span>
       </span>
     );

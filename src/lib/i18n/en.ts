@@ -27,6 +27,7 @@ export const en = {
     signOut: "Sign out",
     account: "Account",
     skipToContent: "Skip to content",
+    soon: "soon",
     openMenu: "Open menu",
     closeMenu: "Close menu",
   },
@@ -129,6 +130,9 @@ export const en = {
     notFound: "Not found",
     notFoundBody: "That page doesn't exist.",
     backToDashboard: "Back to dashboard",
+    decrease: "Decrease",
+    increase: "Increase",
+    couldNotOpenFile: "Could not open that file.",
   },
 
   create: {

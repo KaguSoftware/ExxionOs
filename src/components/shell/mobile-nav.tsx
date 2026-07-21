@@ -3,7 +3,7 @@
 import { LogOut, Menu, Settings, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LocaleToggle } from "@/components/shell/locale-toggle";
 import { Logomark } from "@/components/shell/wordmark";
@@ -30,25 +30,74 @@ export function MobileNav({ profile }: { profile: Profile }) {
   // ONE close path, so the exit animation plays no matter how the menu is
   // dismissed — backdrop, X, Escape, or following a link. Separate handlers
   // are how one of those routes ends up snapping shut without the animation.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const close = useCallback(() => {
+    // Guard: following a nav link fires close() while the route change is
+    // already unmounting this component, and a second call would stack a
+    // second timer onto a sheet that is already closing.
+    if (timerRef.current) return;
     setClosing(true);
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       setOpen(false);
       setClosing(false);
+      timerRef.current = null;
     }, EXIT_MS);
   }, []);
 
+  // The timer outlives the component when a link navigates away mid-animation.
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    []
+  );
+
   useEffect(() => {
     if (!open) return;
+
+    // ⚠️ FOCUS, not just Escape. `aria-modal="true"` on the sheet tells
+    // assistive tech the page behind does not exist — but focus stayed on the
+    // (now hidden) hamburger, so Tab walked straight into content that had
+    // just been declared invisible, and closing dropped focus to <body>.
+    const restore = document.activeElement as HTMLElement | null;
+    // Captured now, not read in the cleanup: by the time this effect tears
+    // down, the ref may already point at a detached node.
+    const trigger = triggerRef.current;
+    panelRef.current
+      ?.querySelector<HTMLElement>('a[href], button:not([disabled])')
+      ?.focus();
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") {
+        close();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
+
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
+      (trigger ?? restore)?.focus();
     };
   }, [open, close]);
 
@@ -64,6 +113,7 @@ export function MobileNav({ profile }: { profile: Profile }) {
           <span className="font-display text-base">{t("app.name")}</span>
         </Link>
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => setOpen(true)}
           aria-label={t("nav.openMenu")}
@@ -76,6 +126,7 @@ export function MobileNav({ profile }: { profile: Profile }) {
 
       {open && (
         <div
+          ref={panelRef}
           role="dialog"
           aria-modal="true"
           aria-label={t("nav.openMenu")}
@@ -112,11 +163,12 @@ export function MobileNav({ profile }: { profile: Profile }) {
                 if (!item.ready) {
                   return (
                     <li key={item.href}>
-                      <span className="flex items-center gap-3 rounded-lg px-3 py-3 text-base text-faint/70">
+                      {/* text-faint, not text-faint/70 — see sidebar.tsx. */}
+                      <span className="flex items-center gap-3 rounded-lg px-3 py-3 text-base text-faint">
                         <Icon aria-hidden className="size-5 shrink-0" />
                         <span className="flex-1">{t(item.labelKey)}</span>
                         <span className="rounded border border-line px-1.5 py-px text-2xs">
-                          soon
+                          {t("nav.soon")}
                         </span>
                       </span>
                     </li>
@@ -148,7 +200,13 @@ export function MobileNav({ profile }: { profile: Profile }) {
             </ul>
           </nav>
 
-          <div className="border-t border-line p-3">
+          {/* The sheet is `fixed inset-0`, so on a notched phone this footer —
+              which holds sign-out — sits under the home indicator. Needs
+              `viewportFit: "cover"` in the root viewport export to resolve. */}
+          <div
+            className="border-t border-line p-3"
+            style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+          >
             <Link
               href="/settings"
               onClick={close}

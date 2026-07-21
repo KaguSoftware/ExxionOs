@@ -56,13 +56,39 @@ function grab(block, name) {
   return m ? [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3])] : null;
 }
 
+/**
+ * Same, but for a token carrying an alpha (`oklch(L C H / A)`) — the `-soft`
+ * tints. Returns `[L, C, H, alpha]`.
+ */
+function grabAlpha(block, name) {
+  const re = new RegExp(
+    "--" + name + ":\\s*oklch\\(\\s*([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)\\s*/\\s*([\\d.]+)"
+  );
+  const m = block.match(re);
+  return m
+    ? [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3]), parseFloat(m[4])]
+    : null;
+}
+
+/** Composite a translucent colour over an opaque one — what the eye sees. */
+function composite([L, C, H, alpha], bg) {
+  const fg = oklchToRgb(L, C, H);
+  const base = oklchToRgb(...bg);
+  return fg.map((c, i) => c * alpha + base[i] * (1 - alpha));
+}
+
 const root = css.slice(css.indexOf(":root {"), css.indexOf("/* --- DARK"));
 const darkBlock = css.slice(css.indexOf('[data-theme="dark"]'), css.indexOf("/* --- LIGHT"));
 const lightBlock = css.slice(css.indexOf('[data-theme="light"]'), css.indexOf('The "system" case'));
 
 // Theme blocks override :root; fall back to :root for anything not restated.
+// ⚠️ That fallback is load-bearing AND was the bug: a `-soft` tint declared
+// only in :root silently applies to BOTH themes. `.alpha` resolves the same
+// way so the checks below see exactly what the browser does.
 const D = (n) => grab(darkBlock, n) || grab(root, n);
+D.alpha = (n) => grabAlpha(darkBlock, n) || grabAlpha(root, n);
 const L = (n) => grab(lightBlock, n) || grab(root, n);
+L.alpha = (n) => grabAlpha(lightBlock, n) || grabAlpha(root, n);
 
 let failures = 0;
 function check(label, fg, bg, min) {
@@ -114,6 +140,32 @@ function auditTheme(name, T) {
 
   // Non-text: the focus ring only has to be perceivable.
   check("--focus vs --bg", T("focus"), bg, 3);
+
+  // --- badge text on its own tinted field --------------------------------
+  // ⚠️ THE PAIR THIS SCRIPT ORIGINALLY COULDN'T SEE. A `-soft` token is
+  // TRANSLUCENT, so the real background is the tint composited over whatever
+  // is behind it — and the badge sits on --bg or --surface. Measuring the
+  // ink against the page (all this file used to do) says nothing about the
+  // pair the user actually reads. When the soft tints lived only in :root,
+  // light theme shipped four of five tones under AA and every check here
+  // still passed.
+  for (const tone of ["brand", "accent", "success", "warning", "danger"]) {
+    const soft = T.alpha(`${tone}-soft`);
+    const ink = T(`${tone}-badge`);
+    if (!soft || !ink) {
+      console.log(`  MISSING  --${tone}-soft / --${tone}-badge`);
+      failures++;
+      continue;
+    }
+    for (const [sName, s] of [["--bg", bg], ["--surface", surface]]) {
+      const ratio = contrast(oklchToRgb(...ink), composite(soft, s));
+      const pass = ratio >= 4.5;
+      if (!pass) failures++;
+      console.log(
+        `  ${pass ? "PASS" : "FAIL"}  ${`--${tone}-badge on soft/${sName}`.padEnd(34)} ${ratio.toFixed(2)}:1  (min 4.5)`
+      );
+    }
+  }
 }
 
 auditTheme("DARK", D);

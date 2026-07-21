@@ -2,7 +2,14 @@
 
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -156,6 +163,8 @@ export function CreateOverlay({
   children: ReactNode;
 }) {
   const t = useT();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
 
   /**
    * ⚠️ LOCK THE PAGE BEHIND THE OVERLAY.
@@ -187,13 +196,45 @@ export function CreateOverlay({
 
   // Escape closes, matching ConfirmDialog and the popovers. Without it the
   // only way out of a full-screen surface is finding the back button.
+  //
+  // ⚠️ This effect also owns FOCUS, and it must. `aria-modal="true"` below
+  // tells assistive tech the rest of the page does not exist — but focus was
+  // left on the trigger button OUT THERE, so a screen-reader user landed in a
+  // region that had just been declared hidden, and Tab walked straight out of
+  // the overlay into the page behind. ConfirmDialog has done all of this since
+  // it was written; this component, the bigger surface, had none of it.
   useEffect(() => {
     if (!open) return;
+
+    const restore = document.activeElement as HTMLElement | null;
+    panelRef.current?.focus();
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
+
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      restore?.focus();
+    };
   }, [open, onClose]);
 
   if (!open || typeof document === "undefined") return null;
@@ -219,10 +260,13 @@ export function CreateOverlay({
    */
   return createPortal(
     <div
-      className="animate-fade-in fixed inset-0 overflow-y-auto bg-bg"
+      ref={panelRef}
+      tabIndex={-1}
+      className="animate-fade-in fixed inset-0 overflow-y-auto bg-bg focus:outline-none"
       style={{ zIndex: "var(--z-overlay)" }}
       role="dialog"
       aria-modal="true"
+      aria-labelledby={titleId}
     >
       {/* ⚠️ `min-h-full` + `flex` + `my-auto`, all three. The scroll container
           is the fixed parent, so without `min-h-full` this box is only as tall
@@ -239,7 +283,9 @@ export function CreateOverlay({
             <ArrowLeft aria-hidden className="size-4 rtl:rotate-180" />
             {t("common.back")}
           </button>
-          <h1 className="font-display text-2xl text-ink">{title}</h1>
+          <h1 id={titleId} className="font-display text-2xl text-ink">
+            {title}
+          </h1>
           {description && <p className="mt-1 text-sm text-muted">{description}</p>}
           <div className="mt-6">{children}</div>
         </div>

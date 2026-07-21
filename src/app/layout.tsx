@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { cookies } from "next/headers";
 
@@ -42,6 +42,26 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "ExxionOs",
   description: "Exxion internal system",
+};
+
+/**
+ * ⚠️ THE TWO LITERAL COLOURS HERE ARE THE ONE SANCTIONED EXCEPTION to "all
+ * colour lives in globals.css". Next serialises `themeColor` into a static
+ * `<meta>` tag, which cannot read a CSS variable — so these must track `--bg`
+ * BY HAND. They are the sRGB of `oklch(0.155 0.008 262)` and `oklch(1 0 0)`.
+ * If the bg tokens ever change, change these in the same commit.
+ *
+ * Without it, the phone's browser chrome stays its default light grey while
+ * the app underneath is near-black — the seam that makes a web app read as a
+ * web page. `viewportFit: "cover"` is what makes `env(safe-area-inset-*)`
+ * resolve at all, which the mobile sheet needs to clear the home indicator.
+ */
+export const viewport: Viewport = {
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0a0c10" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+  ],
 };
 
 export default async function RootLayout({

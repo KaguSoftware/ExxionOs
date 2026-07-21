@@ -4,6 +4,7 @@ import { Minus, Plus } from "lucide-react";
 import { useCallback } from "react";
 
 import { controlBase } from "@/components/ui/input";
+import { useT } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
 /**
@@ -39,6 +40,8 @@ export function NumberInput({
   allowDecimal?: boolean;
   suffix?: string;
 }) {
+  const t = useT();
+
   const clamp = useCallback(
     (n: number) => {
       if (min != null && n < min) return min;
@@ -79,6 +82,20 @@ export function NumberInput({
         disabled={disabled}
         onChange={(e) => handleText(e.target.value)}
         onBlur={() => value != null && onChange(clamp(value))}
+        // The step buttons are deliberately tabIndex={-1} (they would double
+        // every form's tab stops), so without this the stepper has NO keyboard
+        // path at all. ArrowUp/ArrowDown is the spinner contract users expect
+        // from a numeric field.
+        onKeyDown={(e) => {
+          if (disabled) return;
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            bump(step);
+          } else if (e.key === "ArrowDown") {
+            e.preventDefault();
+            bump(-step);
+          }
+        }}
         className={cn(
           controlBase,
           "tnum h-9 px-3 pe-16 text-sm",
@@ -93,10 +110,18 @@ export function NumberInput({
         </span>
       )}
       <div className="absolute inset-y-0 end-0 flex items-center gap-px pe-1">
-        <StepButton onClick={() => bump(-step)} disabled={disabled} label="Decrease">
+        <StepButton
+          onClick={() => bump(-step)}
+          disabled={disabled}
+          label={t("common.decrease")}
+        >
           <Minus aria-hidden className="size-3" />
         </StepButton>
-        <StepButton onClick={() => bump(step)} disabled={disabled} label="Increase">
+        <StepButton
+          onClick={() => bump(step)}
+          disabled={disabled}
+          label={t("common.increase")}
+        >
           <Plus aria-hidden className="size-3" />
         </StepButton>
       </div>

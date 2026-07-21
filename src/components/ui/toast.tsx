@@ -13,6 +13,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { useT } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
 /** The client/server snapshot never changes after hydration, so there is
@@ -125,10 +126,11 @@ function ToastViewport({
 
   return createPortal(
     <div
-      // aria-live so a screen reader announces the outcome of an action that
-      // otherwise only changed a colour somewhere.
-      aria-live="polite"
-      aria-atomic="false"
+      // ⚠️ NOT a live region itself. Each ToastRow already carries
+      // role="alert" (assertive) or role="status" (polite), and a live region
+      // nested inside another live region is announced TWICE by NVDA and
+      // JAWS. Wrapping an assertive error in a polite container was also
+      // contradictory. The rows own the liveness; this is just the viewport.
       className="pointer-events-none fixed inset-x-0 bottom-0 flex flex-col items-center gap-2 p-4 sm:items-end sm:p-6"
       style={{ zIndex: "var(--z-toast)" }}
     >
@@ -155,6 +157,8 @@ function ToastRow({
   onDismiss: (id: number) => void;
 }) {
   const Icon = ICONS[toast.kind];
+  // Safe: the root layout mounts I18nProvider OUTSIDE ToastProvider.
+  const t = useT();
   return (
     <div
       role={toast.kind === "error" ? "alert" : "status"}
@@ -178,7 +182,7 @@ function ToastRow({
         type="button"
         onClick={() => onDismiss(toast.id)}
         className="-me-1 -mt-1 rounded p-1 text-faint transition-colors hover:text-ink"
-        aria-label="Dismiss"
+        aria-label={t("common.close")}
       >
         <X aria-hidden className="size-3.5" />
       </button>

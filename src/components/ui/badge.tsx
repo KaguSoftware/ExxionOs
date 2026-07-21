@@ -13,13 +13,25 @@ import { cn } from "@/lib/utils";
  */
 type Tone = "neutral" | "brand" | "accent" | "success" | "warning" | "danger";
 
+/**
+ * ⚠️ THE TEXT TOKEN IS `-badge`, NOT the plain family token. `--success` and
+ * friends are measured as text on the PAGE; on their own `-soft` field they
+ * measured as low as 3.91:1 (light success) and 4.18:1 (dark danger). The
+ * `-badge` values are solved against the composited tint. Do not "simplify"
+ * these back to `text-success` — it reads identically and fails AA.
+ *
+ * Every tone carries a visible border, including the ones that used to be
+ * `border-transparent`: two badges on one row with different border weights
+ * read as two different sizes of thing, the same argument the Button variants
+ * make about keeping the box constant.
+ */
 const TONES: Record<Tone, string> = {
   neutral: "bg-raised text-muted border-line",
-  brand: "bg-brand-soft text-brand-text border-brand-line",
-  accent: "bg-accent-soft text-accent border-transparent",
-  success: "bg-success-soft text-success border-transparent",
-  warning: "bg-warning-soft text-warning border-transparent",
-  danger: "bg-danger-soft text-danger border-transparent",
+  brand: "bg-brand-soft text-brand-badge border-brand-line",
+  accent: "bg-accent-soft text-accent-badge border-accent/25",
+  success: "bg-success-soft text-success-badge border-success/25",
+  warning: "bg-warning-soft text-warning-badge border-warning/25",
+  danger: "bg-danger-soft text-danger-badge border-danger/25",
 };
 
 export function Badge({

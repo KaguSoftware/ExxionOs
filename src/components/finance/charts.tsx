@@ -6,6 +6,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -37,7 +38,17 @@ import { formatMinor } from "@/lib/utils";
 export const PLOT_DIR = "ltr" as const;
 
 /**
- * Which palette column to use. Re-reads on OS theme change.
+ * Which palette column to use. Re-reads on OS theme change AND on an explicit
+ * one.
+ *
+ * ⚠️ BOTH SOURCES MUST BE SUBSCRIBED, because the snapshot below reads BOTH.
+ * The app's real theme switch writes `data-theme` on <html> (set server-side
+ * from a cookie in `app/layout.tsx`, flipped client-side by the appearance
+ * form) — that fires NO media-query event. Watching only `matchMedia` meant
+ * `getSnapshot` returned a fresh value that `useSyncExternalStore` was never
+ * told to re-read: switching to light repainted the whole app in light tokens
+ * while every chart kept its dark series colours, validated against a surface
+ * that was no longer there. The MutationObserver is the half that was missing.
  *
  * ⚠️ Exported for Shipping's charts (Phase 5) rather than copied. A second
  * implementation would drift the moment the theme logic changes, and the two
@@ -49,7 +60,15 @@ export function useChartMode(): ChartMode {
       if (typeof window === "undefined") return () => {};
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
       mq.addEventListener("change", cb);
-      return () => mq.removeEventListener("change", cb);
+      const observer = new MutationObserver(cb);
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-theme"],
+      });
+      return () => {
+        mq.removeEventListener("change", cb);
+        observer.disconnect();
+      };
     },
     () => {
       const explicit = document.documentElement.dataset.theme;
@@ -108,8 +127,11 @@ export function ChartTooltip({
           />
           {/* Text wears text tokens; the swatch beside it carries identity. */}
           <span className="text-muted">{entry.name}</span>
+          {/* No `?? 0`: formatMinor already answers "—" for a missing value,
+              and coercing to 0 would state that a month with no datum earned
+              exactly nothing. */}
           <span className="tnum ms-auto font-medium text-ink">
-            {formatMinor(entry.value ?? 0)}
+            {formatMinor(entry.value)}
           </span>
         </p>
       ))}
@@ -267,8 +289,12 @@ export function CategoryChart({ data }: { data: CategorySlice[] }) {
 /** Net over time. Its own chart because it's a different measure. */
 export function NetChart({ data }: { data: MonthPoint[] }) {
   const { t, locale } = useI18n();
-  const mode = useChartMode();
-  const hasData = data.some((d) => d.netMinor !== 0);
+  // No useChartMode() here: the stroke is now a CSS variable, which the
+  // browser re-resolves on a theme change without JS.
+  // Tests the UNDERLYING money, matching InOutChart — not `netMinor !== 0`.
+  // A month whose income exactly cancelled its expense nets zero but is real
+  // data, and a flat line at zero is the informative picture of it.
+  const hasData = data.some((d) => d.inMinor > 0 || d.outMinor > 0);
 
   return (
     <Panel title={t("finance.chartNet")} description={t("finance.chartNetHint")}>
@@ -301,11 +327,20 @@ export function NetChart({ data }: { data: MonthPoint[] }) {
                 content={<ChartTooltip />}
                 labelFormatter={(m) => monthLabel(String(m), locale)}
               />
+              {/* ⚠️ THE ZERO LINE IS WHAT MAKES THE NEUTRAL STROKE HONEST.
+                  MONEY_COLORS is a DIVERGING pair — `in` means "money came
+                  in", not "series 1". This line was drawn in that green for
+                  every month including the losing ones, so a month the shop
+                  lost money was painted in the income colour. A single SVG
+                  path can't change colour mid-series, so polarity is read
+                  against this baseline instead and the stroke stays neutral
+                  brand. */}
+              <ReferenceLine y={0} stroke="var(--line-strong)" />
               <Line
                 type="monotone"
                 dataKey="netMinor"
                 name={t("finance.net")}
-                stroke={MONEY_COLORS[mode].in}
+                stroke="var(--brand-text)"
                 strokeWidth={2}
                 dot={false}
                 activeDot={{ r: 4 }}
