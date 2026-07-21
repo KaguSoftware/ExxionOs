@@ -2,7 +2,7 @@
 
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -155,6 +155,46 @@ export function CreateOverlay({
   children: ReactNode;
 }) {
   const t = useT();
+
+  /**
+   * ⚠️ LOCK THE PAGE BEHIND THE OVERLAY.
+   *
+   * The overlay is `fixed inset-0 overflow-y-auto`, so it covers the viewport
+   * — but the document underneath kept its own scrollbar. That produced the
+   * reported bug exactly: a short form (the print-run dialog) showing a
+   * full-height page scrollbar with a tiny thumb, and a wheel gesture near the
+   * edge scrolling the page instead of the dialog.
+   *
+   * The padding compensation matters as much as the lock: removing a classic
+   * scrollbar without replacing its width makes the whole page jump sideways
+   * by ~15px the moment the dialog opens. Overlay-style scrollbars report 0,
+   * so this is a no-op there.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const { body, documentElement } = document;
+    const gap = window.innerWidth - documentElement.clientWidth;
+    const prevOverflow = body.style.overflow;
+    const prevPadding = body.style.paddingInlineEnd;
+    body.style.overflow = "hidden";
+    if (gap > 0) body.style.paddingInlineEnd = `${gap}px`;
+    return () => {
+      body.style.overflow = prevOverflow;
+      body.style.paddingInlineEnd = prevPadding;
+    };
+  }, [open]);
+
+  // Escape closes, matching ConfirmDialog and the popovers. Without it the
+  // only way out of a full-screen surface is finding the back button.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
@@ -164,7 +204,10 @@ export function CreateOverlay({
       role="dialog"
       aria-modal="true"
     >
-      <div className="mx-auto w-full max-w-2xl px-4 py-6 md:px-8">
+      {/* `min-h-full` + vertical padding, so a SHORT form sits properly inside
+          the viewport instead of being pinned under the top edge — the other
+          half of the print-run report. */}
+      <div className="mx-auto w-full max-w-2xl px-4 py-6 md:px-8 md:py-10">
         <button
           type="button"
           onClick={onClose}

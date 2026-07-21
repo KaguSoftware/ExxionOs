@@ -43,10 +43,19 @@ export function DatePicker({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const { side, measure } = usePopoverSide(triggerRef, 340);
+  // 280 is the panel's own `w-[17.5rem]` — it must stay in step with the
+  // class below, or the measurement is checking the wrong box.
+  const { side, align, measure } = usePopoverSide(triggerRef, 340, 280);
 
   const today = todayInIstanbul();
   const [viewMonth, setViewMonth] = useState(() => (value ?? today).slice(0, 7));
+
+  /** Which grid the popover is showing: days, months, or a page of years. */
+  const [picking, setPicking] = useState<"day" | "month" | "year">("day");
+  /** First year of the visible 12-year page. */
+  const [yearPage, setYearPage] = useState(
+    () => yearPageStart(Number((value ?? today).slice(0, 4)))
+  );
 
   const intlLocale = locale === "fa" ? "fa-IR-u-ca-gregory" : "en-GB";
 
@@ -121,6 +130,11 @@ export function DatePicker({
           if (!open) {
             measure();
             setViewMonth((value ?? today).slice(0, 7));
+            // Reset HERE rather than in an effect — an effect would render the
+            // stale grid for one frame, and `react-hooks/set-state-in-effect`
+            // is an error in this project.
+            setPicking("day");
+            setYearPage(yearPageStart(Number((value ?? today).slice(0, 4))));
           }
           setOpen((o) => !o);
         }}
@@ -166,23 +180,76 @@ export function DatePicker({
           aria-label={t("common.chooseDate")}
           className={cn(
             "animate-pop-in absolute w-[17.5rem] rounded-lg border border-line bg-raised p-3 shadow-[var(--shadow-3)]",
-            "start-0",
+            // ⚠️ Logical, not left/right — this mirrors correctly in Farsi.
+            // `end-0` anchors the panel's END edge to the trigger's, so a
+            // 280px panel hanging off a 144px trigger grows back over the page
+            // instead of off the screen.
+            align === "start" ? "start-0" : "end-0",
             side === "bottom" ? "top-full mt-1" : "bottom-full mb-1"
           )}
           style={{ zIndex: "var(--z-dropdown)" }}
         >
           <div className="mb-2 flex items-center justify-between">
-            <NavButton onClick={() => shiftMonth(-1)} label="Previous month">
+            <NavButton
+              onClick={() => shiftMonth(-1)}
+              label={t("common.previousMonth")}
+              disabled={picking !== "day"}
+            >
               {/* Chevrons are physical direction, so they mirror in RTL. */}
               <ChevronLeft aria-hidden className="size-4 rtl:rotate-180" />
             </NavButton>
-            <span className="text-sm font-medium text-ink">{monthLabel}</span>
-            <NavButton onClick={() => shiftMonth(1)} label="Next month">
+
+            {/* ⚠️ THE MONTH LABEL IS A BUTTON, not a caption. Stepping one
+                month at a time is fine for "next Tuesday" and absurd for a
+                birthday: reaching 1990 from today is ~430 clicks, which is
+                what made the client birthday field unusable. */}
+            <button
+              type="button"
+              onClick={() =>
+                setPicking((p) => (p === "day" ? "month" : p === "month" ? "year" : "day"))
+              }
+              aria-expanded={picking !== "day"}
+              className="rounded-md px-2 py-1 text-sm font-medium text-ink transition-colors hover:bg-surface"
+            >
+              {picking === "year" ? `${yearPage} – ${yearPage + 11}` : monthLabel}
+            </button>
+
+            <NavButton
+              onClick={() => shiftMonth(1)}
+              label={t("common.nextMonth")}
+              disabled={picking !== "day"}
+            >
               <ChevronRight aria-hidden className="size-4 rtl:rotate-180" />
             </NavButton>
           </div>
 
-          <div className="grid grid-cols-7 gap-0.5">
+          {picking === "year" && (
+            <YearGrid
+              page={yearPage}
+              selected={Number(viewMonth.slice(0, 4))}
+              locale={locale}
+              onPage={setYearPage}
+              onPick={(y) => {
+                setViewMonth(`${y}-${viewMonth.slice(5, 7)}`);
+                setPicking("month");
+              }}
+            />
+          )}
+
+          {picking === "month" && (
+            <MonthGrid
+              selected={Number(viewMonth.slice(5, 7)) - 1}
+              intlLocale={intlLocale}
+              onPick={(m) => {
+                setViewMonth(
+                  `${viewMonth.slice(0, 4)}-${`${m + 1}`.padStart(2, "0")}`
+                );
+                setPicking("day");
+              }}
+            />
+          )}
+
+          <div className={cn("grid grid-cols-7 gap-0.5", picking !== "day" && "hidden")}>
             {weekdays.map((w, i) => (
               <div
                 key={i}
@@ -256,21 +323,122 @@ export function DatePicker({
 function NavButton({
   onClick,
   label,
+  disabled,
   children,
 }: {
   onClick: () => void;
   label: string;
+  disabled?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
-      className="grid size-7 place-items-center rounded-md text-muted transition-colors hover:bg-surface hover:text-ink"
+      className="grid size-7 place-items-center rounded-md text-muted transition-colors hover:bg-surface hover:text-ink disabled:pointer-events-none disabled:opacity-30"
     >
       {children}
     </button>
+  );
+}
+
+/** Years are paged twelve at a time — a 4×3 grid on the calendar's own width. */
+const YEAR_PAGE_SIZE = 12;
+
+function yearPageStart(year: number): number {
+  return Math.floor(year / YEAR_PAGE_SIZE) * YEAR_PAGE_SIZE;
+}
+
+function YearGrid({
+  page,
+  selected,
+  locale,
+  onPage,
+  onPick,
+}: {
+  page: number;
+  selected: number;
+  locale: string;
+  onPage: (start: number) => void;
+  onPick: (year: number) => void;
+}) {
+  const fmt = new Intl.NumberFormat(locale === "fa" ? "fa-IR" : "en-GB", {
+    useGrouping: false,
+  });
+  const years = Array.from({ length: YEAR_PAGE_SIZE }, (_, i) => page + i);
+
+  return (
+    <div>
+      <div className="grid grid-cols-4 gap-1">
+        {years.map((y) => (
+          <button
+            key={y}
+            type="button"
+            onClick={() => onPick(y)}
+            aria-current={y === selected ? "date" : undefined}
+            className={cn(
+              "tnum grid h-9 place-items-center rounded-md text-xs transition-colors duration-[var(--dur-fast)]",
+              y === selected
+                ? "bg-brand font-medium text-brand-ink"
+                : "text-ink hover:bg-surface"
+            )}
+          >
+            {fmt.format(y)}
+          </button>
+        ))}
+      </div>
+      {/* Paging by twelve keeps a birthday two clicks away rather than thirty. */}
+      <div className="mt-1 flex justify-between">
+        <button
+          type="button"
+          onClick={() => onPage(page - YEAR_PAGE_SIZE)}
+          className="rounded px-2 py-1 text-xs text-muted transition-colors hover:text-ink"
+        >
+          {fmt.format(page - YEAR_PAGE_SIZE)}
+        </button>
+        <button
+          type="button"
+          onClick={() => onPage(page + YEAR_PAGE_SIZE)}
+          className="rounded px-2 py-1 text-xs text-muted transition-colors hover:text-ink"
+        >
+          {fmt.format(page + YEAR_PAGE_SIZE)}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MonthGrid({
+  selected,
+  intlLocale,
+  onPick,
+}: {
+  selected: number;
+  intlLocale: string;
+  onPick: (month: number) => void;
+}) {
+  const fmt = new Intl.DateTimeFormat(intlLocale, { month: "short" });
+  return (
+    <div className="grid grid-cols-3 gap-1">
+      {Array.from({ length: 12 }, (_, m) => (
+        <button
+          key={m}
+          type="button"
+          onClick={() => onPick(m)}
+          aria-current={m === selected ? "date" : undefined}
+          className={cn(
+            "grid h-9 place-items-center rounded-md text-xs transition-colors duration-[var(--dur-fast)]",
+            m === selected
+              ? "bg-brand font-medium text-brand-ink"
+              : "text-ink hover:bg-surface"
+          )}
+        >
+          {fmt.format(new Date(2024, m, 1))}
+        </button>
+      ))}
+    </div>
   );
 }
 

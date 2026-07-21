@@ -109,6 +109,8 @@ export const en = {
     yesterday: "Yesterday",
     tomorrow: "Tomorrow",
     chooseDate: "Choose a date",
+    previousMonth: "Previous month",
+    nextMonth: "Next month",
     choose: "Choose…",
     noResults: "No results.",
     selected: "{count} selected",

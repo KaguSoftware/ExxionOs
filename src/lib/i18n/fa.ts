@@ -103,6 +103,8 @@ export const fa: Dictionary = {
     yesterday: "دیروز",
     tomorrow: "فردا",
     chooseDate: "انتخاب تاریخ",
+    previousMonth: "ماه قبل",
+    nextMonth: "ماه بعد",
     choose: "انتخاب کنید…",
     noResults: "نتیجه‌ای یافت نشد.",
     selected: "{count} مورد انتخاب شده",

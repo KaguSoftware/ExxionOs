@@ -16,7 +16,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { toMajor } from "@/lib/money";
 import type { Client, Order, OrderLine } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
-import { formatMinor } from "@/lib/utils";
+import { cn, formatMinor } from "@/lib/utils";
 
 /** A product the line can be linked to, with its collection for context. */
 export type ProductOption = {
@@ -232,63 +232,94 @@ export function OrderForm({
           ) : (
             <ul className="flex flex-col gap-2">
               {lines.map((line) => (
+                /**
+                 * ⚠️ A GRID, NOT `flex-wrap`. Five controls needed ~612px of
+                 * minimum width inside a 704px column, so the row only just
+                 * fitted on a desktop and collapsed into a scramble below it —
+                 * the `w-20` quantity box being the first casualty. That was
+                 * reported as "items, number of items UI squished".
+                 *
+                 * Two explicit shapes instead of letting wrapping decide:
+                 * stacked and labelled on narrow screens, one line on wide
+                 * ones. Quantity and price sit side by side at every width
+                 * because they are read together.
+                 */
                 <li
                   key={line.key}
-                  className="flex flex-wrap items-end gap-2 rounded-lg border border-line p-2"
+                  className="rounded-lg border border-line p-3"
                 >
-                  {products.length > 0 && (
-                    <div className="min-w-40 flex-1">
-                      <Dropdown
-                        value={line.productId ?? ""}
-                        onChange={(v) => pickProduct(line.key, v)}
-                        options={[
-                          { value: "", label: t("shipping.noProduct") },
-                          ...products.map((p) => ({
-                            value: p.id,
-                            label: p.name,
-                            hint: p.collectionName,
-                          })),
-                        ]}
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-end">
+                    {products.length > 0 && (
+                      <LineField
                         label={t("shipping.linkedProduct")}
-                        placeholder={t("shipping.noProduct")}
+                        className="col-span-2 sm:col-span-1"
+                      >
+                        <Dropdown
+                          value={line.productId ?? ""}
+                          onChange={(v) => pickProduct(line.key, v)}
+                          options={[
+                            { value: "", label: t("shipping.noProduct") },
+                            ...products.map((p) => ({
+                              value: p.id,
+                              label: p.name,
+                              hint: p.collectionName,
+                            })),
+                          ]}
+                          label={t("shipping.linkedProduct")}
+                          placeholder={t("shipping.noProduct")}
+                        />
+                      </LineField>
+                    )}
+
+                    <LineField
+                      label={t("shipping.quantity")}
+                      className="sm:w-24"
+                    >
+                      <NumberInput
+                        value={line.quantity}
+                        onChange={(v) => patchLine(line.key, { quantity: v ?? 1 })}
+                        min={1}
+                        aria-label={t("shipping.quantity")}
                       />
-                    </div>
-                  )}
+                    </LineField>
 
-                  <TextInput
-                    value={line.description}
-                    onChange={(e) =>
-                      patchLine(line.key, { description: e.target.value })
-                    }
-                    placeholder={t("shipping.lineDescriptionPlaceholder")}
-                    aria-label={t("shipping.lineDescription")}
-                    className="min-w-40 flex-1"
-                  />
+                    <LineField
+                      label={t("shipping.unitPrice")}
+                      className="sm:w-36"
+                    >
+                      <MoneyInput
+                        value={line.unitPrice}
+                        onChange={(v) => patchLine(line.key, { unitPrice: v })}
+                        min={0}
+                        aria-label={t("shipping.unitPrice")}
+                      />
+                    </LineField>
 
-                  <NumberInput
-                    value={line.quantity}
-                    onChange={(v) => patchLine(line.key, { quantity: v ?? 1 })}
-                    min={1}
-                    aria-label={t("shipping.quantity")}
-                    className="w-20"
-                  />
+                    {/* Aligned to the control row, not the label row, so it
+                        sits on the inputs' baseline rather than floating. */}
+                    <button
+                      type="button"
+                      onClick={() => removeLine(line.key)}
+                      aria-label={t("common.delete")}
+                      className="col-start-2 row-start-1 h-9 w-9 justify-self-end rounded-md p-2 text-faint transition-colors hover:bg-raised hover:text-danger sm:col-start-auto sm:row-start-auto"
+                    >
+                      <Trash2 aria-hidden className="size-3.5" />
+                    </button>
 
-                  <MoneyInput
-                    value={line.unitPrice}
-                    onChange={(v) => patchLine(line.key, { unitPrice: v })}
-                    min={0}
-                    aria-label={t("shipping.unitPrice")}
-                    className="w-32"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => removeLine(line.key)}
-                    aria-label={t("common.delete")}
-                    className="rounded p-2 text-faint transition-colors hover:bg-raised hover:text-danger"
-                  >
-                    <Trash2 aria-hidden className="size-3.5" />
-                  </button>
+                    <LineField
+                      label={t("shipping.lineDescription")}
+                      className="col-span-2 sm:col-span-4"
+                    >
+                      <TextInput
+                        value={line.description}
+                        onChange={(e) =>
+                          patchLine(line.key, { description: e.target.value })
+                        }
+                        placeholder={t("shipping.lineDescriptionPlaceholder")}
+                        aria-label={t("shipping.lineDescription")}
+                      />
+                    </LineField>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -377,5 +408,33 @@ export function OrderForm({
         </Field>
       </div>
     </CreateForm>
+  );
+}
+
+/**
+ * A label above a control inside a line-item row.
+ *
+ * Deliberately NOT `ui/field.tsx`: that one owns an id, hint and error slot
+ * and is built for a form column. A line item repeats the same four controls
+ * on every row, so the labels are visual column headers — the controls carry
+ * their own `aria-label`, and repeating `htmlFor` ids across rows is exactly
+ * the bug `field.tsx` warns about.
+ */
+function LineField({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
+      <span aria-hidden className="text-2xs font-medium text-faint">
+        {label}
+      </span>
+      {children}
+    </div>
   );
 }
