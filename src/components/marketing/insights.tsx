@@ -133,8 +133,8 @@ export function MarketingInsights({
             {spendRows.map((row, i) => (
               <li key={row.campaign.id}>
                 <div className="mb-1 flex items-baseline justify-between gap-3 text-xs">
-                  <span className="min-w-0 truncate text-muted">{row.campaign.name}</span>
-                  <span className="shrink-0 font-medium text-ink tabular-nums">
+                  <span className="min-w-0 truncate text-muted" title={row.campaign.name}>{row.campaign.name}</span>
+                  <span className="shrink-0 font-medium text-ink tnum">
                     {formatMinor(row.minor)}
                   </span>
                 </div>
@@ -161,7 +161,7 @@ export function MarketingInsights({
           <EmptyState title={t("marketing.notEnoughData")} />
         ) : (
           <div className="flex flex-col gap-2">
-            <p className="text-3xl font-semibold text-ink tabular-nums">
+            <p className="text-3xl font-semibold text-ink tnum">
               {formatMinor(given.totalMinor)}
             </p>
             <p className="text-xs text-muted">
@@ -192,7 +192,7 @@ export function MarketingInsights({
               <li key={row.key}>
                 <div className="mb-1 flex items-baseline justify-between gap-3 text-xs">
                   <span className="min-w-0 truncate text-muted">{row.label}</span>
-                  <span className="shrink-0 font-medium text-ink tabular-nums">
+                  <span className="shrink-0 font-medium text-ink tnum">
                     {row.total}
                   </span>
                 </div>

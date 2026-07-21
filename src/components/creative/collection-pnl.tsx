@@ -1,5 +1,9 @@
 "use client";
 
+import { Receipt } from "lucide-react";
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useI18n } from "@/lib/i18n/client";
 import { productCost } from "@/lib/costing";
@@ -90,8 +94,17 @@ export function CollectionPnl({
   if (soldLines.length === 0 || unitsSold === 0) {
     return (
       <EmptyState
+        icon={<Receipt aria-hidden className="size-4" />}
         title={t("creative.pnlEmpty")}
         description={t("creative.pnlEmptyHint")}
+        // ⚠️ The description says "add an order in Shipping" — so LINK there.
+        // Prose that tells you to navigate somewhere, without the link, makes
+        // the reader do the work the sentence just described.
+        action={
+          <Link href="/shipping/orders/new">
+            <Button size="sm">{t("shipping.newOrder")}</Button>
+          </Link>
+        }
       />
     );
   }
@@ -127,7 +140,7 @@ export function CollectionPnl({
             className="flex flex-wrap items-center gap-3 row-comfortable border-b border-line last:border-0"
           >
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm text-ink">{row.name}</p>
+              <p className="truncate text-sm text-ink" title={row.name}>{row.name}</p>
               <p className="mt-0.5 text-2xs text-faint">
                 {t("creative.pnlUnitsSold", { count: String(row.units) })}
               </p>

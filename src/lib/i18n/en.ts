@@ -102,6 +102,8 @@ export const en = {
     search: "Search",
     filter: "Filter",
     clear: "Clear",
+    clearFilters: "Clear filters",
+    noMatchesHint: "Nothing matches the filters you've set.",
     none: "None",
     optional: "optional",
     required: "required",

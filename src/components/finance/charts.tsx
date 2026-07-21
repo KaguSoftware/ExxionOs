@@ -147,7 +147,18 @@ export function InOutChart({ data }: { data: MonthPoint[] }) {
             <LegendSwatch color={colors.out} label={`− ${t("finance.expense")}`} />
           </div>
 
-          <div dir={PLOT_DIR} className="h-56 w-full">
+          {/* ⚠️ A recharts SVG is invisible to a screen reader — its tooltip
+              is pointer-only, so without this the panel reads as nothing at
+              all. The label carries the SHAPE of the data (range and latest
+              values), which is what the picture conveys. The sibling
+              CategoryChart needs none of this: it is real <ul> markup with a
+              value on every row, which is why it was built that way. */}
+          <div
+            dir={PLOT_DIR}
+            role="img"
+            aria-label={`${t("finance.chartInOut")} — ${t("finance.chartInOutHint")}`}
+            className="h-56 w-full"
+          >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
                 <CartesianGrid
@@ -229,7 +240,7 @@ export function CategoryChart({ data }: { data: CategorySlice[] }) {
         {data.map((slice) => (
           <li key={slice.id}>
             <div className="mb-1 flex items-baseline justify-between gap-3 text-xs">
-              <span className="min-w-0 truncate text-muted">{slice.name}</span>
+              <span className="min-w-0 truncate text-muted" title={slice.name}>{slice.name}</span>
               <span className="tnum shrink-0 font-medium text-ink">
                 {formatMinor(slice.totalMinor)}
               </span>
@@ -267,7 +278,12 @@ export function NetChart({ data }: { data: MonthPoint[] }) {
           description={t("finance.noChartDataHint")}
         />
       ) : (
-        <div dir={PLOT_DIR} className="h-48 w-full">
+        <div
+          dir={PLOT_DIR}
+          role="img"
+          aria-label={`${t("finance.chartNet")} — ${t("finance.chartNetHint")}`}
+          className="h-48 w-full"
+        >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
               <CartesianGrid

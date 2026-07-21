@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useI18n } from "@/lib/i18n/client";
 import type { Collection, CollectionStatus, Issue, Product } from "@/lib/types";
@@ -66,7 +67,16 @@ export function CollectionsPanel({
       </div>
 
       {visible.length === 0 ? (
-        <EmptyState title={t("common.noResults")} />
+        // ⚠️ A filtered-to-nothing state must offer the way OUT of the filter.
+        // "No results" alone is a dead end — see the note in ui/empty-state.
+        <EmptyState
+          title={t("common.noResults")}
+          action={
+            <Button size="sm" onClick={() => setStatus(null)}>
+              {t("common.clearFilters")}
+            </Button>
+          }
+        />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((collection) => {
@@ -87,7 +97,7 @@ export function CollectionsPanel({
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
+                    <h3 className="min-w-0 flex-1 truncate text-sm font-medium text-ink" title={collection.name}>
                       {collection.name}
                     </h3>
                     <Badge>{t(STATUS_KEY[collection.status] as never)}</Badge>

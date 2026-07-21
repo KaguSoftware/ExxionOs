@@ -126,7 +126,10 @@ export function MachineDetail({
         </Panel>
       )}
 
-      <Panel title={t("equipment.maintenance")} bodyClassName={logs.length ? "p-0" : undefined}>
+      {/* `p-0` in BOTH branches: EmptyState brings its own px-6 py-10, so
+          keeping Panel's default padding double-padded the empty case
+          relative to the populated one. */}
+      <Panel title={t("equipment.maintenance")} bodyClassName="p-0">
         {logs.length === 0 ? (
           <EmptyState
             icon={<Wrench aria-hidden className="size-4" />}

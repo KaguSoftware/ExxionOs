@@ -71,7 +71,7 @@ export function SuppliesPanel({ supplies: initial }: { supplies: Supply[] }) {
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="truncate text-sm text-ink">{supply.name}</span>
+                  <span className="truncate text-sm text-ink" title={supply.name}>{supply.name}</span>
                   {/* Word + tone, never colour alone. */}
                   {low && <Badge tone="warning">{t("equipment.lowStock")}</Badge>}
                 </div>
@@ -206,11 +206,21 @@ function RestockForm({
   );
 }
 
-/** `numeric` arrives as a string; trim a trailing ".00" for display. */
+/**
+ * `numeric` arrives as a string; trim a trailing ".00" for display.
+ *
+ * ⚠️ Both branches of this ternary used to be `String(n)`, so the function was
+ * a no-op that only LOOKED like it formatted — "12.50" rendered as "12.5" and
+ * a whole number kept whatever the column gave it. Stock quantity is the one
+ * number this panel exists to show.
+ *
+ * Two decimals at most, and none when the value is whole: you hold 12 boxes,
+ * not 12.00 boxes, but you can hold 12.5 kg.
+ */
 function formatQuantity(value: string | number): string {
   const n = Number(value);
   if (!Number.isFinite(n)) return String(value);
-  return Number.isInteger(n) ? String(n) : String(n);
+  return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(2)));
 }
 
 export { formatQuantity };

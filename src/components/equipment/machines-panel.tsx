@@ -28,6 +28,8 @@ export function MachinesPanel({
   const { run } = useAction();
 
   const [machines, setMachines] = useState(initial);
+  /** The machine whose status write is in flight — see `setStatus`. */
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   // Server truth adopted during render, never in an effect.
   const [seen, setSeen] = useState(initial);
@@ -36,18 +38,33 @@ export function MachinesPanel({
     setMachines(initial);
   }
 
-  const setStatus = (machine: Machine, status: MachineStatus) => {
+  /**
+   * ⚠️ ONE STATUS WRITE PER MACHINE AT A TIME.
+   *
+   * Without the guard, two fast clicks start two overlapping actions whose
+   * `rollback` closures each captured a DIFFERENT `previous`. If the first
+   * rejects after the second resolves, it rolls back to a status the server
+   * never had — and the UI then disagrees with the database silently, which
+   * is the worst possible outcome for "is this machine broken?".
+   */
+  const setStatus = async (machine: Machine, status: MachineStatus) => {
+    if (busyId === machine.id || machine.status === status) return;
     const previous = machines;
-    void run(() => setMachineStatus(machine.id, status), {
-      // Optimistic: marking something broken should feel instant — you're
-      // usually standing at the machine when you do it.
-      optimistic: () =>
-        setMachines((list) =>
-          list.map((m) => (m.id === machine.id ? { ...m, status } : m))
-        ),
-      rollback: () => setMachines(previous),
-      errorMessage: t("equipment.saveFailed"),
-    });
+    setBusyId(machine.id);
+    try {
+      await run(() => setMachineStatus(machine.id, status), {
+        // Optimistic: marking something broken should feel instant — you're
+        // usually standing at the machine when you do it.
+        optimistic: () =>
+          setMachines((list) =>
+            list.map((m) => (m.id === machine.id ? { ...m, status } : m))
+          ),
+        rollback: () => setMachines(previous),
+        errorMessage: t("equipment.saveFailed"),
+      });
+    } finally {
+      setBusyId(null);
+    }
   };
 
   if (machines.length === 0) {
@@ -86,7 +103,7 @@ export function MachinesPanel({
                 href={`/equipment/machines/${machine.id}`}
                 className="min-w-0 flex-1"
               >
-                <h3 className="truncate text-sm font-medium text-ink hover:underline">
+                <h3 className="truncate text-sm font-medium text-ink hover:underline" title={machine.name}>
                   {machine.name}
                 </h3>
                 {machine.kind && (
@@ -125,13 +142,17 @@ export function MachinesPanel({
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setStatus(machine, value)}
+                  onClick={() => void setStatus(machine, value)}
                   aria-pressed={machine.status === value}
+                  disabled={busyId === machine.id}
                   className={cn(
                     "rounded border px-1.5 py-0.5 text-2xs transition-colors",
                     machine.status === value
                       ? "border-brand bg-brand-soft text-ink"
-                      : "border-line text-muted hover:text-ink"
+                      : "border-line text-muted hover:text-ink",
+                    // A disabled control that looks enabled invites the second
+                    // click the guard exists to reject.
+                    "disabled:cursor-not-allowed disabled:opacity-55"
                   )}
                 >
                   {t(STATUS_KEY[value] as never)}

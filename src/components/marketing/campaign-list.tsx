@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Dropdown } from "@/components/ui/dropdown";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useI18n } from "@/lib/i18n/client";
@@ -15,7 +16,7 @@ import {
 } from "@/lib/marketing";
 import { CAMPAIGN_CHANNELS, CAMPAIGN_STATUSES } from "@/lib/types";
 import type { Campaign, CampaignCost } from "@/lib/types";
-import { formatMinor } from "@/lib/utils";
+import { cn, formatMinor } from "@/lib/utils";
 
 /** ⚠️ Filtering is 100% client-side — the rows are already here from the wave. */
 export function CampaignList({
@@ -88,7 +89,25 @@ export function CampaignList({
       </div>
 
       {rows.length === 0 ? (
-        <EmptyState title={t("marketing.noCampaigns")} />
+        /* ⚠️ NOT `noCampaigns` — campaigns DO exist here, the filters are
+           hiding them. Reusing the "none yet" string states a falsehood about
+           the data and offers no way out. Mirrors the pattern
+           `finance/transaction-list.tsx` already gets right. */
+        <EmptyState
+          title={t("common.noResults")}
+          description={t("common.noMatchesHint")}
+          action={
+            <Button
+              size="sm"
+              onClick={() => {
+                setStatus("");
+                setChannel("");
+              }}
+            >
+              {t("common.clearFilters")}
+            </Button>
+          }
+        />
       ) : (
         <ul className="flex flex-col gap-2">
           {rows.map((campaign) => (
@@ -98,7 +117,7 @@ export function CampaignList({
                 className="block rounded-xl border border-line p-3 transition-colors hover:bg-raised"
               >
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink" title={campaign.name}>
                     {campaign.name}
                   </span>
                   {/* Category is the WORD in the neutral tone; only the
@@ -141,7 +160,7 @@ export function BudgetBar({
       <div className="mb-1 flex items-baseline justify-between gap-3 text-xs">
         <span className="text-muted">
           {t("marketing.spent")}{" "}
-          <span className="font-medium text-ink tabular-nums">
+          <span className="font-medium text-ink tnum">
             {formatMinor(spentMinor)}
           </span>
           {ratio != null && (
@@ -155,12 +174,24 @@ export function BudgetBar({
           <span className="shrink-0 text-2xs text-faint">
             {t("marketing.noBudgetSet")}
           </span>
-        ) : overBudget ? (
-          // The one place a state colour is right: this needs a human.
-          <Badge tone="danger">{t("marketing.overBudget")}</Badge>
         ) : (
-          <span className="shrink-0 text-2xs text-faint tabular-nums">
-            {Math.round(ratio * 100)}%
+          /* ⚠️ THE PERCENTAGE STAYS WHEN OVER BUDGET. It used to be REPLACED
+             by the badge, so the one state where the magnitude matters most —
+             105% over vs 400% over — was the one state that hid it, leaving
+             a red bar as the only quantitative signal. The badge is the word;
+             the figure is the amount. Both, always. */
+          <span className="flex shrink-0 items-center gap-1.5">
+            {overBudget && (
+              <Badge tone="danger">{t("marketing.overBudget")}</Badge>
+            )}
+            <span
+              className={cn(
+                "tnum text-2xs",
+                overBudget ? "text-danger" : "text-faint"
+              )}
+            >
+              {Math.round(ratio * 100)}%
+            </span>
           </span>
         )}
       </div>

@@ -32,6 +32,8 @@ export function IdeasPanel({ ideas: initial }: { ideas: Idea[] }) {
   const [ideas, setIdeas] = useState(initial);
   const [filter, setFilter] = useState<IdeaStatus | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Idea | null>(null);
+  /** Which row is mid-promote — see `promote` below. */
+  const [promotingId, setPromotingId] = useState<string | null>(null);
 
   // Server truth adopted during render, never in an effect.
   const [seen, setSeen] = useState(initial);
@@ -64,16 +66,28 @@ export function IdeasPanel({ ideas: initial }: { ideas: Idea[] }) {
    * NOT optimistic: it creates a real row and then navigates, so painting
    * success early would mean showing a link to a collection that might not
    * exist. The server is the only thing that knows the new id.
+   *
+   * ⚠️ Tracks WHICH idea is promoting, not merely WHETHER one is. `pending`
+   * from useAction is panel-level, so wiring it straight to every row's button
+   * spun all of them at once — including rows never touched. It read as "the
+   * whole list is saving".
    */
-  const promote = (idea: Idea) => {
-    void run(() => promoteIdea(idea.id), {
-      successMessage: t("creative.promoted"),
-      errorMessage: t("creative.saveFailed"),
-      onSuccess: ({ collectionId }) => {
-        router.push(`/creative/collections/${collectionId}`);
-        router.refresh();
-      },
-    });
+  const promote = async (idea: Idea) => {
+    setPromotingId(idea.id);
+    // Awaited and cleared in a finally: a REJECTED promote must release the
+    // spinner too, or that row stays busy forever with no way back.
+    try {
+      await run(() => promoteIdea(idea.id), {
+        successMessage: t("creative.promoted"),
+        errorMessage: t("creative.saveFailed"),
+        onSuccess: ({ collectionId }) => {
+          router.push(`/creative/collections/${collectionId}`);
+          router.refresh();
+        },
+      });
+    } finally {
+      setPromotingId(null);
+    }
   };
 
   const remove = (idea: Idea) => {
@@ -115,7 +129,14 @@ export function IdeasPanel({ ideas: initial }: { ideas: Idea[] }) {
       </div>
 
       {visible.length === 0 ? (
-        <EmptyState title={t("common.noResults")} />
+        <EmptyState
+          title={t("common.noResults")}
+          action={
+            <Button size="sm" onClick={() => setFilter(null)}>
+              {t("common.clearFilters")}
+            </Button>
+          }
+        />
       ) : (
         <ul className="flex flex-col gap-2">
           {visible.map((idea) => (
@@ -158,8 +179,8 @@ export function IdeasPanel({ ideas: initial }: { ideas: Idea[] }) {
                     <Button
                       size="sm"
                       variant="primary"
-                      onClick={() => promote(idea)}
-                      loading={pending}
+                      onClick={() => void promote(idea)}
+                      loading={promotingId === idea.id}
                       icon={<ArrowRight aria-hidden className="size-3.5 rtl:rotate-180" />}
                     >
                       {t("creative.makeIt")}

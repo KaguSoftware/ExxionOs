@@ -161,7 +161,7 @@ export function CampaignDetail({
                   <span className="shrink-0 text-2xs text-faint">
                     {formatDate(cost.spent_on, locale)}
                   </span>
-                  <span className="shrink-0 text-sm text-ink tabular-nums">
+                  <span className="shrink-0 text-sm text-ink tnum">
                     {formatMinor(cost.amount_minor)}
                   </span>
                   <button
@@ -190,7 +190,7 @@ export function CampaignDetail({
                 >
                   <span className="min-w-0 truncate text-sm text-ink">
                     {sample.quantity > 1 && (
-                      <span className="me-1 text-muted tabular-nums">
+                      <span className="me-1 text-muted tnum">
                         {sample.quantity}×
                       </span>
                     )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus, Loader2, X } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
 import { useToast } from "@/components/ui/toast";
@@ -47,6 +47,8 @@ export function ImageStrip({
   const [items, setItems] = useState(images);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState(false);
+  /** Photos whose delete is in flight — see `remove`. */
+  const [removingIds, setRemovingIds] = useState<string[]>([]);
 
   // Adopt server truth during render, never in an effect.
   const [seen, setSeen] = useState(images);
@@ -122,17 +124,36 @@ export function ImageStrip({
     }
   };
 
+  /**
+   * ⚠️ GUARDED AGAINST A SECOND CLICK ON THE SAME PHOTO.
+   *
+   * `previous` is captured before the request. Two quick removes of DIFFERENT
+   * photos each captured their own snapshot, so if the first failed it
+   * restored a list that still contained the second — resurrecting a photo the
+   * user had already deleted. Rolling back by id instead of by snapshot keeps
+   * concurrent removes independent.
+   */
   const remove = async (image: StoredImage) => {
-    const previous = items;
+    if (removingIds.includes(image.id)) return;
+    setRemovingIds((ids) => [...ids, image.id]);
+
     const next = items.filter((i) => i.id !== image.id);
     setItems(next);
     onChange?.(next);
+
     const result = await detachImage(parent, image.id);
     if (!result.ok) {
-      setItems(previous);
-      onChange?.(previous);
+      // Restore just THIS image, in its original position.
+      setItems((list) => {
+        const restored = [...list, image].sort(
+          (a, b) => a.sort_order - b.sort_order
+        );
+        onChange?.(restored);
+        return restored;
+      });
       toast.error(result.error);
     }
+    setRemovingIds((ids) => ids.filter((id) => id !== image.id));
   };
 
   return (
@@ -166,13 +187,17 @@ export function ImageStrip({
             )}
             <button
               type="button"
-              onClick={() => remove(image)}
+              onClick={() => void remove(image)}
+              disabled={removingIds.includes(image.id)}
               aria-label={t("creative.removePhoto")}
               className={cn(
                 "absolute end-1 top-1 grid size-5 place-items-center rounded-full",
                 "bg-black/60 text-white opacity-0 transition-opacity",
                 // Reachable by keyboard and on touch, not hover-only.
-                "group-hover:opacity-100 focus-visible:opacity-100"
+                "group-hover:opacity-100 focus-visible:opacity-100",
+                // Stays visible while its own delete is in flight, so the
+                // photo doesn't just sit there looking untouched.
+                removingIds.includes(image.id) && "opacity-100"
               )}
             >
               <X aria-hidden className="size-3" />
@@ -180,16 +205,31 @@ export function ImageStrip({
           </div>
         ))}
 
+        {/* ⚠️ THE UPLOAD SAYS IT IS UPLOADING. A 5MB photo on a workshop
+            connection took seconds during which the only feedback was a 60%
+            opacity fade — indistinguishable from "the click didn't land",
+            which is the most likely moment for someone to conclude the app is
+            broken. `aria-busy` carries the same fact to a screen reader. */}
         <label
           htmlFor={inputId}
+          aria-busy={uploading}
           className={cn(
-            "grid size-20 cursor-pointer place-items-center rounded-lg border border-dashed border-line",
+            "grid size-20 cursor-pointer place-items-center gap-1 rounded-lg border border-dashed border-line",
             "text-faint transition-colors hover:border-line-strong hover:text-ink",
-            uploading && "pointer-events-none opacity-60"
+            uploading && "pointer-events-none border-brand-line text-brand-text"
           )}
         >
-          <ImagePlus aria-hidden className="size-5" />
-          <span className="sr-only">{t("creative.addPhoto")}</span>
+          {uploading ? (
+            <>
+              <Loader2 aria-hidden className="size-5 animate-spin" />
+              <span className="text-2xs">{t("finance.uploading")}</span>
+            </>
+          ) : (
+            <ImagePlus aria-hidden className="size-5" />
+          )}
+          <span className="sr-only">
+            {uploading ? t("finance.uploading") : t("creative.addPhoto")}
+          </span>
           <input
             id={inputId}
             type="file"

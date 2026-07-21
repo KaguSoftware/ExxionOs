@@ -178,7 +178,7 @@ export function ClientDirectory({
                 href={`/clients/${client.id}`}
                 className="row-compact flex flex-wrap items-center gap-x-3 gap-y-1.5"
               >
-                <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink" title={client.name}>
                   {client.name}
                 </span>
 
@@ -194,12 +194,12 @@ export function ClientDirectory({
                   </span>
                 )}
 
-                <span className="text-xs text-muted tabular-nums">
+                <span className="text-xs text-muted tnum">
                   {stats.orderCount} {t("clients.orders").toLowerCase()}
                 </span>
 
                 {/* ⚠️ formatMinor, never formatMoney — this is kuruş. */}
-                <span className="w-24 text-end text-sm text-ink tabular-nums">
+                <span className="w-24 text-end text-sm text-ink tnum">
                   {formatMinor(stats.lifetimeMinor)}
                 </span>
 

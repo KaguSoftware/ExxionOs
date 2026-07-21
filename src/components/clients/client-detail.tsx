@@ -231,7 +231,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-line bg-surface px-3 py-2.5">
       <dt className="text-xs text-muted">{label}</dt>
-      <dd className="mt-0.5 text-lg font-medium text-ink tabular-nums">{value}</dd>
+      <dd className="mt-0.5 text-lg font-medium text-ink tnum">{value}</dd>
     </div>
   );
 }

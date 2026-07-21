@@ -96,6 +96,8 @@ export const fa: Dictionary = {
     search: "جستجو",
     filter: "فیلتر",
     clear: "پاک کردن",
+    clearFilters: "پاک کردن فیلترها",
+    noMatchesHint: "چیزی با فیلترهای انتخاب‌شده مطابقت ندارد.",
     none: "هیچ‌کدام",
     optional: "اختیاری",
     required: "الزامی",

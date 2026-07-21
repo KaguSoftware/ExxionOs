@@ -126,7 +126,7 @@ export function SampleList({
           {/* ⚠️ Says out loud that this is NOT a Finance figure — the single
               most likely misreading on this whole tab. */}
           <span>{t("marketing.givenAway")}: </span>
-          <span className="font-medium text-ink tabular-nums">
+          <span className="font-medium text-ink tnum">
             {formatMinor(given.totalMinor)}
           </span>
           {given.uncostedCount > 0 && (
@@ -171,7 +171,7 @@ export function SampleList({
               >
                 <span className="min-w-0 flex-1 truncate text-sm text-ink">
                   {sample.quantity > 1 && (
-                    <span className="me-1 text-muted tabular-nums">
+                    <span className="me-1 text-muted tnum">
                       {sample.quantity}×
                     </span>
                   )}
@@ -186,7 +186,7 @@ export function SampleList({
 
                 {/* ⚠️ "—" when it cannot be costed, NEVER ₺0,00 — a zero would
                     claim the giveaway was free. See sampleCostMinor(). */}
-                <span className="w-24 text-end text-sm text-ink tabular-nums">
+                <span className="w-24 text-end text-sm text-ink tnum">
                   {cost == null ? "—" : formatMinor(cost)}
                 </span>
 

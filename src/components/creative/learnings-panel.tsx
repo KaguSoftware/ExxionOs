@@ -2,7 +2,7 @@
 
 import { CheckCircle2, ChevronDown, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
 import { FilterChip } from "@/components/creative/collections-panel";
 import { Badge } from "@/components/ui/badge";
@@ -155,7 +155,23 @@ export function LearningsPanel({
       </div>
 
       {visible.length === 0 ? (
-        <EmptyState title={t("common.noResults")} />
+        <EmptyState
+          title={t("common.noResults")}
+          action={
+            // Resets ALL THREE filters — clearing only one would leave the
+            // list still empty and the button looking broken.
+            <Button
+              size="sm"
+              onClick={() => {
+                setQuery("");
+                setSeverity(null);
+                setSolvedFilter("all");
+              }}
+            >
+              {t("common.clearFilters")}
+            </Button>
+          }
+        />
       ) : (
         <ul className="flex flex-col gap-2">
           {visible.map((issue) => (
@@ -224,6 +240,9 @@ function IssueRow({
   const { t } = useI18n();
   const { run, pending } = useAction();
   const [draft, setDraft] = useState(issue.resolution ?? "");
+  // ⚠️ From useId, never hardcoded — many issue rows render at once. See the
+  // note in ui/field.tsx about labels pointing at the FIRST instance.
+  const resolutionId = useId();
 
   const solved = !!issue.resolved_at;
 
@@ -316,10 +335,19 @@ function IssueRow({
             </Link>
           )}
 
-          <label className="mb-1.5 block text-xs font-medium text-muted">
+          {/* ⚠️ `htmlFor` + `id` from useId — this was the one control in the
+              section not wired through <Field>, so the label pointed at
+              nothing: clicking it didn't focus, and a screen reader announced
+              an unlabelled textarea. Hardcoding an id is not an option here,
+              since every expanded issue row renders one of these. */}
+          <label
+            htmlFor={resolutionId}
+            className="mb-1.5 block text-xs font-medium text-muted"
+          >
             {t("creative.howDidWeFixIt")}
           </label>
           <TextArea
+            id={resolutionId}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder={t("creative.resolutionPlaceholder")}

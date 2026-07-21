@@ -107,7 +107,7 @@ export function ClientInsights({
           <EmptyState title={t("clients.notEnoughData")} />
         ) : (
           <div className="flex flex-col gap-4">
-            <p className="text-3xl font-semibold text-ink tabular-nums">
+            <p className="text-3xl font-semibold text-ink tnum">
               {Math.round(repeat * 100)}%
             </p>
             <dl className="grid grid-cols-2 gap-3 text-sm">
@@ -138,7 +138,7 @@ export function ClientInsights({
                   className="flex items-baseline justify-between gap-3 rounded-md px-1.5 py-1 text-sm hover:bg-raised"
                 >
                   <span className="min-w-0 truncate text-ink">{client.name}</span>
-                  <span className="shrink-0 text-xs text-muted tabular-nums">
+                  <span className="shrink-0 text-xs text-muted tnum">
                     {t("clients.daysAgo", { count: stats.daysSinceLastOrder ?? 0 })}
                   </span>
                 </Link>
@@ -164,8 +164,8 @@ function Stat({
     <div>
       <dt className="text-xs text-muted">{label}</dt>
       <dd className="text-ink">
-        <span className="text-lg font-medium tabular-nums">{count}</span>
-        <span className="ms-2 text-xs text-faint tabular-nums">{money}</span>
+        <span className="text-lg font-medium tnum">{count}</span>
+        <span className="ms-2 text-xs text-faint tnum">{money}</span>
       </dd>
     </div>
   );
@@ -201,7 +201,7 @@ function BarList({
                 {row.label}
                 {row.hint && <span className="ms-1.5 text-faint">{row.hint}</span>}
               </span>
-              <span className="shrink-0 font-medium text-ink tabular-nums">
+              <span className="shrink-0 font-medium text-ink tnum">
                 {formatMinor(row.value)}
               </span>
             </div>
