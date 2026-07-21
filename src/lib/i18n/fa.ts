@@ -1,0 +1,126 @@
+import type { Dictionary } from "./en";
+
+// Typed as `Dictionary`, so this file cannot fall behind en.ts without failing
+// `tsc`. If you add a key to en.ts, the build breaks here until it's translated
+// — which is the point. Never widen this type to Partial<> to "fix" a build.
+
+export const fa: Dictionary = {
+  app: {
+    name: "اکسیون او‌اس",
+    tagline: "سامانهٔ داخلی اکسیون",
+  },
+
+  nav: {
+    dashboard: "داشبورد",
+    finance: "مالی",
+    creative: "خلاقیت",
+    equipment: "تجهیزات",
+    shipping: "ارسال",
+    clients: "مشتریان",
+    marketing: "بازاریابی",
+    settings: "تنظیمات",
+    search: "جستجو",
+    signOut: "خروج",
+    account: "حساب کاربری",
+    skipToContent: "پرش به محتوا",
+    openMenu: "باز کردن منو",
+    closeMenu: "بستن منو",
+  },
+
+  auth: {
+    signIn: "ورود",
+    signInSubtitle: "برای ادامه وارد اکسیون او‌اس شوید.",
+    email: "ایمیل",
+    password: "رمز عبور",
+    signingIn: "در حال ورود…",
+    signOutConfirm: "از اکسیون او‌اس خارج می‌شوید؟",
+    invalidCredentials: "ایمیل و رمز عبور مطابقت ندارند.",
+    genericError: "ورود انجام نشد. دوباره تلاش کنید.",
+  },
+
+  dashboard: {
+    title: "داشبورد",
+    greetingMorning: "صبح بخیر، {name}",
+    greetingAfternoon: "ظهر بخیر، {name}",
+    greetingEvening: "عصر بخیر، {name}",
+    needsYou: "نیازمند توجه شما",
+    remindersDue: "{count} یادآور سررسید شده",
+    reminderDue: "۱ یادآور سررسید شده",
+    allClear: "در حال حاضر کاری در انتظار شما نیست.",
+    reminders: "یادآورها",
+    addReminder: "افزودن یادآور",
+    reminderPlaceholder: "چه کاری باید انجام شود؟",
+    noReminders: "هنوز یادآوری ثبت نشده است.",
+    overdue: "گذشته از موعد",
+    dueToday: "سررسید امروز",
+    recentActivity: "فعالیت‌های اخیر",
+    noActivity: "هنوز اتفاقی نیفتاده است.",
+    comingInPhase: "در مراحل بعدی اضافه می‌شود.",
+  },
+
+  settings: {
+    title: "تنظیمات",
+    subtitle: "پروفایل شما و ظاهر برنامه.",
+    profile: "پروفایل",
+    fullName: "نام کامل",
+    yourColor: "رنگ شما",
+    colorHint: "برای مشخص کردن مواردی که شما ساخته‌اید استفاده می‌شود.",
+    appearance: "ظاهر",
+    language: "زبان",
+    theme: "پوسته",
+    themeLight: "روشن",
+    themeDark: "تیره",
+    themeSystem: "سیستم",
+    english: "English",
+    farsi: "فارسی",
+    saved: "تنظیمات ذخیره شد.",
+    saveFailed: "ذخیره نشد. دوباره تلاش کنید.",
+  },
+
+  common: {
+    save: "ذخیره",
+    saving: "در حال ذخیره…",
+    cancel: "انصراف",
+    delete: "حذف",
+    edit: "ویرایش",
+    create: "ایجاد",
+    add: "افزودن",
+    remove: "حذف",
+    close: "بستن",
+    confirm: "تأیید",
+    back: "بازگشت",
+    search: "جستجو",
+    filter: "فیلتر",
+    clear: "پاک کردن",
+    none: "هیچ‌کدام",
+    optional: "اختیاری",
+    required: "الزامی",
+    loading: "در حال بارگذاری…",
+    today: "امروز",
+    yesterday: "دیروز",
+    tomorrow: "فردا",
+    chooseDate: "انتخاب تاریخ",
+    choose: "انتخاب کنید…",
+    noResults: "نتیجه‌ای یافت نشد.",
+    selected: "{count} مورد انتخاب شده",
+    clearSelection: "پاک کردن انتخاب",
+    somethingWentWrong: "مشکلی پیش آمد",
+    tryAgain: "تلاش دوباره",
+    errorBoundaryBody:
+      "بارگذاری این صفحه انجام نشد. کد زیر آن را در گزارش سرور مشخص می‌کند.",
+    reference: "کد پیگیری",
+    notFound: "یافت نشد",
+    notFoundBody: "چنین صفحه‌ای وجود ندارد.",
+    backToDashboard: "بازگشت به داشبورد",
+  },
+
+  create: {
+    emptyConfirmTitle: "{fields} خالی هستند",
+    emptyConfirmBody: "با این حال ایجاد شود؟",
+    emptyConfirmOne: "{fields} خالی است",
+  },
+
+  units: {
+    currency: "₺",
+  },
+};
