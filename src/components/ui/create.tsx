@@ -3,6 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -195,31 +196,55 @@ export function CreateOverlay({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  /**
+   * ⚠️ PORTALLED TO `document.body`, AND THAT IS THE WHOLE FIX.
+   *
+   * `position: fixed` resolves against the viewport ONLY when no ancestor has
+   * a transform, filter or perspective. Every page that opens this overlay
+   * wraps its content in `animate-fade-rise`, which animates `transform` — so
+   * while that animation is running the wrapper IS the containing block, and
+   * `inset-0` resolved against a box the height of the page content instead of
+   * the screen. That is the "form cuts off halfway down" report: a short
+   * client page gave a short wrapper, so the overlay was short.
+   *
+   * Ending the keyframe at `transform: none` (see globals.css) is necessary
+   * but NOT sufficient — it only clears the transform on the FINAL frame, and
+   * the overlay can be opened while the animation is still running. Escaping
+   * the subtree entirely is the only version that cannot regress.
+   *
+   * `ConfirmDialog` and the toast layer already portal for exactly this
+   * reason; this component was the one that did not.
+   */
+  return createPortal(
     <div
       className="animate-fade-in fixed inset-0 overflow-y-auto bg-bg"
       style={{ zIndex: "var(--z-overlay)" }}
       role="dialog"
       aria-modal="true"
     >
-      {/* `min-h-full` + vertical padding, so a SHORT form sits properly inside
-          the viewport instead of being pinned under the top edge — the other
-          half of the print-run report. */}
-      <div className="mx-auto w-full max-w-2xl px-4 py-6 md:px-8 md:py-10">
-        <button
-          type="button"
-          onClick={onClose}
-          className="mb-5 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-ink"
-        >
-          <ArrowLeft aria-hidden className="size-4 rtl:rotate-180" />
-          {t("common.back")}
-        </button>
-        <h1 className="font-display text-2xl text-ink">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted">{description}</p>}
-        <div className="mt-6">{children}</div>
+      {/* ⚠️ `min-h-full` + `flex` + `my-auto`, all three. The scroll container
+          is the fixed parent, so without `min-h-full` this box is only as tall
+          as the form and a SHORT form sits jammed under the top edge. With it,
+          a short form centres and a TALL form still scrolls normally — the
+          padding stays outside the centring, so nothing is ever clipped. */}
+      <div className="flex min-h-full flex-col">
+        <div className="mx-auto my-auto w-full max-w-2xl px-4 py-6 md:px-8 md:py-10">
+          <button
+            type="button"
+            onClick={onClose}
+            className="mb-5 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-ink"
+          >
+            <ArrowLeft aria-hidden className="size-4 rtl:rotate-180" />
+            {t("common.back")}
+          </button>
+          <h1 className="font-display text-2xl text-ink">{title}</h1>
+          {description && <p className="mt-1 text-sm text-muted">{description}</p>}
+          <div className="mt-6">{children}</div>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

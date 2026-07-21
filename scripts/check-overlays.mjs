@@ -128,9 +128,52 @@ if (checked === 0) {
   process.exit(1);
 }
 
+// ---------------------------------------------------------------------------
+// The stronger half: full-screen surfaces must PORTAL out of the page subtree.
+// ---------------------------------------------------------------------------
+// ⚠️ `transform: none` on the final keyframe is necessary but NOT sufficient.
+// It only clears the transform on the LAST FRAME, and an overlay can be opened
+// while the wrapper's entry animation is still running — measured in headless
+// Chrome, the overlay was still clipped mid-animation. Escaping the subtree via
+// createPortal is the half that cannot regress.
+const PORTAL_REQUIRED = [
+  "src/components/ui/create.tsx",
+  "src/components/ui/confirm-dialog.tsx",
+  "src/components/ui/toast.tsx",
+];
+
+console.log("\nFull-screen surfaces must portal to document.body:\n");
+
+for (const rel of PORTAL_REQUIRED) {
+  const full = join(ROOT, rel);
+  let src;
+  try {
+    src = readFileSync(full, "utf8");
+  } catch {
+    console.log(`  FAIL  ${rel}: not found — was it moved?`);
+    failures++;
+    continue;
+  }
+
+  const portals = /createPortal\s*\(/.test(src) && /document\.body/.test(src);
+  if (portals) {
+    console.log(`  PASS  ${rel}: portals to document.body`);
+  } else {
+    console.log(
+      `  FAIL  ${rel}: renders \`position: fixed\` in place.\n` +
+        `        Any ancestor with a transform (every page wrapper uses\n` +
+        `        animate-fade-rise) becomes its containing block, so it will\n` +
+        `        be clipped to the page instead of covering the viewport.\n` +
+        `        Wrap the return in createPortal(..., document.body).`
+    );
+    failures++;
+  }
+}
+
 console.log(
   failures === 0
-    ? `\nAll ${checked} guarded keyframes release the containing block.`
-    : `\n${failures} keyframe(s) would clip fixed-position overlays.`
+    ? `\nOK — ${checked} keyframes release the containing block, and every` +
+        ` full-screen surface portals out of the page subtree.`
+    : `\n${failures} problem(s) would clip fixed-position overlays.`
 );
 process.exit(failures === 0 ? 0 : 1);
