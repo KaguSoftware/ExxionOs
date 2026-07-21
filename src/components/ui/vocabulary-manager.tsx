@@ -224,7 +224,7 @@ export function VocabularyManager({
             {sorted.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center gap-2 border-b border-line px-3 py-2 last:border-0"
+                className="flex items-center gap-2 row-compact border-b border-line last:border-0"
               >
                 {editingId === item.id ? (
                   <>

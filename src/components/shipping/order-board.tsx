@@ -144,7 +144,7 @@ export function OrderBoard({
                     : "border-line"
                 )}
               >
-                <header className="flex items-center justify-between gap-2 border-b border-line px-3 py-2">
+                <header className="flex items-center justify-between gap-2 row-compact border-b border-line">
                   <span className="text-xs font-medium text-ink">
                     {t(STAGE_KEY[stage] as never)}
                   </span>

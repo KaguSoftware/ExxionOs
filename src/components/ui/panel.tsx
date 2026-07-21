@@ -33,7 +33,7 @@ export function Panel({
       )}
     >
       {(title || action) && (
-        <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+        <header className="flex items-start justify-between gap-3 row-comfortable border-b border-line">
           <div className="min-w-0">
             {title && (
               <h2 className="text-sm font-semibold text-ink">{title}</h2>

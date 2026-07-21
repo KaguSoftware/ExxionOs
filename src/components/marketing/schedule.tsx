@@ -236,7 +236,7 @@ function Section({
         {events.map((event) => (
           <li
             key={event.id}
-            className="flex items-start gap-3 border-b border-line px-3 py-2.5 last:border-0"
+            className="flex items-start gap-3 row-compact border-b border-line last:border-0"
           >
             <Badge className="mt-0.5 shrink-0">{kindLabel(event.kind)}</Badge>
             <div className="min-w-0 flex-1">

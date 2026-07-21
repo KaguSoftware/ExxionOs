@@ -339,6 +339,32 @@
     font-feature-settings: "tnum";
   }
 
+  /* --- list row rhythm -----------------------------------------------------
+     ⚠️ TWO DENSITIES, AND ONLY TWO. Rows inside panels had drifted to SIX
+     different padding pairs (px-4 py-3, px-4 py-2.5, px-3 py-2.5, px-3 py-2,
+     px-4 py-1.5, bare py-2), which reads as sloppiness when two panels sit
+     side by side on the same screen.
+
+     These are deliberately UTILITIES, not a <ListRow> component: the rows they
+     describe are structurally different — some are links, some flex
+     containers, some sticky date headers — and a component covering all of
+     that needs a prop per variation, which is harder to read than the markup
+     it replaces. The shared thing is the RHYTHM, so only the rhythm is
+     shared.
+
+       .row-comfortable — record lists you scan (orders, supplies, machines)
+       .row-compact     — management rows you edit in place (categories, tags)
+     ------------------------------------------------------------------------ */
+  .row-comfortable {
+    padding-inline: 1rem;
+    padding-block: 0.75rem;
+  }
+
+  .row-compact {
+    padding-inline: 0.75rem;
+    padding-block: 0.5rem;
+  }
+
   /* One focus treatment app-wide. `data-no-ring` opts out for controls that
      draw their own (search fields inside a bordered shell). */
   :focus-visible:not([data-no-ring]) {

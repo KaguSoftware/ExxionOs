@@ -84,7 +84,7 @@ export function MobileNav({ profile }: { profile: Profile }) {
           )}
           style={{ zIndex: "var(--z-overlay)" }}
         >
-          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <div className="flex items-center justify-between row-comfortable border-b border-line">
             <span className="inline-flex items-center gap-2 text-ink">
               <Logomark className="size-6" />
               <span className="font-display text-base">{t("app.name")}</span>

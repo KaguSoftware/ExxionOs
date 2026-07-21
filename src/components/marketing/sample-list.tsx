@@ -167,7 +167,7 @@ export function SampleList({
             return (
               <li
                 key={sample.id}
-                className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-line px-3 py-2.5 last:border-0"
+                className="flex flex-wrap items-center gap-x-3 gap-y-1.5 row-compact border-b border-line last:border-0"
               >
                 <span className="min-w-0 flex-1 truncate text-sm text-ink">
                   {sample.quantity > 1 && (

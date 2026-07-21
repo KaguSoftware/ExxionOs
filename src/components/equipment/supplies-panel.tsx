@@ -67,7 +67,7 @@ export function SuppliesPanel({ supplies: initial }: { supplies: Supply[] }) {
           return (
             <li
               key={supply.id}
-              className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3 last:border-0"
+              className="flex flex-wrap items-center gap-3 row-comfortable border-b border-line last:border-0"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">

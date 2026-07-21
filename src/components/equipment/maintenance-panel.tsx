@@ -87,7 +87,7 @@ export function MaintenancePanel({
             return (
               <li
                 key={log.id}
-                className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3 last:border-0"
+                className="flex flex-wrap items-center gap-3 row-comfortable border-b border-line last:border-0"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm text-ink">

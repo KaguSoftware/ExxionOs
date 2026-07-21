@@ -90,7 +90,7 @@ export function RecurringPanel({
             {items.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center gap-3 border-b border-line px-4 py-2.5 last:border-0"
+                className="flex items-center gap-3 row-comfortable border-b border-line last:border-0"
               >
                 <button
                   type="button"

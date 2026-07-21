@@ -124,7 +124,7 @@ export function CollectionPnl({
         {sorted.map((row, i) => (
           <li
             key={i}
-            className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2.5 last:border-0"
+            className="flex flex-wrap items-center gap-3 row-comfortable border-b border-line last:border-0"
           >
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm text-ink">{row.name}</p>
