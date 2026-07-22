@@ -171,6 +171,10 @@ export function OrderBoard({
                 }
               }}
               className={cn(
+                // ⚠️ NOT overflow-hidden: each card holds a Dropdown whose menu
+                // is absolutely positioned and would be clipped (the exact bug
+                // that shipped once already). The header rounds its own top
+                // corners instead — see below.
                 "flex min-w-0 flex-col rounded-xl border bg-surface transition-colors",
                 overLane === lane.id ? "border-brand bg-brand-soft" : "border-line"
               )}
