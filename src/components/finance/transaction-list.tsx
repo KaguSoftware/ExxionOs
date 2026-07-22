@@ -76,12 +76,16 @@ export function TransactionList({
   }
 
   return (
+    // bodyClassName overflow-hidden clips the first/last row's hover:bg-raised
+    // and the sticky day-header's full-width tint to the panel's rounded-xl
+    // corners. Safe for stickiness: the scroll container is the PAGE, not this
+    // body.
     <Panel
       title={t("finance.transactions")}
       description={
         hasMore ? `${visible.length} / ${rows.length}` : `${rows.length}`
       }
-      bodyClassName="p-0"
+      bodyClassName="p-0 overflow-hidden"
     >
       <ul>
         {groups.map((group) => (
