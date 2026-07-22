@@ -6,6 +6,74 @@
 
 ## 👋 START HERE — resuming in a brand-new chat
 
+### 🔵 LATEST SESSION — 2026-07-22, big UI/UX sweep (5 commits, all pushed to main)
+
+An overnight "find every UI issue and fix it" pass. Six audit agents swept the whole surface
+against the project's own rules; findings were verified in code, then fixed in five themed
+commits. **`tsc` · `lint` · `build` · `npm run contrast` · design-detector all green after each.**
+No schema/migration changes — this was purely the app layer.
+
+**What shipped (newest first — `git log` for the full messages):**
+1. `78c8d28` — **ConfirmDialog async contract**: an `onConfirm` that returns a promise keeps the
+   dialog open with a spinning confirm button until it settles, then closes. Fixes ~a dozen
+   delete dialogs that passed `loading={pending}` but closed synchronously, so the spinner was
+   dead code. Escape/backdrop blocked while in flight. **Only order-detail's two deletes +
+   client archive/unarchive/event-delete are converted so far — the other ~13 `ConfirmDialog`
+   callers still use the old fire-and-close and can migrate incrementally (see the list under
+   "NOT YET DONE").** Also: `interpolate()` now renders interpolated COUNTS in Persian digits in
+   Farsi (money is untouched — it's already a Latin string before `t()`); Dropdown/ComboCreate
+   got `aria-activedescendant`, Home/End, Tab-to-close, scroll-into-view; DatePicker's clear
+   button is no longer a nested-in-`<button>` (was invalid HTML).
+2. `88b3b94` — **recharts deferred** on Shipping via `next/dynamic` (only the heaviest dep, only
+   the hidden Insights tab); **realtime refresh skips a hidden tab** and flushes once on return.
+3. `82cb587` — **decimal money is typeable again**: `NumberInput` kept rendering the parsed
+   number, so `1.05`/`12.50` were literally impossible to type. Now holds a draft string while
+   focused. Payment/balance forms: removed blocking validators, real `<form>` (Enter submits),
+   overpayment warning, `useId`. Login lost native `required`. Severity badge no longer collides
+   with the `success` state colour. Photo delete now confirms; product thumbs have real alt text.
+4. `626bda1` — **instant client-side language switch** (no server round-trip / `router.refresh()`;
+   both dictionaries already ship to the client). Provider holds locale in state; the 22
+   server-rendered strings that would have gone stale now pass a KEY to a client component
+   (`CreatePage`/`PageHeader` gained `titleKey`/`descriptionKey`; new `DashboardGreeting`). Plus a
+   **synchronous double-submit ref guard in `useAction`** covering all ~30 call sites.
+5. `e26cfdf` — **badge contrast bug**: the `*-soft` tints lived only in `:root`, so light theme
+   put dark-theme tints under deep light-theme text — four of five badge tones under AA in
+   daylight. Each family now has a third `--*-badge` ink, re-tuned per theme; `check-contrast.mjs`
+   gained alpha-compositing so it can SEE `-soft` pairs (it couldn't before, which is why this
+   shipped). Also: `app/(app)/not-found.tsx` + `loading.tsx` (10 `notFound()` calls had no styled
+   page; dictionary keys already existed), chart theme-switch bug, NetChart drew losses in the
+   income green, `viewport`/`themeColor`, focus ring legible on saturated fills, `--scrim` token.
+
+**⚠️ NOT YET DONE — the audit surfaced more than got fixed. Pick up here:**
+- **Finish the ConfirmDialog migration**: ~13 callers still fire-and-close, so their delete
+  spinner is invisible. Convert each to return the `run(...)` promise from `onConfirm` and drop
+  the manual `loading`/synchronous close: `creative/{ideas-panel,learnings-panel,stock-panel,
+  product-form,collection-form,image-strip}`, `equipment/{machine-detail,machine-form}`,
+  `finance/{categories-panel,recurring-panel,transaction-form}`, `marketing/{campaign-detail,
+  sample-list,schedule}`. **stock-panel print-run delete and campaign-cost delete are the
+  highest-value** (non-optimistic, slow, currently zero feedback).
+- **Error strings reaching Farsi users**: several `run()` calls pass no `errorMessage`, so a raw
+  English/DB error can toast (`client-detail:103,221`, `campaign-detail:114,270,286`, one each in
+  `reminders`/`sample-list`/`schedule`). And `use-action.ts` has a hardcoded English
+  `"Something went wrong."` fallback + toasts raw `error.message`. Server actions return 20-ish
+  hardcoded English error literals — should become i18n keys or sentinel codes (auth.ts already
+  does this with `"invalid"`).
+- **Filtered-empty dead ends** (no "clear filters" action): `clients/directory.tsx:175`,
+  `equipment/maintenance-panel.tsx:82`, `finance/transaction-list.tsx` filtered branch. The
+  pattern to copy is `creative/collections-panel.tsx:72` / `learnings-panel.tsx:158`.
+- **Consistency backlog** (a whole agent's report): promote ONE `Stat`/`StatGrid` primitive
+  (5 bespoke copies), ONE `IconButton`, ONE chip; normalise list containers to
+  `<ul rounded-xl overflow-hidden>`; add `overflow-hidden` to rounded lists whose rows hover
+  (transaction-list + recurring-panel need it now); replace the `📷` emoji in `products-panel.tsx`
+  with a lucide icon; product-delete confirm should name the cascade (print runs + stock deleted).
+- **Deeper a11y still open**: DatePicker day-grid has no arrow-key navigation (up to 42 tab stops);
+  `Field`'s `aria-describedby` is written to a dead `data-*` attribute so hints aren't announced.
+
+Everything above is **verified-but-unfixed** — real, cited, safe to act on. None of it blocks; the
+app is in a better state than it was, just not a finished one.
+
+---
+
 **ALL SEVEN PHASES ARE DONE.** If Parsa says "next", "next phase", or "continue", the next work
 is **THE RESHAPING PASS — "make it ours"** (the section immediately below). There is no Phase 8
 to build from a spec; the next move is to use the system and change what's wrong.
