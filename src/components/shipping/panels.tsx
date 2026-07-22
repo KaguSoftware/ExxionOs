@@ -1,15 +1,27 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useMemo } from "react";
 
 import { TabbedPanels } from "@/components/shell/tabbed-panels";
 import { OrderBoard } from "@/components/shipping/order-board";
 import { OrderList } from "@/components/shipping/order-list";
-import { ShippingInsights } from "@/components/shipping/insights";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/client";
+
+// ⚠️ Insights pulls in recharts (~100KB gzipped, the heaviest dependency in the
+// app). The default tab is the board and most visits never open Insights, so
+// this keeps recharts out of /shipping's first-load chunk and fetches it only
+// when the tab is actually selected. The skeleton fills the gap during the
+// fetch. TabbedPanels renders only the active tab's content, so the import is
+// never triggered until then.
+const ShippingInsights = dynamic(
+  () =>
+    import("@/components/shipping/insights").then((m) => m.ShippingInsights),
+  { loading: () => <div className="skeleton h-64 w-full rounded-xl" /> }
+);
 import { isTerminal, outstandingMinor } from "@/lib/shipping";
 import type {
   Client,

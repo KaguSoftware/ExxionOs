@@ -27,6 +27,9 @@ export function useRealtimeRefresh(tables: string[]) {
   // Join once per distinct table set, not on every render.
   const key = tables.join(",");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Set when an event arrives while the tab is hidden, so we refresh ONCE on
+  // return instead of dropping the update.
+  const pendingWhileHidden = useRef(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -34,11 +37,29 @@ export function useRealtimeRefresh(tables: string[]) {
     let cancelled = false;
 
     const scheduleRefresh = () => {
+      // ⚠️ Don't re-render a BACKGROUND tab. The dashboard subscribes to 13
+      // tables and each refresh re-runs its 14-query wave; a tab left open on
+      // the dashboard while the other person works would pay a full server
+      // render per save, forever, and none of it is ever seen. Defer to the
+      // return instead — but remember there IS pending work, so the data is
+      // fresh the moment the tab comes back.
+      if (document.visibilityState === "hidden") {
+        pendingWhileHidden.current = true;
+        return;
+      }
       // A single save can emit several row events; coalesce so one save costs
       // one re-render rather than three.
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => router.refresh(), COALESCE_MS);
     };
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && pendingWhileHidden.current) {
+        pendingWhileHidden.current = false;
+        router.refresh();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
 
     (async () => {
       const {
@@ -64,6 +85,7 @@ export function useRealtimeRefresh(tables: string[]) {
 
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
       if (timer.current) clearTimeout(timer.current);
       if (channel) void supabase.removeChannel(channel);
     };
