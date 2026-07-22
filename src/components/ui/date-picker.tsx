@@ -139,7 +139,9 @@ export function DatePicker({
           setOpen((o) => !o);
         }}
         className={cn(
-          "flex h-9 w-full items-center gap-2 rounded-lg border border-line bg-bg px-3 text-sm",
+          "flex h-9 w-full items-center gap-2 rounded-lg border border-line bg-bg ps-3 text-sm",
+          // Room for the clear button when it's shown, so text doesn't run under it.
+          clearable && value ? "pe-9" : "pe-3",
           "transition-[border-color] duration-[var(--dur-fast)]",
           "hover:border-line-strong focus-visible:border-brand",
           "disabled:cursor-not-allowed disabled:opacity-55",
@@ -150,28 +152,23 @@ export function DatePicker({
         <span className={cn("flex-1 truncate text-start", !display && "text-faint")}>
           {display ?? placeholder ?? t("common.chooseDate")}
         </span>
-        {clearable && value && (
-          <span
-            role="button"
-            tabIndex={0}
-            aria-label={t("common.clear")}
-            onClick={(e) => {
-              e.stopPropagation();
-              onChange(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                onChange(null);
-              }
-            }}
-            className="rounded p-0.5 text-faint transition-colors hover:text-ink"
-          >
-            <X aria-hidden className="size-3.5" />
-          </span>
-        )}
       </button>
+
+      {/* ⚠️ A SIBLING of the trigger, not a child of it. A clickable element
+          nested inside a <button> is invalid HTML — some engines drop it from
+          the accessibility tree and Enter/Space on it races the trigger's own
+          handler. As a sibling in the relative wrapper it is a real button with
+          its own hit area. */}
+      {clearable && value && !disabled && (
+        <button
+          type="button"
+          aria-label={t("common.clear")}
+          onClick={() => onChange(null)}
+          className="absolute inset-y-0 end-1 my-auto grid size-7 place-items-center rounded text-faint transition-colors hover:text-ink"
+        >
+          <X aria-hidden className="size-3.5" />
+        </button>
+      )}
 
       {open && (
         <div

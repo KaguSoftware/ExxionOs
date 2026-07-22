@@ -65,9 +65,19 @@ export function createTranslate(locale: Locale): Translate {
       // than blank.
       return key;
     }
-    return vars ? interpolate(value, vars) : value;
+    return vars ? interpolate(value, vars, locale) : value;
   };
 }
+
+// Persian digits, so a COUNT interpolated into Farsi prose ("۳ یادآوری") isn't
+// written in Latin figures. ⚠️ This is for counts and quantities ONLY — money
+// is pre-formatted to a Latin string by formatMoney/formatMinor BEFORE it
+// reaches t(), so by the time a value is a raw `number` here it is never
+// currency, and the Latin-money rule is not in play.
+const numberFmt: Record<Locale, Intl.NumberFormat> = {
+  en: new Intl.NumberFormat("en-GB"),
+  fa: new Intl.NumberFormat("fa-IR"),
+};
 
 function resolve(dict: Dictionary, key: string): unknown {
   let current: unknown = dict;
@@ -78,10 +88,16 @@ function resolve(dict: Dictionary, key: string): unknown {
   return current;
 }
 
-function interpolate(template: string, vars: Record<string, string | number>) {
-  return template.replace(/\{(\w+)\}/g, (whole, name: string) =>
-    name in vars ? String(vars[name]) : whole
-  );
+function interpolate(
+  template: string,
+  vars: Record<string, string | number>,
+  locale: Locale
+) {
+  return template.replace(/\{(\w+)\}/g, (whole, name: string) => {
+    if (!(name in vars)) return whole;
+    const v = vars[name];
+    return typeof v === "number" ? numberFmt[locale].format(v) : v;
+  });
 }
 
 // --- key typing ------------------------------------------------------------

@@ -195,17 +195,22 @@ export function EventTimeline({
       <ConfirmDialog
         open={deleting !== null}
         destructive
+        loading={pending}
         title={t("clients.deleteEvent")}
         body={t("clients.deleteEventConfirm")}
         confirmLabel={t("common.delete")}
         onCancel={() => setDeleting(null)}
         onConfirm={() => {
           const event = deleting;
-          setDeleting(null);
           if (!event) return;
           void run(() => deleteEvent(event.id, clientId), {
             successMessage: t("clients.eventDeleted"),
-            onSuccess: () => router.refresh(),
+            // Close on success so the spinner shows; the ref guard stops a
+            // double-fire while the dialog is still open.
+            onSuccess: () => {
+              setDeleting(null);
+              router.refresh();
+            },
           });
         }}
       />

@@ -334,6 +334,12 @@ function ComboShell({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setCursor((c) => Math.max(c - 1, 0));
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setCursor(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setCursor(maxIndex);
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (canCreate && safeCursor === 0) {
@@ -342,8 +348,23 @@ function ComboShell({
       }
       const option = filtered[canCreate ? safeCursor - 1 : safeCursor];
       if (option) onPick(option, close);
+    } else if (e.key === "Tab") {
+      // Don't leave the popover open and orphaned behind the next field.
+      close();
     }
   };
+
+  // Row 0 is the create affordance when canCreate; filtered rows follow. One id
+  // scheme over the whole cursor space, so aria-activedescendant always
+  // resolves to the visibly-highlighted row.
+  const rowId = (cursor: number) => `${listId}-row-${cursor}`;
+
+  // Keep the highlighted row visible in the scroll area — see Dropdown.
+  useEffect(() => {
+    if (!open) return;
+    document.getElementById(rowId(safeCursor))?.scrollIntoView({ block: "nearest" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeCursor, open]);
 
   return (
     <div className={cn("relative", className)} onKeyDown={onKeyDown}>
@@ -400,6 +421,10 @@ function ComboShell({
             <input
               ref={inputRef}
               data-no-ring
+              role="combobox"
+              aria-expanded
+              aria-controls={listId}
+              aria-activedescendant={rowId(safeCursor)}
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -407,7 +432,7 @@ function ComboShell({
               }}
               placeholder={t("vocab.typeToCreate")}
               aria-label={t("vocab.typeToCreate")}
-              className="h-8 w-full rounded-md border border-line bg-bg px-2 text-sm text-ink placeholder:text-faint focus:border-brand focus:outline-none"
+              className="h-8 w-full rounded-md border border-line bg-bg px-2 text-sm text-ink placeholder:text-faint focus:border-brand focus:ring-2 focus:ring-brand/25 focus:outline-none"
             />
           </div>
 
@@ -415,6 +440,7 @@ function ComboShell({
             {canCreate && (
               <button
                 type="button"
+                id={rowId(0)}
                 role="option"
                 aria-selected={safeCursor === 0}
                 disabled={creating}
@@ -445,6 +471,7 @@ function ComboShell({
                 return (
                   <button
                     key={option.value}
+                    id={rowId(row)}
                     type="button"
                     role="option"
                     aria-selected={active}

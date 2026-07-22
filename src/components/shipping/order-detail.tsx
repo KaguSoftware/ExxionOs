@@ -101,10 +101,12 @@ export function OrderDetail({
     }
   };
 
-  const removePayment = async (payment: OrderPayment) => {
+  // Returns the promise so ConfirmDialog holds itself open with a spinner and
+  // closes on settle — no manual `setRemovingPayment(null)` before the await,
+  // which used to hide the whole operation instantly.
+  const removePayment = (payment: OrderPayment) => {
     const previous = payments;
-    setRemovingPayment(null);
-    await run(() => deletePayment(payment.id, order.id), {
+    return run(() => deletePayment(payment.id, order.id), {
       optimistic: () =>
         setPayments((list) => list.filter((p) => p.id !== payment.id)),
       rollback: () => setPayments(previous),
@@ -114,7 +116,6 @@ export function OrderDetail({
   };
 
   const remove = async () => {
-    setConfirmDelete(false);
     const result = await run(() => deleteOrder(order.id), {
       successMessage: t("shipping.deleted"),
       errorMessage: t("shipping.saveFailed"),
@@ -364,6 +365,8 @@ export function OrderDetail({
         title={t("shipping.deleteOrder")}
         body={t("shipping.deleteOrderConfirm")}
         confirmLabel={t("common.delete")}
+        // Returns the promise: the dialog spins and stays open until the delete
+        // + navigation settles, instead of vanishing the instant it's clicked.
         onConfirm={remove}
         onCancel={() => setConfirmDelete(false)}
       />
@@ -373,7 +376,9 @@ export function OrderDetail({
         title={t("shipping.deletePayment")}
         body={t("shipping.deletePaymentConfirm")}
         confirmLabel={t("common.delete")}
-        onConfirm={() => removingPayment && void removePayment(removingPayment)}
+        onConfirm={() =>
+          removingPayment ? removePayment(removingPayment) : undefined
+        }
         onCancel={() => setRemovingPayment(null)}
       />
     </div>

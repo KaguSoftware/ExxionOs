@@ -44,7 +44,7 @@ export function ClientDetail({
   tagVocabulary?: Vocabulary[];
 }) {
   const { t, locale } = useI18n();
-  const { run } = useAction();
+  const { run, pending } = useAction();
   const router = useRouter();
 
   const [editing, setEditing] = useState(false);
@@ -97,6 +97,7 @@ export function ClientDetail({
             <Button
               size="sm"
               variant="ghost"
+              loading={pending}
               icon={<ArchiveRestore aria-hidden className="size-3.5" />}
               onClick={() =>
                 void run(() => unarchiveClient(client.id), {
@@ -211,17 +212,23 @@ export function ClientDetail({
       <ConfirmDialog
         open={archiving}
         destructive={false}
+        loading={pending}
         title={t("clients.archiveClient")}
         body={t("clients.archiveConfirm")}
         confirmLabel={t("clients.archiveClient")}
         onCancel={() => setArchiving(false)}
-        onConfirm={() => {
-          setArchiving(false);
+        onConfirm={() =>
           void run(() => archiveClient(client.id), {
             successMessage: t("clients.archived_"),
-            onSuccess: () => router.refresh(),
-          });
-        }}
+            // Close on success so the confirm button's spinner is actually
+            // visible while the archive + refresh is in flight. The useAction
+            // ref guard already prevents a second fire.
+            onSuccess: () => {
+              setArchiving(false);
+              router.refresh();
+            },
+          })
+        }
       />
     </div>
   );

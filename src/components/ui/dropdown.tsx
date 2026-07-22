@@ -254,12 +254,36 @@ function DropdownShell({
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setCursor((c) => Math.max(c - 1, 0));
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setCursor(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setCursor(maxIndex);
     } else if (e.key === "Enter") {
       e.preventDefault();
       const option = filtered[safeCursor];
       if (option && !option.disabled) onPick(option, close);
+    } else if (e.key === "Tab") {
+      // Let focus move on naturally, but don't leave an orphaned open popover
+      // behind — the doc handler is mousedown-only, so a keyboard Tab never
+      // reaches it.
+      close();
     }
   };
+
+  const optionId = (index: number) => `${listId}-opt-${index}`;
+
+  // Keep the active row in view — with more than ~8 options the highlight
+  // otherwise scrolls out of the fixed-height list and the arrows feel dead.
+  // A DOM side-effect, so an effect is correct here (not a banned state sync).
+  useEffect(() => {
+    if (!open) return;
+    document
+      .getElementById(optionId(safeCursor))
+      ?.scrollIntoView({ block: "nearest" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeCursor, open]);
 
   return (
     <div className={cn("relative", className)} onKeyDown={onKeyDown}>
@@ -272,6 +296,14 @@ function DropdownShell({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
+        // When there's no search box, the trigger keeps focus, so the active
+        // option has to be announced from here. With a search box it moves to
+        // the input (above), which is where focus actually goes.
+        aria-activedescendant={
+          open && !showSearch && filtered.length
+            ? optionId(safeCursor)
+            : undefined
+        }
         // The trigger's text is a VALUE; the label names the field.
         aria-label={`${label}: ${accessibleValue}`}
         className={cn(
@@ -322,6 +354,12 @@ function DropdownShell({
               <input
                 ref={searchRef}
                 data-no-ring
+                role="combobox"
+                aria-expanded
+                aria-controls={listId}
+                aria-activedescendant={
+                  filtered.length ? optionId(safeCursor) : undefined
+                }
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value);
@@ -329,7 +367,7 @@ function DropdownShell({
                 }}
                 placeholder={t("common.search")}
                 aria-label={t("common.search")}
-                className="h-8 w-full rounded-md border border-line bg-bg ps-7 pe-2 text-sm text-ink placeholder:text-faint focus:border-brand focus:outline-none"
+                className="h-8 w-full rounded-md border border-line bg-bg ps-7 pe-2 text-sm text-ink placeholder:text-faint focus:border-brand focus:ring-2 focus:ring-brand/25 focus:outline-none"
               />
             </div>
           )}
@@ -345,6 +383,7 @@ function DropdownShell({
                 return (
                   <button
                     key={option.value}
+                    id={optionId(index)}
                     type="button"
                     role="option"
                     aria-selected={active}

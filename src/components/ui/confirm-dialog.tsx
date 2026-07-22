@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -33,11 +33,32 @@ export function ConfirmDialog({
   cancelLabel?: string;
   destructive?: boolean;
   loading?: boolean;
-  onConfirm: () => void;
+  /**
+   * ⚠️ MAY RETURN A PROMISE, AND SHOULD when the action is a server round-trip.
+   *
+   * If `onConfirm` returns a promise, the dialog stays open and its confirm
+   * button spins until the promise settles, THEN closes itself. This is the fix
+   * for a whole class of call sites that passed `loading={pending}` but then
+   * closed the dialog synchronously inside `onConfirm` — the dialog unmounted
+   * before `pending` ever flipped, so the spinner was dead code and a slow
+   * delete gave no feedback at all. Returning the promise here means the caller
+   * no longer manages the dialog's open state on the success path or passes
+   * `loading` by hand; both are handled internally. A void return keeps the old
+   * fire-and-close behaviour.
+   */
+  onConfirm: () => unknown;
   onCancel: () => void;
 }) {
   const t = useT();
   const panelRef = useRef<HTMLDivElement>(null);
+  // In-flight state OWNED by the dialog, for the async-onConfirm contract.
+  const [busy, setBusy] = useState(false);
+  // Ref mirror so the keydown effect (which doesn't depend on `busy`) reads the
+  // live value rather than the value captured when the listener was attached.
+  const busyRef = useRef(false);
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
   // ⚠️ useId, NOT the literal "confirm-title" this used to hardcode. Several
   // ConfirmDialogs mount at once (every VocabularyManager and CreateForm
   // renders one), and duplicate ids make aria-labelledby resolve to whichever
@@ -62,7 +83,9 @@ export function ConfirmDialog({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onCancel();
+        // Don't let Escape cancel while the action is mid-flight — the write is
+        // already happening, and closing now would just hide its outcome.
+        if (!busyRef.current) onCancel();
         return;
       }
       // Focus trap: keep Tab inside the dialog.
@@ -95,6 +118,23 @@ export function ConfirmDialog({
 
   if (!open || typeof document === "undefined") return null;
 
+  const handleConfirm = () => {
+    const result = onConfirm();
+    // Fire-and-close callers return void — nothing more to do here. Callers
+    // that return a promise get the managed spinner: stay open and busy until
+    // it settles, then close via onCancel (which every caller wires to reset
+    // its own open state).
+    if (result instanceof Promise) {
+      setBusy(true);
+      void result.finally(() => {
+        setBusy(false);
+        onCancel();
+      });
+    }
+  };
+
+  const isBusy = loading || busy;
+
   return createPortal(
     <div
       className="fixed inset-0 flex items-center justify-center p-4"
@@ -106,7 +146,8 @@ export function ConfirmDialog({
       <div
         className="animate-fade-in absolute inset-0 backdrop-blur-[2px]"
         style={{ backgroundColor: "var(--scrim)" }}
-        onClick={onCancel}
+        // No backdrop-dismiss mid-action, matching Escape.
+        onClick={() => !isBusy && onCancel()}
         aria-hidden
       />
       <div
@@ -126,13 +167,13 @@ export function ConfirmDialog({
         {body && <p className="mt-1.5 text-sm text-muted">{body}</p>}
 
         <div className="mt-5 flex justify-end gap-2">
-          <Button variant="ghost" onClick={onCancel} disabled={loading}>
+          <Button variant="ghost" onClick={onCancel} disabled={isBusy}>
             {cancelLabel ?? t("common.cancel")}
           </Button>
           <Button
             variant={destructive ? "danger" : "primary"}
-            onClick={onConfirm}
-            loading={loading}
+            onClick={handleConfirm}
+            loading={isBusy}
           >
             {confirmLabel ?? t("common.confirm")}
           </Button>
