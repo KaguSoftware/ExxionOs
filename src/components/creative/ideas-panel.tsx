@@ -1,14 +1,16 @@
 "use client";
 
-import { ArrowRight, Lightbulb, Trash2 } from "lucide-react";
+import { ArrowRight, Lightbulb, Pencil, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 
 import { FilterChip } from "@/components/creative/collections-panel";
+import { IdeaForm } from "@/components/creative/idea-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { CreateOverlay } from "@/components/ui/create";
 import { EmptyState } from "@/components/ui/empty-state";
 import { deleteIdea, promoteIdea, updateIdeaStatus } from "@/lib/actions/creative";
 import { useI18n } from "@/lib/i18n/client";
@@ -32,6 +34,8 @@ export function IdeasPanel({ ideas: initial }: { ideas: Idea[] }) {
   const [ideas, setIdeas] = useState(initial);
   const [filter, setFilter] = useState<IdeaStatus | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Idea | null>(null);
+  /** The idea open in the edit overlay, or null. */
+  const [editing, setEditing] = useState<Idea | null>(null);
   /** Which row is mid-promote — see `promote` below. */
   const [promotingId, setPromotingId] = useState<string | null>(null);
 
@@ -188,6 +192,14 @@ export function IdeasPanel({ ideas: initial }: { ideas: Idea[] }) {
                   )}
                   <button
                     type="button"
+                    onClick={() => setEditing(idea)}
+                    aria-label={t("common.edit")}
+                    className="rounded p-1.5 text-faint transition-colors hover:bg-raised hover:text-ink"
+                  >
+                    <Pencil aria-hidden className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setConfirmDelete(idea)}
                     aria-label={t("common.delete")}
                     className="rounded p-1.5 text-faint transition-colors hover:bg-raised hover:text-danger"
@@ -222,6 +234,22 @@ export function IdeasPanel({ ideas: initial }: { ideas: Idea[] }) {
           ))}
         </ul>
       )}
+
+      <CreateOverlay
+        open={!!editing}
+        title={t("creative.editIdea")}
+        onClose={() => setEditing(null)}
+      >
+        {/* `key` re-seeds the form's state when switching which idea is open —
+            without it, opening a second idea would keep the first one's text. */}
+        {editing && (
+          <IdeaForm
+            key={editing.id}
+            existing={editing}
+            onDone={() => setEditing(null)}
+          />
+        )}
+      </CreateOverlay>
 
       <ConfirmDialog
         open={!!confirmDelete}

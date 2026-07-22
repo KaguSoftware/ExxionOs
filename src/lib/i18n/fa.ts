@@ -338,6 +338,7 @@ export const fa: Dictionary = {
 
     ideas: "ایده‌ها",
     newIdea: "ایدهٔ جدید",
+    editIdea: "ویرایش ایده",
     noIdeas: "هنوز ایده‌ای ثبت نشده است.",
     noIdeasHint: "هر چیزی که شاید بسازید. خام بودنش اشکالی ندارد — اتفاقاً هدف همین است.",
     ideaTitle: "ایده",

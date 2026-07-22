@@ -130,6 +130,30 @@ export async function createIdea(input: {
   return { ok: true, data };
 }
 
+/** Edit an idea's title and body. Status is changed separately (a one-click
+ *  control on each row), so it is untouched here. */
+export async function updateIdea(
+  id: string,
+  input: { title: string; body: string | null }
+): Promise<ActionResult<Idea>> {
+  await getSessionContext();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("ideas")
+    .update({
+      title: input.title.trim().slice(0, 200) || "Untitled idea",
+      body: input.body?.trim().slice(0, 4000) || null,
+    })
+    .eq("id", id)
+    .select()
+    .single<Idea>();
+
+  if (error) return { ok: false, error: error.message };
+  refreshCreative();
+  return { ok: true, data };
+}
+
 export async function updateIdeaStatus(
   id: string,
   status: IdeaStatus

@@ -348,6 +348,7 @@ export const en = {
 
     ideas: "Ideas",
     newIdea: "New idea",
+    editIdea: "Edit idea",
     noIdeas: "No ideas yet.",
     noIdeasHint: "Anything you might want to make. Keep it rough — that's the point.",
     ideaTitle: "Idea",
