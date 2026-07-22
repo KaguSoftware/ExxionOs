@@ -11,10 +11,10 @@ import type {
   AppSettings,
   Collection,
   Issue,
-  Material,
   Product,
   ProductStockMovement,
   StoredImage,
+  Supply,
 } from "@/lib/types";
 
 export default async function CollectionPage({
@@ -37,7 +37,6 @@ export default async function CollectionPage({
     collectionResult,
     products,
     issues,
-    materials,
     settings,
     images,
     supplies,
@@ -65,10 +64,6 @@ export default async function CollectionPage({
           .eq("collection_id", id)
           .order("created_at", { ascending: false })
       ),
-      rowsOrThrow<Material>(
-        "collection.materials",
-        supabase.from("materials").select("*").order("name")
-      ),
       selectOrThrow<AppSettings>(
         "collection.settings",
         supabase.from("app_settings").select("*").eq("id", 1).maybeSingle()
@@ -80,10 +75,12 @@ export default async function CollectionPage({
           .select("id, path, sort_order, product_id")
           .order("sort_order")
       ),
-      // Names the stock a print run will draw from. In the same wave — ~3ms.
-      rowsOrThrow<{ id: string; name: string }>(
+      // Prices the products AND names the stock a print run draws from. ALL
+      // supplies (not just active) — a product may point at one archived since,
+      // and dropping it would silently uncost that product.
+      rowsOrThrow<Supply>(
         "collection.supplies",
-        supabase.from("supplies").select("id, name").is("archived_at", null)
+        supabase.from("supplies").select("*").order("name")
       ),
       /**
        * Phase 5: what has actually SOLD, for the P&L tab. Inside the existing
@@ -128,7 +125,6 @@ export default async function CollectionPage({
           collection={collection}
           products={products}
           issues={issues}
-          materials={materials}
           machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
           images={images}
           supplies={supplies}

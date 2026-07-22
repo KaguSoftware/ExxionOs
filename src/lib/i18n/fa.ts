@@ -369,6 +369,8 @@ export const fa: Dictionary = {
     costingSubtitle: "هزینهٔ ساخت هر چاپ.",
     machineHourRate: "نرخ ساعتی دستگاه",
     machineHourRateHint: "هر ساعت چاپ چقدر برایتان هزینه دارد — برق، استهلاک، وقت شما.",
+    materialsMovedHint:
+      "هزینه فیلامنت و رزین حالا روی هر کالای انبار در تجهیزات ← انبار است.",
     materials: "متریال‌ها",
     newMaterial: "متریال جدید",
     materialName: "نام",
@@ -513,6 +515,8 @@ export const fa: Dictionary = {
     quantity: "موجودی",
     lowThreshold: "هشدار زیر",
     lowThresholdHint: "برای عدم هشدار خالی بگذارید.",
+    costPerKg: "قیمت هر کیلوگرم",
+    costPerKgHint: "برای محاسبه هزینه چاپ. برای اقلام غیرچاپی خالی بگذارید.",
     lowStock: "کم",
     restock: "تأمین مجدد",
     restockQuantity: "چه تعداد",

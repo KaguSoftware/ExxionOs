@@ -140,25 +140,6 @@ export const IDEA_STATUSES: IdeaStatus[] = ["new", "exploring", "dropped", "made
 export const SEVERITIES: Severity[] = ["low", "medium", "high"];
 export const MATERIAL_KINDS: MaterialKind[] = ["filament", "resin", "other"];
 
-export type Material = {
-  id: string;
-  name: string;
-  kind: MaterialKind;
-  /** Integer kuruş per kilogram. */
-  cost_per_kg_minor: number;
-  color: string | null;
-  notes: string | null;
-  /**
-   * Optional link to the stocked supply this material IS.
-   * ⚠️ Null is normal — a material bought per job has no stock to draw down.
-   * When set, recording a print run deducts grams from that supply.
-   */
-  supply_id: string | null;
-  archived_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
 /**
  * What came off the plate.
  *
@@ -249,7 +230,8 @@ export type Product = {
   collection_id: string;
   name: string;
   kind: string | null;
-  material_id: string | null;
+  /** The supply printed from — its cost_per_kg_minor costs this product. */
+  supply_id: string | null;
   grams: string | number | null;
   print_hours: string | number | null;
   price_minor: number | null;
@@ -353,10 +335,18 @@ export type MaintenanceLog = {
 export type Supply = {
   id: string;
   name: string;
+  /** filament / resin / other — groups the costing dropdown. */
+  kind: MaterialKind;
   unit: string;
   quantity: string | number;
   low_threshold: string | number | null;
   last_price_minor: number | null;
+  /**
+   * Integer kuruş per kilogram, used to cost the products printed from this
+   * supply. ⚠️ Null is normal and means "uncosted" — a box or a roll of tape
+   * has no per-kg price, and costing renders that as unknown, never ₺0.
+   */
+  cost_per_kg_minor: number | null;
   notes: string | null;
   archived_at: string | null;
   created_at: string;

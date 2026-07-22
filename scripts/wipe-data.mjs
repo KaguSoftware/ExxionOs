@@ -4,7 +4,7 @@
  *
  *   node scripts/wipe-data.mjs --dry        # count what would go (default)
  *   node scripts/wipe-data.mjs --confirm    # actually delete
- *   node scripts/wipe-data.mjs --confirm --keep-setup   # keep categories/materials/rates
+ *   node scripts/wipe-data.mjs --confirm --keep-setup   # keep categories/rates
  *
  * ⚠️ WHY THIS SCRIPT EXISTS RATHER THAN "just delete the collections".
  * Three relationships in this schema DELIBERATELY SURVIVE their parent, because
@@ -91,13 +91,15 @@ const CONTENT = [
 ];
 
 /** Configuration, not content. Wiped only with --all. */
-const SETUP = ["materials", "categories"];
+// ⚠️ `supplies` is NOT here — it now holds real stock + the per-kg cost, so it
+// is business data (in CONTENT above), not setup config.
+const SETUP = ["categories"];
 
 const targets = wipeSetupToo ? [...CONTENT, ...SETUP] : CONTENT;
 
 console.log(`\nTarget: ${url}`);
 console.log(confirm ? "MODE: DELETE" : "MODE: dry run (pass --confirm to delete)");
-if (keepSetup && !wipeSetupToo) console.log("Keeping categories + materials.");
+if (keepSetup && !wipeSetupToo) console.log("Keeping categories.");
 console.log();
 
 let total = 0;

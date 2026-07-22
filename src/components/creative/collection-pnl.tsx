@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useI18n } from "@/lib/i18n/client";
 import { productCost } from "@/lib/costing";
-import type { Material, Product } from "@/lib/types";
+import type { Product, Supply } from "@/lib/types";
 import { cn, formatMinor } from "@/lib/utils";
 
 export type SoldLine = {
@@ -37,12 +37,12 @@ export type SoldLine = {
  */
 export function CollectionPnl({
   products,
-  materials,
+  supplies,
   machineRateMinor,
   soldLines,
 }: {
   products: Product[];
-  materials: Material[];
+  supplies: Supply[];
   machineRateMinor: number;
   soldLines: SoldLine[];
 }) {
@@ -68,7 +68,7 @@ export function CollectionPnl({
     revenueMinor += lineRevenue;
     unitsSold += line.quantity;
 
-    const cost = productCost(product, materials, machineRateMinor);
+    const cost = productCost(product, supplies, machineRateMinor);
     const lineCost = cost ? cost.totalMinor * line.quantity : null;
     if (lineCost == null) uncostedUnits += line.quantity;
     else costMinor += lineCost;

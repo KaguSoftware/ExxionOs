@@ -6,7 +6,7 @@ import type {
   CampaignStatus,
   Client,
   EventKind,
-  Material,
+  Supply,
   Product,
   Sample,
 } from "@/lib/types";
@@ -106,14 +106,14 @@ export function budgetUsage(
 export function sampleCostMinor(
   sample: Pick<Sample, "product_id" | "quantity">,
   products: Product[],
-  materials: Material[],
+  supplies: Supply[],
   machineHourRateMinor: number
 ): number | null {
   if (!sample.product_id) return null;
   const product = products.find((p) => p.id === sample.product_id);
   if (!product) return null; // Deleted from Creative — the row survives, the cost can't.
 
-  const cost = productCost(product, materials, machineHourRateMinor);
+  const cost = productCost(product, supplies, machineHourRateMinor);
   if (!cost) return null;
 
   return cost.totalMinor * Math.max(1, sample.quantity);
@@ -135,7 +135,7 @@ export type GivenAway = {
 export function givenAwayMinor(
   samples: Sample[],
   products: Product[],
-  materials: Material[],
+  supplies: Supply[],
   machineHourRateMinor: number
 ): GivenAway {
   let totalMinor = 0;
@@ -143,7 +143,7 @@ export function givenAwayMinor(
   let uncostedCount = 0;
 
   for (const sample of samples) {
-    const minor = sampleCostMinor(sample, products, materials, machineHourRateMinor);
+    const minor = sampleCostMinor(sample, products, supplies, machineHourRateMinor);
     if (minor == null) uncostedCount++;
     else {
       totalMinor += minor;

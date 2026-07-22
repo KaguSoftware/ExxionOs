@@ -18,21 +18,21 @@ import { createVocabulary } from "@/lib/actions/vocabulary";
 import { productCost, productMargin } from "@/lib/costing";
 import { useI18n } from "@/lib/i18n/client";
 import { toMajor } from "@/lib/money";
-import type { Material, Product, StoredImage, Vocabulary } from "@/lib/types";
+import type { Product, StoredImage, Supply, Vocabulary } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
 import { cn, formatMinor } from "@/lib/utils";
 import { vocabOptions } from "@/lib/vocab";
 
 export function ProductForm({
   collectionId,
-  materials,
+  supplies,
   machineRateMinor,
   existing,
   images = [],
   productTypes = [],
 }: {
   collectionId: string;
-  materials: Material[];
+  supplies: Supply[];
   machineRateMinor: number;
   existing?: Product;
   images?: StoredImage[];
@@ -44,7 +44,7 @@ export function ProductForm({
 
   const nameId = useId();
   const kindId = useId();
-  const materialId = useId();
+  const supplyFieldId = useId();
   const gramsId = useId();
   const hoursId = useId();
   const priceId = useId();
@@ -62,7 +62,7 @@ export function ProductForm({
     "product_type",
     existing?.kind ? [existing.kind] : []
   ).map((v) => ({ value: v.label, label: v.label }));
-  const [material, setMaterial] = useState<string | null>(existing?.material_id ?? null);
+  const [supplyId, setSupplyId] = useState<string | null>(existing?.supply_id ?? null);
   const [grams, setGrams] = useState<number | null>(toNumber(existing?.grams));
   const [hours, setHours] = useState<number | null>(toNumber(existing?.print_hours));
   const [price, setPrice] = useState<number | null>(
@@ -74,8 +74,8 @@ export function ProductForm({
   // Live cost preview using the SAME function the list uses — so what you see
   // while typing is exactly what the card will show.
   const preview = productCost(
-    { grams, print_hours: hours, material_id: material },
-    materials,
+    { grams, print_hours: hours, supply_id: supplyId },
+    supplies,
     machineRateMinor
   );
   const previewMargin = productMargin(
@@ -83,8 +83,13 @@ export function ProductForm({
     preview
   );
 
-  const active = materials.filter(
-    (m) => !m.archived_at || m.id === existing?.material_id
+  // Only printing materials (a per-kg cost) belong in this dropdown, plus the
+  // product's own supply even if it was archived since — so opening and saving
+  // an old product can't silently unlink it.
+  const active = supplies.filter(
+    (s) =>
+      (!s.archived_at && s.cost_per_kg_minor != null) ||
+      s.id === existing?.supply_id
   );
 
   const emptyFields = name.trim() ? [] : [t("creative.productName")];
@@ -94,7 +99,7 @@ export function ProductForm({
       collectionId,
       name,
       kind: kind?.trim() || null,
-      materialId: material,
+      supplyId,
       grams,
       printHours: hours,
       price,
@@ -176,15 +181,18 @@ export function ProductForm({
           </Field>
         </div>
 
-        <Field id={materialId} label={t("creative.material")} optional={t("common.optional")}>
+        <Field id={supplyFieldId} label={t("creative.material")} optional={t("common.optional")}>
           <Dropdown
-            id={materialId}
-            value={material}
-            onChange={(v) => setMaterial(v || null)}
-            options={active.map((m) => ({
-              value: m.id,
-              label: m.name,
-              hint: formatMinor(m.cost_per_kg_minor) + "/kg",
+            id={supplyFieldId}
+            value={supplyId}
+            onChange={(v) => setSupplyId(v || null)}
+            options={active.map((s) => ({
+              value: s.id,
+              label: s.name,
+              hint:
+                s.cost_per_kg_minor == null
+                  ? undefined
+                  : formatMinor(s.cost_per_kg_minor) + "/kg",
             }))}
             label={t("creative.material")}
             placeholder={t("common.choose")}

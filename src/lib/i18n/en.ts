@@ -379,6 +379,8 @@ export const en = {
     costingSubtitle: "What a print costs to make.",
     machineHourRate: "Machine hour rate",
     machineHourRateHint: "What an hour of printing costs you — power, wear, your time.",
+    materialsMovedHint:
+      "Filament and resin costs now live on each supply in Equipment → Supplies.",
     materials: "Materials",
     newMaterial: "New material",
     materialName: "Name",
@@ -526,6 +528,8 @@ export const en = {
     quantity: "In stock",
     lowThreshold: "Warn me below",
     lowThresholdHint: "Leave empty to never warn.",
+    costPerKg: "Cost per kg",
+    costPerKgHint: "Used to cost prints. Leave empty for non-printing supplies.",
     lowStock: "Low",
     restock: "Restock",
     restockQuantity: "How many",

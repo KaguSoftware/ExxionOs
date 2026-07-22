@@ -17,7 +17,7 @@ import type {
   CampaignCost,
   Client,
   Event,
-  Material,
+  Supply,
   Product,
   Sample,
 } from "@/lib/types";
@@ -30,7 +30,7 @@ export function MarketingPanels({
   samples,
   products,
   productOptions,
-  materials,
+  supplies,
   machineRateMinor,
   clients,
   today,
@@ -43,7 +43,7 @@ export function MarketingPanels({
   samples: Sample[];
   products: Product[];
   productOptions: SampleProductOption[];
-  materials: Material[];
+  supplies: Supply[];
   machineRateMinor: number;
   clients: Client[];
   /** Stamped on the server — see the call site in `(app)/marketing/page.tsx`. */
@@ -102,7 +102,7 @@ export function MarketingPanels({
               samples={samples}
               products={products}
               productOptions={productOptions}
-              materials={materials}
+              supplies={supplies}
               machineRateMinor={machineRateMinor}
               clients={clients}
               campaigns={campaigns}
@@ -119,7 +119,7 @@ export function MarketingPanels({
               spend={spend}
               samples={samples}
               products={products}
-              materials={materials}
+              supplies={supplies}
               machineRateMinor={machineRateMinor}
               clients={clients}
             />

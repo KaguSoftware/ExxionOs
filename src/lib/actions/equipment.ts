@@ -12,9 +12,10 @@ import type {
   MachineStatus,
   MaintenanceKind,
   MaintenanceLog,
+  MaterialKind,
   Supply,
 } from "@/lib/types";
-import { MACHINE_STATUSES, MAINTENANCE_KINDS } from "@/lib/types";
+import { MACHINE_STATUSES, MAINTENANCE_KINDS, MATERIAL_KINDS } from "@/lib/types";
 import { todayInIstanbul } from "@/lib/utils";
 
 function pick<T extends string>(value: unknown, allowed: T[], fallback: T): T {
@@ -334,9 +335,12 @@ export async function deleteMaintenance(
 
 export type SupplyInput = {
   name: string;
+  kind: MaterialKind;
   unit: string;
   quantity: number | null;
   lowThreshold: number | null;
+  /** Kuruş per kg, or null for a supply that isn't a printing material. */
+  costPerKg: number | null;
   notes: string | null;
 };
 
@@ -353,9 +357,12 @@ export async function createSupply(
     .from("supplies")
     .insert({
       name,
+      kind: pick(input.kind, MATERIAL_KINDS, "filament"),
       unit: input.unit.trim().slice(0, 20) || "pcs",
       quantity: input.quantity ?? 0,
       low_threshold: input.lowThreshold,
+      cost_per_kg_minor:
+        input.costPerKg == null ? null : Math.abs(toMinor(input.costPerKg)),
       notes: input.notes?.trim().slice(0, 2000) || null,
     })
     .select()
@@ -380,15 +387,21 @@ export async function updateSupply(
     .from("supplies")
     .update({
       name,
+      kind: pick(input.kind, MATERIAL_KINDS, "filament"),
       unit: input.unit.trim().slice(0, 20) || "pcs",
       quantity: input.quantity ?? 0,
       low_threshold: input.lowThreshold,
+      cost_per_kg_minor:
+        input.costPerKg == null ? null : Math.abs(toMinor(input.costPerKg)),
       notes: input.notes?.trim().slice(0, 2000) || null,
     })
     .eq("id", id);
 
   if (error) return { ok: false, error: error.message };
   refresh();
+  // ⚠️ Re-pricing a supply silently re-costs every product printed from it —
+  // intended (cost is computed, not stored), so Creative must revalidate too.
+  revalidatePath("/creative");
   return { ok: true, data: undefined };
 }
 

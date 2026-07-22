@@ -10,29 +10,27 @@ import { productCost, productMargin } from "@/lib/costing";
 import { useI18n } from "@/lib/i18n/client";
 import { isLow, onHandByProduct } from "@/lib/stock";
 import type {
-  Material,
   Product,
   ProductStockMovement,
   StoredImage,
+  Supply,
 } from "@/lib/types";
 import { cn, formatMinor } from "@/lib/utils";
 
 export function ProductsPanel({
   products,
-  materials,
+  supplies = [],
   machineRateMinor,
   images,
   collectionId,
-  supplies = [],
   stockMovements = [],
 }: {
   products: Product[];
-  materials: Material[];
+  /** Prices the products AND names the stock a print run draws from. */
+  supplies?: Supply[];
   machineRateMinor: number;
   images: (StoredImage & { product_id: string })[];
   collectionId: string;
-  /** Used to name the stock a print run will draw from. */
-  supplies?: { id: string; name: string }[];
   /** The stock ledger; on-hand is summed from it, never stored. */
   stockMovements?: ProductStockMovement[];
 }) {
@@ -54,11 +52,11 @@ export function ProductsPanel({
     <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {products.map((product) => {
         // ⚠️ COMPUTED HERE, EVERY RENDER — never read from a column. Re-pricing
-        // a material updates every one of these with no writes and no
+        // a supply updates every one of these with no writes and no
         // migration. See lib/costing.ts.
-        const cost = productCost(product, materials, machineRateMinor);
+        const cost = productCost(product, supplies, machineRateMinor);
         const margin = productMargin(product, cost);
-        const material = materials.find((m) => m.id === product.material_id);
+        const supply = supplies.find((s) => s.id === product.supply_id);
         const photoCount = images.filter((i) => i.product_id === product.id).length;
         // Summed from the ledger, like cost above — never a stored column.
         const units = onHand.get(product.id) ?? 0;
@@ -155,23 +153,19 @@ export function ProductsPanel({
             )}
 
             <div className="mt-2 flex flex-wrap items-center gap-2 text-2xs text-faint">
-              {material && <span>{material.name}</span>}
+              {supply && <span>{supply.name}</span>}
               {product.grams && <span>· {product.grams}g</span>}
               {product.print_hours && <span>· {product.print_hours}h</span>}
               {photoCount > 0 && <span className="ms-auto">{photoCount} 📷</span>}
             </div>
 
             {/* Printing is what consumes filament — so the action lives on the
-                product, not on the material. */}
+                product. The supply it draws from is the product's own supply. */}
             <div className="mt-3 border-t border-line pt-2">
               <PrintRunButton
                 productId={product.id}
                 gramsEach={Number(product.grams) || null}
-                supplyName={
-                  material?.supply_id
-                    ? (supplies.find((s) => s.id === material.supply_id)?.name ?? null)
-                    : null
-                }
+                supplyName={supply?.name ?? null}
               />
             </div>
           </li>

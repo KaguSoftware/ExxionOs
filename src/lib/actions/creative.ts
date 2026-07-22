@@ -14,8 +14,6 @@ import type {
   Idea,
   IdeaStatus,
   Issue,
-  Material,
-  MaterialKind,
   PrintOutcome,
   Product,
   Severity,
@@ -23,7 +21,6 @@ import type {
 import {
   COLLECTION_STATUSES,
   IDEA_STATUSES,
-  MATERIAL_KINDS,
   PRINT_OUTCOMES,
   SEVERITIES,
 } from "@/lib/types";
@@ -217,7 +214,8 @@ export type ProductInput = {
   collectionId: string;
   name: string;
   kind: string | null;
-  materialId: string | null;
+  /** The supply printed from — its cost_per_kg_minor costs this product. */
+  supplyId: string | null;
   /** Grams of material. Null when unknown — see costing.ts. */
   grams: number | null;
   printHours: number | null;
@@ -231,7 +229,7 @@ function productRow(input: ProductInput) {
     collection_id: input.collectionId,
     name: input.name.trim().slice(0, 120) || "Untitled product",
     kind: input.kind?.trim().slice(0, 60) || null,
-    material_id: input.materialId,
+    supply_id: input.supplyId,
     grams: input.grams,
     print_hours: input.printHours,
     // ⚠️ The ONE conversion point for this table. Null stays null — an unpriced
@@ -390,8 +388,8 @@ export async function deleteIssue(id: string): Promise<ActionResult> {
  * this is the honest place to touch stock. Deducting at design time would
  * charge one unit for something you print fifty times.
  *
- * The deduction only happens when the product's material is LINKED to a supply
- * (`materials.supply_id`) — a material you buy per-job has no stock to draw
+ * The deduction only happens when the product points at a supply
+ * (`products.supply_id`) — a product with no supply set has no stock to draw
  * down, and silently inventing one would be worse than tracking nothing.
  */
 export async function recordPrintRun(input: {
@@ -415,35 +413,27 @@ export async function recordPrintRun(input: {
 
   const { data: product } = await supabase
     .from("products")
-    .select("id, collection_id, grams, material_id")
+    .select("id, collection_id, grams, supply_id")
     .eq("id", input.productId)
     .maybeSingle<{
       id: string;
       collection_id: string;
       grams: string | number | null;
-      material_id: string | null;
+      supply_id: string | null;
     }>();
 
   if (!product) return { ok: false, error: "That product no longer exists." };
 
-  // Resolve material → supply. Either link may be absent, and that's fine:
-  // the run is still recorded, just without a deduction.
+  // The product points straight at the supply it's printed from. The link may
+  // be absent, and that's fine: the run is still recorded, just no deduction.
   let supply: { id: string; name: string; quantity: string | number } | null = null;
-  if (product.material_id) {
-    const { data: material } = await supabase
-      .from("materials")
-      .select("supply_id")
-      .eq("id", product.material_id)
-      .maybeSingle<{ supply_id: string | null }>();
-
-    if (material?.supply_id) {
-      const { data } = await supabase
-        .from("supplies")
-        .select("id, name, quantity")
-        .eq("id", material.supply_id)
-        .maybeSingle<{ id: string; name: string; quantity: string | number }>();
-      supply = data ?? null;
-    }
+  if (product.supply_id) {
+    const { data } = await supabase
+      .from("supplies")
+      .select("id, name, quantity")
+      .eq("id", product.supply_id)
+      .maybeSingle<{ id: string; name: string; quantity: string | number }>();
+    supply = data ?? null;
   }
 
   // `numeric` arrives as a string over PostgREST.
@@ -562,83 +552,9 @@ export async function deletePrintRun(id: string): Promise<ActionResult> {
   return { ok: true, data: undefined };
 }
 
-// --- materials + costing settings ------------------------------------------
-
-export async function createMaterial(input: {
-  name: string;
-  kind: MaterialKind;
-  costPerKg: number;
-}): Promise<ActionResult<Material>> {
-  await getSessionContext();
-  const supabase = await createClient();
-
-  const name = input.name.trim().slice(0, 80);
-  if (!name) return { ok: false, error: "A material needs a name." };
-
-  const { data, error } = await supabase
-    .from("materials")
-    .insert({
-      name,
-      kind: pick(input.kind, MATERIAL_KINDS, "filament"),
-      cost_per_kg_minor: Math.abs(toMinor(input.costPerKg || 0)),
-    })
-    .select()
-    .single<Material>();
-
-  if (error) return { ok: false, error: error.message };
-  revalidatePath("/settings");
-  refreshCreative();
-  return { ok: true, data };
-}
-
-export async function updateMaterial(
-  id: string,
-  input: { name: string; costPerKg: number; supplyId?: string | null }
-): Promise<ActionResult> {
-  await getSessionContext();
-  const supabase = await createClient();
-
-  const name = input.name.trim().slice(0, 80);
-  if (!name) return { ok: false, error: "A material needs a name." };
-
-  const { error } = await supabase
-    .from("materials")
-    .update({
-      name,
-      cost_per_kg_minor: Math.abs(toMinor(input.costPerKg || 0)),
-      // Only touched when explicitly provided, so an edit that doesn't mention
-      // the supply can't silently unlink it.
-      ...(input.supplyId !== undefined ? { supply_id: input.supplyId } : {}),
-    })
-    .eq("id", id);
-
-  if (error) return { ok: false, error: error.message };
-  revalidatePath("/settings");
-  // ⚠️ Re-pricing a material silently re-costs every product using it. That is
-  // the intended behaviour (cost is computed, not stored) — so the Creative
-  // pages must revalidate too, or they'd show yesterday's numbers.
-  refreshCreative();
-  return { ok: true, data: undefined };
-}
-
-/** ⚠️ Archive, never delete — see createCategory's twin in finance.ts. */
-export async function archiveMaterial(
-  id: string,
-  archived: boolean
-): Promise<ActionResult> {
-  await getSessionContext();
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("materials")
-    .update({ archived_at: archived ? new Date().toISOString() : null })
-    .eq("id", id);
-
-  if (error) return { ok: false, error: error.message };
-  revalidatePath("/settings");
-  refreshCreative();
-  return { ok: true, data: undefined };
-}
+// --- costing settings ------------------------------------------------------
+// ⚠️ The per-kg material cost moved onto SUPPLIES (Equipment). The only costing
+// setting left here is the machine hourly rate.
 
 export async function updateMachineRate(rate: number): Promise<ActionResult> {
   await getSessionContext();

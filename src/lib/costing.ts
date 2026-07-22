@@ -1,4 +1,4 @@
-import type { Material, Product } from "@/lib/types";
+import type { Product, Supply } from "@/lib/types";
 
 /**
  * Product unit cost.
@@ -26,27 +26,29 @@ export type CostBreakdown = {
  * and much more damaging statement than "we don't know".
  */
 export function productCost(
-  product: Pick<Product, "grams" | "print_hours" | "material_id">,
-  materials: Material[],
+  product: Pick<Product, "grams" | "print_hours" | "supply_id">,
+  supplies: Pick<Supply, "id" | "cost_per_kg_minor">[],
   machineHourRateMinor: number
 ): CostBreakdown | null {
-  const material = product.material_id
-    ? (materials.find((m) => m.id === product.material_id) ?? null)
+  const supply = product.supply_id
+    ? (supplies.find((s) => s.id === product.supply_id) ?? null)
     : null;
 
   const grams = numeric(product.grams);
   const hours = numeric(product.print_hours);
 
-  // Material cost needs BOTH a material and a weight; machine cost needs hours.
-  // A product with neither has no computable cost at all.
-  const hasMaterial = material != null && grams != null;
+  // Material cost needs a supply WITH a per-kg price and a weight; machine cost
+  // needs hours. A product with neither has no computable cost at all. A supply
+  // whose cost_per_kg_minor is null (a box, tape) contributes no material cost.
+  const hasMaterial =
+    supply != null && supply.cost_per_kg_minor != null && grams != null;
   const hasMachine = hours != null;
   if (!hasMaterial && !hasMachine) return null;
 
   // Rounded per TERM, not once at the end, so each component is itself an exact
   // number of kuruş and the two always sum to the displayed total.
   const materialMinor = hasMaterial
-    ? Math.round((grams / 1000) * material.cost_per_kg_minor)
+    ? Math.round((grams / 1000) * supply.cost_per_kg_minor!)
     : 0;
   const machineMinor = hasMachine ? Math.round(hours * machineHourRateMinor) : 0;
 

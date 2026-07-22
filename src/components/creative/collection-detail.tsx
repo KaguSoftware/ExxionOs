@@ -13,10 +13,10 @@ import type {
   Collection,
   CollectionStatus,
   Issue,
-  Material,
   Product,
   ProductStockMovement,
   StoredImage,
+  Supply,
 } from "@/lib/types";
 
 const STATUS_KEY: Record<CollectionStatus, string> = {
@@ -30,7 +30,6 @@ export function CollectionDetail({
   collection,
   products,
   issues,
-  materials,
   machineRateMinor,
   images,
   supplies,
@@ -40,10 +39,10 @@ export function CollectionDetail({
   collection: Collection;
   products: Product[];
   issues: Issue[];
-  materials: Material[];
   machineRateMinor: number;
   images: (StoredImage & { product_id: string })[];
-  supplies: { id: string; name: string }[];
+  /** Prices the products AND names the stock a print run draws from. */
+  supplies: Supply[];
   /** Every order line app-wide; filtered to this collection by the P&L panel. */
   soldLines: SoldLine[];
   /** The stock ledger; on-hand per product is summed from it. */
@@ -96,11 +95,10 @@ export function CollectionDetail({
             content: (
               <ProductsPanel
                 products={products}
-                materials={materials}
+                supplies={supplies}
                 machineRateMinor={machineRateMinor}
                 images={images}
                 collectionId={collection.id}
-                supplies={supplies}
                 stockMovements={stockMovements}
               />
             ),
@@ -138,7 +136,7 @@ export function CollectionDetail({
             content: (
               <CollectionPnl
                 products={products}
-                materials={materials}
+                supplies={supplies}
                 machineRateMinor={machineRateMinor}
                 soldLines={soldLines}
               />

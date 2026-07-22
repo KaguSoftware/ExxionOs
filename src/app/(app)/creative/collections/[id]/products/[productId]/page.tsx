@@ -7,9 +7,9 @@ import { getSessionContext } from "@/lib/data/session";
 import { createClient } from "@/lib/supabase/server";
 import type {
   AppSettings,
-  Material,
   Product,
   StoredImage,
+  Supply,
   Vocabulary,
 } from "@/lib/types";
 
@@ -23,18 +23,18 @@ export default async function EditProductPage({
   const supabase = await createClient();
 
   // One wave — nothing here depends on the product row's contents.
-  const [productResult, materials, settings, images, productTypes] =
+  const [productResult, supplies, settings, images, productTypes] =
     await Promise.all([
       selectOrThrow<Product>(
         "product.edit",
         supabase.from("products").select("*").eq("id", productId).maybeSingle()
       ),
-      // ⚠️ ALL materials, not just active — an existing product may use an
+      // ⚠️ ALL supplies, not just active — an existing product may point at an
       // archived one, and the form keeps it visible so saving can't silently
-      // blank the material and re-cost the product.
-      rowsOrThrow<Material>(
-        "product.edit.materials",
-        supabase.from("materials").select("*").order("name")
+      // blank the supply and re-cost the product.
+      rowsOrThrow<Supply>(
+        "product.edit.supplies",
+        supabase.from("supplies").select("*").order("name")
       ),
       selectOrThrow<AppSettings>(
         "product.edit.settings",
@@ -68,7 +68,7 @@ export default async function EditProductPage({
     <CreatePage titleKey="creative.editProduct">
       <ProductForm
         collectionId={id}
-        materials={materials}
+        supplies={supplies}
         machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
         existing={product}
         images={images}

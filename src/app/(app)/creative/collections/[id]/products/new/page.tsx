@@ -3,7 +3,7 @@ import { CreatePage } from "@/components/ui/create";
 import { rowsOrThrow, selectOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
 import { createClient } from "@/lib/supabase/server";
-import type { AppSettings, Material, Vocabulary } from "@/lib/types";
+import type { AppSettings, Supply, Vocabulary } from "@/lib/types";
 
 export default async function NewProductPage({
   params,
@@ -14,10 +14,10 @@ export default async function NewProductPage({
   await getSessionContext();
   const supabase = await createClient();
 
-  const [materials, settings, productTypes] = await Promise.all([
-    rowsOrThrow<Material>(
-      "product.new.materials",
-      supabase.from("materials").select("*").is("archived_at", null).order("name")
+  const [supplies, settings, productTypes] = await Promise.all([
+    rowsOrThrow<Supply>(
+      "product.new.supplies",
+      supabase.from("supplies").select("*").is("archived_at", null).order("name")
     ),
     selectOrThrow<AppSettings>(
       "product.new.settings",
@@ -38,7 +38,7 @@ export default async function NewProductPage({
     <CreatePage titleKey="creative.newProduct">
       <ProductForm
         collectionId={id}
-        materials={materials}
+        supplies={supplies}
         machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
         productTypes={productTypes}
       />

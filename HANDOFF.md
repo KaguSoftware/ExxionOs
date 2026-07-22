@@ -6,7 +6,47 @@
 
 ## 👋 START HERE — resuming in a brand-new chat
 
-### 🔵 LATEST SESSION — 2026-07-22, big UI/UX sweep (5 commits, all pushed to main)
+### 🟣 LATEST SESSION — 2026-07-22, RESHAPING: "materials" folded into "supplies"
+
+The first real reshaping change (Parsa: *"wtf is material doing in the settings tab? filament
+should be added in the supplies tab"*). **All business data was WIPED first** (`npm run wipe` +
+`db push`), so this is a clean forward-only schema change — no data migration.
+
+**The decision (Parsa chose "one entry in Supplies, with a cost field"):** filament/resin were
+entered TWICE — once in Settings → Costing to give them a per-kg price, once in Equipment →
+Supplies to track grams. Now a **supply carries its own `cost_per_kg_minor` + `kind`**, and costing
+reads the price straight off it. Filament is added **once**, in the Supplies tab. Settings → Costing
+is now **machine-hour-rate only**.
+
+**What changed:**
+- **Migration `0014_supply_costing.sql`** (⚠️ **WRITTEN, NOT YET APPLIED** — only Parsa can push;
+  see roadmap): `supplies` gains `cost_per_kg_minor` (nullable — a box has no per-kg price) + `kind`
+  (filament/resin/other CHECK). `products` gains `supply_id` (SET NULL). **Drops `products.material_id`
+  and the whole `materials` table.** This **reverses 0007's "two tables stay two tables"** on
+  purpose.
+- **`costing.ts`** now reads `supply.cost_per_kg_minor` via `product.supply_id`. Null price = no
+  material cost (still null-not-zero). Print-run resolution **simplified** — reads `product.supply_id`
+  directly, no more material→supply hop.
+- **`supply-form.tsx`** gained a Kind dropdown + optional Cost/kg field. **`createSupply`/
+  `updateSupply`** take `kind`/`costPerKg`; `updateSupply` now revalidates `/creative` (re-pricing a
+  supply re-costs every product printed from it).
+- **`costing-form.tsx`** stripped to the machine rate + a pointer note ("costs live on each supply
+  now"). **`createMaterial`/`updateMaterial`/`archiveMaterial` deleted.**
+- Product form + products-panel + collection-detail/pnl + all four consumer pages + the whole
+  Marketing sample-costing chain repointed `materials`→`supplies`. **`wipe-data.mjs`**: `materials`
+  removed from SETUP; `supplies` is business data (already in CONTENT).
+
+**Verified:** `tsc` · `lint` · `build` (28 routes) · `npm run contrast` all green. `/impeccable`
+polish pass on the two changed surfaces: on-system, one import-order drift fixed, no a11y/i18n
+issues. **NOT driven in a browser, and 0014 is not applied**, so the Stock/costing path is unproven
+against prod until Parsa pushes the migration.
+
+⚠️ **NEXT SESSION, FIRST THING:** Parsa must `npx supabase db push` to apply **0012, 0013, AND
+0014** (all three are written-but-unapplied). Until 0014 lands, the Supplies cost field, product
+costing, and print-run deduction all point at columns that don't exist yet — `rowsOrThrow` will
+throw loudly (by design), not render empty.
+
+### 🔵 EARLIER — 2026-07-22, big UI/UX sweep (5 commits, all pushed to main)
 
 An overnight "find every UI issue and fix it" pass. Six audit agents swept the whole surface
 against the project's own rules; findings were verified in code, then fixed in five themed
@@ -715,7 +755,9 @@ toggle light/dark/system.
 
 **Creative (phase 3):**
 - `src/lib/costing.ts` — `productCost` / `productMargin`. **Computed at read time, never stored.**
-  Returns `null` (not 0) when uncosted. Parses `numeric`-as-string.
+  Returns `null` (not 0) when uncosted. Parses `numeric`-as-string. ⚠️ **As of 0014 it reads the
+  per-kg price off the SUPPLY (`product.supply_id` → `supply.cost_per_kg_minor`), not a `materials`
+  row** — the `materials` table is gone.
 - `src/components/creative/learnings-panel.tsx` — **ONE component, two lenses.** Pass
   `collectionId` for a collection's Issues tab; omit it for app-wide Learnings. Do not fork this
   into a second implementation — they would drift, which is the failure this section exists to
@@ -782,8 +824,8 @@ toggle light/dark/system.
 - `supabase/migrations/0001_foundation.sql` · `0002_backfill_profiles.sql` · `0003_finance.sql` ·
   `0004_creative.sql` · `0005_equipment.sql` · `0006_machine_purchase_expense.sql` ·
   `0007_material_stock.sql` · `0008_shipping.sql` · `0009_clients.sql` · `0010_marketing.sql` ·
-  `0011_vocabularies.sql` · **`0012_product_stock.sql`** · **`0013_drop_profile_color.sql`**
-  (the last two are ⚠️ **NOT YET APPLIED** — see the roadmap).
+  `0011_vocabularies.sql` · **`0012_product_stock.sql`** · **`0013_drop_profile_color.sql`** ·
+  **`0014_supply_costing.sql`** (the last THREE are ⚠️ **NOT YET APPLIED** — see the roadmap).
 - `scripts/apply-migration.mjs` — Management-API applier (alternative to `db push`).
 
 ## Roadmap / next steps
@@ -816,7 +858,7 @@ toggle light/dark/system.
    - **Shell** (`4f523da`) — user colour removed, Finance category safe-delete, language toggle
      in the sidebar and mobile sheet.
 
-⚠️ **TWO MIGRATIONS ARE WRITTEN BUT NOT APPLIED** — `SUPABASE_ACCESS_TOKEN` is empty in
+⚠️ **THREE MIGRATIONS ARE WRITTEN BUT NOT APPLIED** — `SUPABASE_ACCESS_TOKEN` is empty in
 `.env.local`, so `npm run migrate` cannot run and **only Parsa can push these**:
 - **`0012_product_stock.sql`** — until it lands, the Creative **Stock** tab and the dashboard
   out-of-stock signal throw `PGRST205`. That is deliberate (see `lib/data/query.ts`): a missing
@@ -824,6 +866,11 @@ toggle light/dark/system.
 - **`0013_drop_profile_color.sql`** — drops `profiles.color` and **re-issues the column-grant
   list without it**. The app already ignores the column, so this is safe to run at any time;
   running it is what makes the grants correct. See the grant note in `0001_foundation.sql`.
+- **`0014_supply_costing.sql`** (2026-07-22) — folds `materials` into `supplies`: adds
+  `supplies.cost_per_kg_minor` + `kind`, adds `products.supply_id`, **drops `products.material_id`
+  and the `materials` table**. Until it lands, the Supplies cost field, product costing, and
+  print-run deduction throw. Reverses 0007's two-table split. Safe to push on the wiped DB — no
+  data to migrate.
 
 **⚠️ The stock idempotency key is subtler than it looks.** `product_stock_movements_once_idx` is
 `(reason, source_id, product_id, delta_sign, apply_seq)` and every part earns its place — four
@@ -862,7 +909,7 @@ that contract must exist before anything can honour it.
 | Campaigns | ✅ **Shipped (Phase 7).** Budget vs actual, itemised costs each writing one Finance expense, archive | Per-campaign ROI — needs `orders.campaign_id` and the discipline of tagging orders. Deliberately NOT guessed at | If asked |
 | Samples | ✅ **Shipped (Phase 7).** Costed from the product at read time, never expensed. Optional links to client and campaign | Opt-in "also log a print run" so a sample printed for the occasion deducts filament in one step | Later |
 | Marketing schedule | ✅ **Shipped (Phase 7)** as a LENS over `events` — filming, networking, campaign moments | A calendar view rather than two lists | Later |
-| Materials | Name, kind, cost per kg, archive | **Stock levels deliberately excluded** — tracking grams remaining turns this into an inventory system, and Equipment (Phase 4) owns supplies. Decide it there | Phase 4 |
+| Materials / Supplies | ✅ **MERGED (2026-07-22, migration 0014).** One `supplies` row now carries both stock (grams on hand, low-stock, restocks) AND the per-kg cost + kind that costs prints. Added once in Equipment → Supplies. The separate `materials` table is dropped | — | Done (pending 0014 push) |
 | Product photos | Upload/remove on the product EDIT form only (a new product has no id to attach to yet) | Staged upload on create, reordering, a lightbox | Later |
 | Per-collection P&L | ✅ **Shipped (Phase 5).** Revenue from order lines meeting computed cost | Time series, per-product margin trends | Later |
 | Clients | ✅ **Shipped (Phase 6).** Directory (search · kind/source/tag filters · archive) + Insights (top clients, repeat rate, new vs returning, source breakdown, gone quiet) + per-client detail with order history and event timeline | Per-client P&L against computed cost; birthday reminders auto-created via the `reminders` back-link; CSV export | Later |
@@ -946,6 +993,11 @@ that contract must exist before anything can honour it.
   is dated to `purchased_on`, not today.
 - ⚠️ **Filament deducts on a PRINT RUN, never on product creation** — a product is a design.
   Undo restores from the run's `grams_used` snapshot, not the product's current grams.
+- ⚠️ **`materials` and `supplies` are ONE table now (0014).** A supply carries `cost_per_kg_minor`
+  (nullable — null = not a printing material) and `kind`. `products.supply_id` is what costing and
+  print-run deduction both read. There is no `materials` table and no `products.material_id` — don't
+  reintroduce them. Re-pricing a supply re-costs every product printed from it (why `updateSupply`
+  revalidates `/creative`).
 - ⚠️ **Never store a computed product cost.** It is derived from the material's current price and
   the machine rate on purpose; a cached copy is wrong the moment either changes.
 - ⚠️ **`detect.mjs` reports one KNOWN-FALSE "broken image"** in `image-strip.tsx` — its regex

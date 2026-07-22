@@ -7,12 +7,19 @@ import { CreateForm } from "@/components/ui/create";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Field } from "@/components/ui/field";
 import { TextArea, TextInput } from "@/components/ui/input";
-import { NumberInput } from "@/components/ui/number-input";
+import { MoneyInput, NumberInput } from "@/components/ui/number-input";
 import { createSupply, updateSupply } from "@/lib/actions/equipment";
 import { useI18n } from "@/lib/i18n/client";
-import type { Supply } from "@/lib/types";
-import { SUPPLY_UNITS } from "@/lib/types";
+import { toMajor } from "@/lib/money";
+import type { MaterialKind, Supply } from "@/lib/types";
+import { MATERIAL_KINDS, SUPPLY_UNITS } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
+
+const KIND_KEY: Record<MaterialKind, string> = {
+  filament: "creative.filament",
+  resin: "creative.resin",
+  other: "creative.other",
+};
 
 export function SupplyForm({ existing }: { existing?: Supply }) {
   const { t } = useI18n();
@@ -20,13 +27,19 @@ export function SupplyForm({ existing }: { existing?: Supply }) {
   const { run, pending } = useAction();
 
   const nameId = useId();
+  const kindId = useId();
   const unitId = useId();
   const qtyId = useId();
   const lowId = useId();
+  const costId = useId();
   const notesId = useId();
 
   const [name, setName] = useState(existing?.name ?? "");
+  const [kind, setKind] = useState<MaterialKind>(existing?.kind ?? "filament");
   const [unit, setUnit] = useState(existing?.unit ?? "pcs");
+  const [costPerKg, setCostPerKg] = useState<number | null>(
+    existing?.cost_per_kg_minor == null ? null : toMajor(existing.cost_per_kg_minor)
+  );
   const [quantity, setQuantity] = useState<number | null>(
     existing ? Number(existing.quantity) : null
   );
@@ -40,9 +53,11 @@ export function SupplyForm({ existing }: { existing?: Supply }) {
   const submit = async () => {
     const input = {
       name,
+      kind,
       unit,
       quantity,
       lowThreshold,
+      costPerKg,
       notes: notes || null,
     };
 
@@ -72,14 +87,40 @@ export function SupplyForm({ existing }: { existing?: Supply }) {
       pending={pending}
       submitLabel={existing ? t("common.save") : t("common.create")}
     >
-      <Field id={nameId} label={t("equipment.supplyName")}>
-        <TextInput
-          id={nameId}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t("equipment.supplyNamePlaceholder")}
-          autoFocus
-        />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id={nameId} label={t("equipment.supplyName")}>
+          <TextInput
+            id={nameId}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t("equipment.supplyNamePlaceholder")}
+            autoFocus
+          />
+        </Field>
+        <Field id={kindId} label={t("creative.material")}>
+          <Dropdown
+            id={kindId}
+            value={kind}
+            onChange={(v) => setKind(v as MaterialKind)}
+            options={MATERIAL_KINDS.map((k) => ({
+              value: k,
+              label: t(KIND_KEY[k] as never),
+            }))}
+            label={t("creative.material")}
+            placeholder={t("creative.filament")}
+          />
+        </Field>
+      </div>
+
+      <Field
+        id={costId}
+        label={t("equipment.costPerKg")}
+        optional={t("common.optional")}
+        // Null means "not a printing material" — a box or tape has no per-kg
+        // price. Said out loud so an empty field doesn't look like a bug.
+        hint={t("equipment.costPerKgHint")}
+      >
+        <MoneyInput id={costId} value={costPerKg} onChange={setCostPerKg} min={0} />
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-3">

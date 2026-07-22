@@ -20,7 +20,7 @@ import { givenAwayMinor, sampleCostMinor } from "@/lib/marketing";
 import type {
   Campaign,
   Client,
-  Material,
+  Supply,
   Product,
   Sample,
 } from "@/lib/types";
@@ -38,7 +38,7 @@ export function SampleList({
   samples,
   products,
   productOptions,
-  materials,
+  supplies,
   machineRateMinor,
   clients,
   campaigns,
@@ -48,7 +48,7 @@ export function SampleList({
   /** Full product rows — needed to COST a sample, not just name it. */
   products: Product[];
   productOptions: SampleProductOption[];
-  materials: Material[];
+  supplies: Supply[];
   machineRateMinor: number;
   clients: Client[];
   campaigns: Campaign[];
@@ -78,8 +78,8 @@ export function SampleList({
   );
 
   const given = useMemo(
-    () => givenAwayMinor(samples, products, materials, machineRateMinor),
-    [samples, products, materials, machineRateMinor]
+    () => givenAwayMinor(samples, products, supplies, machineRateMinor),
+    [samples, products, supplies, machineRateMinor]
   );
 
   const rows = useMemo(
@@ -158,7 +158,7 @@ export function SampleList({
       ) : (
         <ul className="rounded-xl border border-line">
           {rows.map((sample) => {
-            const cost = sampleCostMinor(sample, products, materials, machineRateMinor);
+            const cost = sampleCostMinor(sample, products, supplies, machineRateMinor);
             const client = sample.client_id ? clientsById.get(sample.client_id) : null;
             const campaign = sample.campaign_id
               ? campaignsById.get(sample.campaign_id)

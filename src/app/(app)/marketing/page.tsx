@@ -13,9 +13,9 @@ import type {
   CampaignCost,
   Client,
   Event,
-  Material,
   Product,
   Sample,
+  Supply,
 } from "@/lib/types";
 import { todayInIstanbul } from "@/lib/utils";
 
@@ -45,7 +45,7 @@ export default async function MarketingPage() {
   await getSessionContext();
   const supabase = await createClient();
 
-  const [campaigns, costs, spend, events, samples, productRows, materials, settings, clients] =
+  const [campaigns, costs, spend, events, samples, productRows, supplies, settings, clients] =
     await Promise.all([
       rowsOrThrow<Campaign>(
         "marketing.campaigns",
@@ -86,15 +86,15 @@ export default async function MarketingPage() {
         "marketing.samples",
         supabase.from("samples").select("*").order("given_on", { ascending: false }).limit(500)
       ),
-      // Products + materials + the machine rate are what make a sample
+      // Products + supplies + the machine rate are what make a sample
       // COSTABLE. Cost is computed at read time, never stored (Phase 3).
       rowsOrThrow<ProductRow>(
         "marketing.products",
         supabase.from("products").select("*, collections(name)").order("name")
       ),
-      rowsOrThrow<Material>(
-        "marketing.materials",
-        supabase.from("materials").select("*").order("name")
+      rowsOrThrow<Supply>(
+        "marketing.supplies",
+        supabase.from("supplies").select("*").order("name")
       ),
       selectOrThrow<{ machine_hour_rate_minor: number }>(
         "marketing.settings",
@@ -129,7 +129,7 @@ export default async function MarketingPage() {
           samples={samples}
           products={productRows}
           productOptions={productOptions}
-          materials={materials}
+          supplies={supplies}
           machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
           clients={clients}
           /**

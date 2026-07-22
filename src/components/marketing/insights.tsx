@@ -13,7 +13,7 @@ import type {
   Campaign,
   Client,
   ClientSource,
-  Material,
+  Supply,
   Product,
   Sample,
   Transaction,
@@ -44,7 +44,7 @@ export function MarketingInsights({
   spend,
   samples,
   products,
-  materials,
+  supplies,
   machineRateMinor,
   clients,
 }: {
@@ -59,7 +59,7 @@ export function MarketingInsights({
   spend: MarketingSpendRow[];
   samples: Sample[];
   products: Product[];
-  materials: Material[];
+  supplies: Supply[];
   machineRateMinor: number;
   clients: Client[];
 }) {
@@ -93,8 +93,8 @@ export function MarketingInsights({
   );
 
   const given = useMemo(
-    () => givenAwayMinor(samples, products, materials, machineRateMinor),
-    [samples, products, materials, machineRateMinor]
+    () => givenAwayMinor(samples, products, supplies, machineRateMinor),
+    [samples, products, supplies, machineRateMinor]
   );
 
   const { months, bySource } = useMemo(

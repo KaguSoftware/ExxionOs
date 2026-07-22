@@ -2,35 +2,19 @@ import { AppearanceForm } from "@/components/settings/appearance-form";
 import { CostingForm } from "@/components/settings/costing-form";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { PageHeader } from "@/components/ui/panel";
-import { rowsOrThrow, selectOrThrow } from "@/lib/data/query";
+import { selectOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
 import { createClient } from "@/lib/supabase/server";
-import type { AppSettings, Material } from "@/lib/types";
+import type { AppSettings } from "@/lib/types";
 
 export default async function SettingsPage() {
   const ctx = await getSessionContext();
   const supabase = await createClient();
 
-  // One wave.
-  const [materials, settings, supplies] = await Promise.all([
-    rowsOrThrow<Material>(
-      "settings.materials",
-      supabase.from("materials").select("*").order("name")
-    ),
-    selectOrThrow<AppSettings>(
-      "settings.app",
-      supabase.from("app_settings").select("*").eq("id", 1).maybeSingle()
-    ),
-    // Same wave — lets a material be linked to the stock it draws down.
-    rowsOrThrow<{ id: string; name: string; unit: string }>(
-      "settings.supplies",
-      supabase
-        .from("supplies")
-        .select("id, name, unit")
-        .is("archived_at", null)
-        .order("name")
-    ),
-  ]);
+  const settings = await selectOrThrow<AppSettings>(
+    "settings.app",
+    supabase.from("app_settings").select("*").eq("id", 1).maybeSingle()
+  );
 
   return (
     <div className="animate-fade-rise px-4 py-6 md:px-8">
@@ -41,9 +25,7 @@ export default async function SettingsPage() {
           <ProfileForm profile={ctx.profile} email={ctx.email} />
           <AppearanceForm profile={ctx.profile} />
           <CostingForm
-            materials={materials}
             machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
-            supplies={supplies}
           />
         </div>
       </div>
