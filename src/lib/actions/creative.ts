@@ -475,9 +475,13 @@ export async function recordPrintRun(input: {
 
   if (supply && gramsUsed != null) {
     const current = Number(supply.quantity) || 0;
+    // ⚠️ Filament STOCK is kept in KILOGRAMS, but a print burns GRAMS. Convert
+    // here (grams → kg) before subtracting, or a run would wipe the whole spool.
+    // `grams_used` itself stays in grams — it's a physical record of the print.
+    const kgUsed = gramsUsed / 1000;
     // Floor at zero: stock cannot be negative, and a negative reading would
     // just be a confusing way of saying "you ran out and kept going".
-    const next = Math.max(0, current - gramsUsed);
+    const next = Math.max(0, current - kgUsed);
     const { error } = await supabase
       .from("supplies")
       .update({ quantity: next })
@@ -540,9 +544,11 @@ export async function deletePrintRun(id: string): Promise<ActionResult> {
       .eq("id", run.supply_id)
       .maybeSingle<{ quantity: string | number }>();
     if (supply) {
+      // Stock is in kg; the snapshot is in grams — convert before adding back.
+      const kgUsed = Number(run.grams_used) / 1000;
       await supabase
         .from("supplies")
-        .update({ quantity: (Number(supply.quantity) || 0) + Number(run.grams_used) })
+        .update({ quantity: (Number(supply.quantity) || 0) + kgUsed })
         .eq("id", run.supply_id);
     }
   }

@@ -90,13 +90,14 @@ async function main() {
   // ===========================================================================
   log("\nEquipment");
   // category = a Finance expense category; item = the specific thing.
+  // ⚠️ Filament stock is in KILOGRAMS (decimals fine); cost is per kg.
   const [plaBlack, plaWhite, resinGrey] = await insert("supplies", [
-    { name: "PLA Black", category: "Filament", item: "PLA Black", unit: "g",
-      quantity: 1000, low_threshold: 300, cost_per_kg_minor: L(800), last_price_minor: L(800) },
-    { name: "PLA White", category: "Filament", item: "PLA White", unit: "g",
-      quantity: 250, low_threshold: 300, cost_per_kg_minor: L(800), last_price_minor: L(800) },
-    { name: "Grey Resin", category: "Resin", item: "Grey Resin", unit: "g",
-      quantity: 500, low_threshold: 200, cost_per_kg_minor: L(1400), last_price_minor: L(1400) },
+    { name: "PLA Black", category: "Filament", item: "PLA Black", unit: "kg",
+      quantity: 1, low_threshold: 0.3, cost_per_kg_minor: L(800), last_price_minor: L(800) },
+    { name: "PLA White", category: "Filament", item: "PLA White", unit: "kg",
+      quantity: 0.25, low_threshold: 0.3, cost_per_kg_minor: L(800), last_price_minor: L(800) },
+    { name: "Grey Resin", category: "Resin", item: "Grey Resin", unit: "kg",
+      quantity: 0.5, low_threshold: 0.2, cost_per_kg_minor: L(1400), last_price_minor: L(1400) },
   ]);
   const [smallBox, stickers] = await insert("supplies", [
     { name: "Small mailer box", category: "Packaging", item: "Boxes", unit: "pcs",

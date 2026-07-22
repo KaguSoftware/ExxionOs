@@ -536,7 +536,7 @@ export const en = {
     supplyCategoryHint: "A restock is booked to this expense category in Finance.",
     supplyItem: "Item",
     supplyItemPlaceholder: "Cardboard, PLA Black, stickers…",
-    unitGramsLocked: "Filament is tracked in grams.",
+    unitKgLocked: "Filament is tracked in kilograms.",
     uncategorised: "Uncategorised",
     lowStock: "Low",
     restock: "Restock",

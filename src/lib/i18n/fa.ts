@@ -523,7 +523,7 @@ export const fa: Dictionary = {
     supplyCategoryHint: "تأمین مجدد در همین دسته هزینه در بخش مالی ثبت می‌شود.",
     supplyItem: "قلم",
     supplyItemPlaceholder: "مقوا، PLA مشکی، برچسب…",
-    unitGramsLocked: "فیلامنت با گرم دنبال می‌شود.",
+    unitKgLocked: "فیلامنت با کیلوگرم دنبال می‌شود.",
     uncategorised: "دسته‌بندی‌نشده",
     lowStock: "کم",
     restock: "تأمین مجدد",

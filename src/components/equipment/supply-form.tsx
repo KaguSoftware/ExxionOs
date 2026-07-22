@@ -63,10 +63,11 @@ export function SupplyForm({
   // No toggle: the category the user already picks is the whole answer.
   const isPrinting = isPrintingCategory(category);
 
-  // A printing material is ALWAYS tracked in grams — you buy per kg but count
-  // the spool in grams ("warn me under 300g", never "0.3 kg"). So the unit is
-  // forced to `g` while it's a printing material; only the per-kg COST is in kg.
-  const effectiveUnit = isPrinting ? "g" : unit;
+  // A printing material is tracked in KILOGRAMS — you buy filament by the kg,
+  // and the cost is per kg, so stock and warning are in kg too (decimals are
+  // fine: 0.3 kg, 0.085 kg). The unit is forced to `kg` while it's a printing
+  // material; a print's gram usage is converted to kg when it deducts stock.
+  const effectiveUnit = isPrinting ? "kg" : unit;
 
   const categoryOptions = categories.map((c) => ({ value: c, label: c }));
   const [itemRows, setItemRows] = useState(items);
@@ -185,10 +186,10 @@ export function SupplyForm({
         <Field
           id={unitId}
           label={t("equipment.unit")}
-          hint={isPrinting ? t("equipment.unitGramsLocked") : undefined}
+          hint={isPrinting ? t("equipment.unitKgLocked") : undefined}
         >
           {isPrinting ? (
-            <TextInput id={unitId} value="g" disabled readOnly />
+            <TextInput id={unitId} value="kg" disabled readOnly />
           ) : (
             <Dropdown
               id={unitId}
