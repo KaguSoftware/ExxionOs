@@ -68,14 +68,19 @@ export function SupplyForm({
 
   const emptyFields = name.trim() ? [] : [t("equipment.supplyName")];
 
-  // Turning the printing toggle on nudges the unit to kg (filament is weighed);
-  // turning it off clears the cost, since packaging has no per-kg price.
+  // ⚠️ A printing material is ALWAYS tracked in grams — you buy per kg but count
+  // the spool in grams ("warn me under 300g", never "under 0.3 kg"). So the unit
+  // is forced to `g` and locked while the toggle is on; only the per-kg COST is
+  // in kg. Packaging keeps its free unit.
+  const effectiveUnit = isPrinting ? "g" : unit;
+
   const togglePrinting = (next: boolean) => {
     setIsPrinting(next);
-    if (next) {
-      if (unit === "pcs") setUnit("kg");
-    } else {
+    // Turning it off drops the cost (packaging has no per-kg price) and restores
+    // a sensible free unit; the grams lock is lifted.
+    if (!next) {
       setCostPerKg(null);
+      if (unit === "g") setUnit("pcs");
     }
   };
 
@@ -83,7 +88,7 @@ export function SupplyForm({
     const input = {
       name,
       type,
-      unit,
+      unit: effectiveUnit,
       quantity,
       lowThreshold,
       costPerKg: isPrinting ? costPerKg : null,
@@ -172,18 +177,34 @@ export function SupplyForm({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field id={unitId} label={t("equipment.unit")}>
-          <Dropdown
-            id={unitId}
-            value={unit}
-            onChange={setUnit}
-            options={SUPPLY_UNITS.map((u) => ({ value: u, label: u }))}
-            label={t("equipment.unit")}
-            placeholder="pcs"
-          />
+        <Field
+          id={unitId}
+          label={t("equipment.unit")}
+          // Filament is always counted in grams (you buy per kg but track the
+          // spool in grams), so the unit is fixed while it's a printing material.
+          hint={isPrinting ? t("equipment.unitGramsLocked") : undefined}
+        >
+          {isPrinting ? (
+            <TextInput id={unitId} value="g" disabled readOnly />
+          ) : (
+            <Dropdown
+              id={unitId}
+              value={unit}
+              onChange={setUnit}
+              options={SUPPLY_UNITS.map((u) => ({ value: u, label: u }))}
+              label={t("equipment.unit")}
+              placeholder="pcs"
+            />
+          )}
         </Field>
         <Field id={qtyId} label={t("equipment.quantity")}>
-          <NumberInput id={qtyId} value={quantity} onChange={setQuantity} min={0} />
+          <NumberInput
+            id={qtyId}
+            value={quantity}
+            onChange={setQuantity}
+            min={0}
+            suffix={effectiveUnit}
+          />
         </Field>
         <Field
           id={lowId}
@@ -198,6 +219,7 @@ export function SupplyForm({
             value={lowThreshold}
             onChange={setLowThreshold}
             min={0}
+            suffix={effectiveUnit}
           />
         </Field>
       </div>

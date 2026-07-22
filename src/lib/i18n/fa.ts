@@ -506,6 +506,7 @@ export const fa: Dictionary = {
 
     supplies: "ملزومات",
     newSupply: "ملزومات جدید",
+    newSupplyHint: "فیلامنت، بسته‌بندی، ابزار — هر چیزی که نمی‌خواهید تمام شود.",
     editSupply: "ویرایش ملزومات",
     noSupplies: "ملزوماتی پیگیری نمی‌شود.",
     noSuppliesHint: "نازل، الکل، دستکش، جعبه — هر چیزی که نمی‌خواهید تمام شود.",
@@ -522,6 +523,7 @@ export const fa: Dictionary = {
     isPrintingMaterial: "این یک ماده چاپ است",
     isPrintingMaterialHint:
       "فیلامنت یا رزین — با گرم وزن می‌شود و بر اساس کیلوگرم هزینه می‌گیرد. برای بسته‌بندی خاموش بگذارید.",
+    unitGramsLocked: "فیلامنت با گرم دنبال می‌شود.",
     uncategorised: "دسته‌بندی‌نشده",
     lowStock: "کم",
     restock: "تأمین مجدد",

@@ -519,6 +519,7 @@ export const en = {
 
     supplies: "Supplies",
     newSupply: "New supply",
+    newSupplyHint: "Filament, packaging, tools — anything you'd rather not run out of.",
     editSupply: "Edit supply",
     noSupplies: "No supplies tracked.",
     noSuppliesHint: "Nozzles, IPA, gloves, boxes — anything you'd rather not run out of.",
@@ -535,6 +536,7 @@ export const en = {
     isPrintingMaterial: "This is a printing material",
     isPrintingMaterialHint:
       "Filament or resin — weighed in grams and costed per kg. Leave off for packaging.",
+    unitGramsLocked: "Filament is tracked in grams.",
     uncategorised: "Uncategorised",
     lowStock: "Low",
     restock: "Restock",

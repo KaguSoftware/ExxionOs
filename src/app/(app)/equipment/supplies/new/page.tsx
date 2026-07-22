@@ -22,7 +22,7 @@ export default async function NewSupplyPage() {
   return (
     <CreatePage
       titleKey="equipment.newSupply"
-      descriptionKey="equipment.noSuppliesHint"
+      descriptionKey="equipment.newSupplyHint"
     >
       <SupplyForm supplyTypes={supplyTypes} />
     </CreatePage>
