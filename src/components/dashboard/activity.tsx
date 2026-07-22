@@ -78,7 +78,12 @@ export function Activity({
     <Panel
       title={t("dashboard.recentActivity")}
       className={className}
-      bodyClassName={sorted.length === 0 ? undefined : "p-0"}
+      // ⚠️ `overflow-hidden` CLIPS the square-cornered row hover (and the day
+      // header's full-width tint) to the panel's rounded-xl corners. Without it
+      // the first/last row's `hover:bg-raised` paints square corners over the
+      // rounded panel — the "hover bg isn't rounded" bug. Same fix as the
+      // clients directory / order list containers.
+      bodyClassName={sorted.length === 0 ? undefined : "p-0 overflow-hidden"}
     >
       {sorted.length === 0 ? (
         <EmptyState
