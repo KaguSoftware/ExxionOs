@@ -88,7 +88,10 @@ export function StockPanel({
     <div className="flex flex-col gap-3">
       <p className="text-xs text-faint">{t("creative.stockHint")}</p>
 
-      <ul className="rounded-xl border border-line">
+      {/* overflow-hidden so an expanded row's full-width tinted print-history
+          (bg-raised/40) clips to the rounded corners instead of painting square
+          corners over the last row — same rounding fix as the dashboard feed. */}
+      <ul className="overflow-hidden rounded-xl border border-line">
         {sorted.map((product) => {
           const units = totals.get(product.id) ?? 0;
           const mine = movements.filter((m) => m.product_id === product.id);
