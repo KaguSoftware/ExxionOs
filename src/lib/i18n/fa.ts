@@ -595,6 +595,8 @@ export const fa: Dictionary = {
     payments: "پرداخت‌ها",
     recordPayment: "ثبت پرداخت",
     paymentAmount: "مبلغ",
+    overpaymentWarning: "بیشتر از {outstanding} باقی‌مانده است.",
+    notInFinance: "ثبت‌نشده در مالی",
     paymentKind: "نوع",
     kindDeposit: "بیعانه",
     kindBalance: "تسویه",

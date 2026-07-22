@@ -3,7 +3,7 @@
 import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { BalancePrompt } from "@/components/shipping/balance-prompt";
 import { OrderForm, type ProductOption } from "@/components/shipping/order-form";
@@ -73,6 +73,15 @@ export function OrderDetail({
     setSeenPayments(initialPayments);
     setPayments(initialPayments);
   }
+
+  // Sort in the component, newest-first, rather than trusting the query's
+  // order — a timeline whose direction depends on a distant `.order()` clause
+  // is one refactor away from silently reversing. Matches the schedule and
+  // client timelines, which also read newest-first.
+  const timeline = useMemo(
+    () => [...events].sort((a, b) => b.entered_at.localeCompare(a.entered_at)),
+    [events]
+  );
 
   const received = paidMinor(payments);
   const owed = outstandingMinor(order, payments);
@@ -285,11 +294,11 @@ export function OrderDetail({
 
       {/* --- timeline ------------------------------------------------------- */}
       <Panel title={t("shipping.timeline")} className="mt-4">
-        {events.length === 0 ? (
+        {timeline.length === 0 ? (
           <EmptyState title={t("shipping.notEnoughData")} />
         ) : (
           <ol className="flex flex-col">
-            {events.map((event) => (
+            {timeline.map((event) => (
               <li
                 key={event.id}
                 className="flex items-baseline gap-3 border-b border-line py-2 last:border-0"

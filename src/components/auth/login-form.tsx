@@ -23,6 +23,9 @@ export function LoginForm() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    // pending is state and isn't synchronously true; guard so a fast double
+    // Enter can't fire two signIn calls.
+    if (pending) return;
     setPending(true);
     setError(null);
 
@@ -53,7 +56,10 @@ export function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           autoFocus
-          required
+          // No native `required`: it triggers the browser's own validation
+          // bubble, the one piece of user-facing text that never passes through
+          // the dictionary — English (or the browser's locale) in a Farsi UI.
+          // The server already answers with a translated auth error.
           invalid={!!error}
         />
       </Field>
@@ -63,7 +69,6 @@ export function LoginForm() {
           id={passwordId}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          required
           invalid={!!error}
         />
       </Field>

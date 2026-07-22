@@ -615,6 +615,8 @@ export const en = {
     payments: "Payments",
     recordPayment: "Record payment",
     paymentAmount: "Amount",
+    overpaymentWarning: "More than the {outstanding} outstanding.",
+    notInFinance: "not in Finance",
     paymentKind: "Kind",
     kindDeposit: "Deposit",
     kindBalance: "Balance",

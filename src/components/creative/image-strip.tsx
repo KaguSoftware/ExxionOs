@@ -3,6 +3,7 @@
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { attachImage, detachImage } from "@/lib/actions/creative";
 import { useI18n } from "@/lib/i18n/client";
@@ -49,6 +50,10 @@ export function ImageStrip({
   const [uploading, setUploading] = useState(false);
   /** Photos whose delete is in flight — see `remove`. */
   const [removingIds, setRemovingIds] = useState<string[]>([]);
+  /** The photo pending a delete confirm. Detach is irreversible from the UI —
+      every other destructive action in Creative routes through a dialog, and
+      this one used to fire on a single click of a 20px icon. */
+  const [confirmRemove, setConfirmRemove] = useState<StoredImage | null>(null);
 
   // Adopt server truth during render, never in an effect.
   const [seen, setSeen] = useState(images);
@@ -178,7 +183,10 @@ export function ImageStrip({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={urls[image.id]}
-                alt=""
+                // Named, not alt="" — these are product photos a user is
+                // managing, not decoration, so a screen reader should announce
+                // that each one is there.
+                alt={t("creative.photos")}
                 className="size-full object-cover"
                 loading="lazy"
               />
@@ -187,7 +195,7 @@ export function ImageStrip({
             )}
             <button
               type="button"
-              onClick={() => void remove(image)}
+              onClick={() => setConfirmRemove(image)}
               disabled={removingIds.includes(image.id)}
               aria-label={t("creative.removePhoto")}
               className={cn(
@@ -243,6 +251,20 @@ export function ImageStrip({
           />
         </label>
       </div>
+
+      <ConfirmDialog
+        open={confirmRemove !== null}
+        title={t("creative.removePhoto")}
+        body={t("common.deleteWarning")}
+        confirmLabel={t("common.delete")}
+        onCancel={() => setConfirmRemove(null)}
+        onConfirm={() => {
+          // Close synchronously, then act — the dialog can't double-fire.
+          const image = confirmRemove;
+          setConfirmRemove(null);
+          if (image) void remove(image);
+        }}
+      />
     </div>
   );
 }

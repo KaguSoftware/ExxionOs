@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { CreateOverlay } from "@/components/ui/create";
@@ -35,17 +35,18 @@ export function BalancePrompt({
 }) {
   const { t } = useI18n();
   const { run, pending } = useAction();
+  const amountId = useId();
   const [amount, setAmount] = useState<number | null>(toMajor(outstandingMinor));
 
   const nothingOwed = outstandingMinor <= 0;
 
   const submit = async () => {
-    if (!amount) return;
+    // No `!amount` blocker — records a 0 rather than silently doing nothing.
     const result = await run(
       () =>
         recordPayment({
           orderId: order.id,
-          amount,
+          amount: amount ?? 0,
           // A delivery payment settles the order; a deposit is recorded from
           // the order page before the work is done.
           kind: "balance",
@@ -78,32 +79,39 @@ export function BalancePrompt({
           </Button>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
-          <Field id="balance-amount" label={t("shipping.paymentAmount")}>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit();
+          }}
+        >
+          <Field id={amountId} label={t("shipping.paymentAmount")}>
             <MoneyInput
-              id="balance-amount"
+              id={amountId}
               value={amount}
               onChange={setAmount}
               min={0}
+              autoFocus
             />
           </Field>
 
           <div className="flex justify-end gap-2 border-t border-line pt-4">
-            <Button variant="ghost" onClick={onClose} disabled={pending}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onClose}
+              disabled={pending}
+            >
               {t("shipping.skipForNow")}
             </Button>
-            <Button
-              variant="primary"
-              onClick={submit}
-              loading={pending}
-              disabled={!amount}
-            >
+            <Button type="submit" variant="primary" loading={pending}>
               {t("shipping.recordBalance", {
                 amount: formatMinor(Math.round((amount ?? 0) * 100)),
               })}
             </Button>
           </div>
-        </div>
+        </form>
       )}
     </CreateOverlay>
   );

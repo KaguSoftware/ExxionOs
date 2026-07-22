@@ -297,7 +297,14 @@ function IssueRow({
           </div>
 
           <div className="mt-1 flex flex-wrap items-center gap-1.5 ps-5 text-xs text-faint">
-            <Badge tone={solved ? "success" : issue.severity === "high" ? "danger" : "warning"}>
+            {/* ⚠️ SOLVED-NESS IS STATE; SEVERITY IS A CATEGORY. They must not
+                share the palette. The old code coloured severity with the
+                reserved state hues — so a high-severity SOLVED issue was green
+                and a high-severity OPEN one was red, the same attribute in
+                opposite colours, exactly the collision badge.tsx documents.
+                `success` now means only "solved"; severity rides `neutral` and
+                is carried by its word. */}
+            <Badge tone={solved ? "success" : "neutral"}>
               {solved ? t("creative.solved") : t(SEVERITY_KEY[issue.severity] as never)}
             </Badge>
             {showCollection && (

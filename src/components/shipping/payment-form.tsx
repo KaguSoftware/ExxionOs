@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { CreateOverlay } from "@/components/ui/create";
@@ -13,7 +13,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { toMajor } from "@/lib/money";
 import { PAYMENT_KINDS, type PaymentKind } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
-import { todayInIstanbul } from "@/lib/utils";
+import { formatMinor, todayInIstanbul } from "@/lib/utils";
 
 const KIND_KEY: Record<PaymentKind, string> = {
   deposit: "shipping.kindDeposit",
@@ -35,6 +35,9 @@ export function PaymentForm({
 }) {
   const { t } = useI18n();
   const { run, pending } = useAction();
+  const amountId = useId();
+  const kindId = useId();
+  const dateId = useId();
 
   const [amount, setAmount] = useState<number | null>(
     suggestedMinor > 0 ? toMajor(suggestedMinor) : null
@@ -47,13 +50,23 @@ export function PaymentForm({
   const [kind, setKind] = useState<PaymentKind>(hasPayments ? "balance" : "deposit");
   const [paidOn, setPaidOn] = useState<string | null>(todayInIstanbul());
 
+  // Warn, never block (the no-required-fields spirit): a legitimate overpay
+  // exists, but outstandingMinor() floors at 0 so it would otherwise vanish
+  // from the order with no trace. Refunds are money OUT — never "over".
+  const overpaying =
+    amount != null &&
+    kind !== "refund" &&
+    suggestedMinor > 0 &&
+    Math.round(amount * 100) > suggestedMinor;
+
   const submit = async () => {
-    if (!amount) return;
+    // No `if (!amount) return` blocker — an empty amount records a 0, the same
+    // ask-once-then-proceed contract the rest of the app follows.
     const result = await run(
       () =>
         recordPayment({
           orderId,
-          amount,
+          amount: amount ?? 0,
           kind,
           paidOn: paidOn ?? undefined,
         }),
@@ -72,19 +85,35 @@ export function PaymentForm({
       description={t("shipping.revenueHint")}
       onClose={onClose}
     >
-      <div className="flex flex-col gap-4">
-        <Field id="payment-amount" label={t("shipping.paymentAmount")}>
+      {/* A real <form> so Enter in the amount field submits, like every
+          CreateForm surface. */}
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit();
+        }}
+      >
+        <Field id={amountId} label={t("shipping.paymentAmount")}>
           <MoneyInput
-            id="payment-amount"
+            id={amountId}
             value={amount}
             onChange={setAmount}
             min={0}
+            autoFocus
           />
+          {overpaying && (
+            <p className="mt-1.5 text-xs text-warning">
+              {t("shipping.overpaymentWarning", {
+                outstanding: formatMinor(suggestedMinor),
+              })}
+            </p>
+          )}
         </Field>
 
-        <Field id="payment-kind" label={t("shipping.paymentKind")}>
+        <Field id={kindId} label={t("shipping.paymentKind")}>
           <Dropdown
-            id="payment-kind"
+            id={kindId}
             value={kind}
             onChange={(v) => setKind(v as PaymentKind)}
             options={PAYMENT_KINDS.map((k) => ({
@@ -96,9 +125,9 @@ export function PaymentForm({
           />
         </Field>
 
-        <Field id="payment-date" label={t("shipping.paidOn")}>
+        <Field id={dateId} label={t("shipping.paidOn")}>
           <DatePicker
-            id="payment-date"
+            id={dateId}
             value={paidOn}
             onChange={setPaidOn}
             placeholder={t("common.chooseDate")}
@@ -106,19 +135,19 @@ export function PaymentForm({
         </Field>
 
         <div className="flex justify-end gap-2 border-t border-line pt-4">
-          <Button variant="ghost" onClick={onClose} disabled={pending}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+            disabled={pending}
+          >
             {t("common.cancel")}
           </Button>
-          <Button
-            variant="primary"
-            onClick={submit}
-            loading={pending}
-            disabled={!amount}
-          >
+          <Button type="submit" variant="primary" loading={pending}>
             {t("shipping.recordPayment")}
           </Button>
         </div>
-      </div>
+      </form>
     </CreateOverlay>
   );
 }
