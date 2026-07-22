@@ -12,20 +12,18 @@ import { setOrderStage } from "@/lib/actions/shipping";
 import { useI18n } from "@/lib/i18n/client";
 import { ORDER_STAGES } from "@/lib/types";
 import type { Client, Order, OrderPayment, OrderStage } from "@/lib/types";
-import { STAGE_KEY, outstandingMinor } from "@/lib/shipping";
+import type { BoardLane } from "@/lib/shipping";
+import { BOARD_LANES, STAGE_KEY, outstandingMinor } from "@/lib/shipping";
 import { useAction } from "@/lib/use-action";
 import { cn, formatMinor } from "@/lib/utils";
 
-/** Columns shown by default. `cancelled` is opt-in — it is an exit, not a step. */
-const BOARD_STAGES: OrderStage[] = [
-  "enquiry",
-  "quoted",
-  "printing",
-  "post_processing",
-  "packed",
-  "shipped",
-  "delivered",
-];
+/** The opt-in cancelled lane — an exit, not a step, so it's shown on demand. */
+const CANCELLED_LANE: BoardLane = {
+  id: "cancelled",
+  labelKey: "shipping.stageCancelled",
+  stages: ["cancelled"],
+  entry: "cancelled",
+};
 
 export function OrderBoard({
   orders: initial,
@@ -45,7 +43,7 @@ export function OrderBoard({
   const [orders, setOrders] = useState(initial);
   const [showCancelled, setShowCancelled] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
-  const [overStage, setOverStage] = useState<OrderStage | null>(null);
+  const [overLane, setOverLane] = useState<string | null>(null);
   /** Set when an order has just reached `delivered` with money still owed. */
   const [balanceFor, setBalanceFor] = useState<{
     order: Order;
@@ -83,10 +81,7 @@ export function OrderBoard({
     }
   };
 
-  const stages = showCancelled ? [...BOARD_STAGES, "cancelled" as const] : BOARD_STAGES;
-  const visible = showCancelled
-    ? orders
-    : orders.filter((o) => o.stage !== "cancelled");
+  const lanes = showCancelled ? [...BOARD_LANES, CANCELLED_LANE] : BOARD_LANES;
 
   if (orders.length === 0) {
     return (
@@ -146,63 +141,64 @@ export function OrderBoard({
         )}
       </div>
 
-      {/* The board scrolls horizontally inside its own container; the page
-          itself must never scroll sideways. */}
-      <div className="-mx-1 overflow-x-auto px-1 pb-2">
-        <div className="flex min-w-max gap-3">
-          {stages.map((stage) => {
-            const column = visible.filter((o) => o.stage === stage);
-            const columnValue = column.reduce((sum, o) => sum + o.total_minor, 0);
-            return (
-              <section
-                key={stage}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setOverStage(stage);
-                }}
-                onDragLeave={() => setOverStage((s) => (s === stage ? null : s))}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setOverStage(null);
-                  const order = orders.find((o) => o.id === dragging);
-                  setDragging(null);
-                  if (order) void move(order, stage);
-                }}
-                className={cn(
-                  "flex w-64 shrink-0 flex-col rounded-xl border bg-surface transition-colors",
-                  overStage === stage
-                    ? "border-brand bg-brand-soft"
-                    : "border-line"
+      {/* Four lanes that FIT the viewport — no sideways scroll, so a card's
+          stage dropdown can open without an overflow container clipping it.
+          The lanes are a display grouping; the 8 real stages live underneath
+          (see BOARD_LANES in lib/shipping.ts). */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:auto-cols-fr xl:grid-flow-col">
+        {lanes.map((lane) => {
+          const column = orders
+            .filter((o) => lane.stages.includes(o.stage))
+            .sort((a, b) => a.stage.localeCompare(b.stage));
+          const columnValue = column.reduce((sum, o) => sum + o.total_minor, 0);
+          return (
+            <section
+              key={lane.id}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setOverLane(lane.id);
+              }}
+              onDragLeave={() => setOverLane((l) => (l === lane.id ? null : l))}
+              onDrop={(e) => {
+                e.preventDefault();
+                setOverLane(null);
+                const order = orders.find((o) => o.id === dragging);
+                setDragging(null);
+                // Dropping onto a lane moves the order to that lane's ENTRY
+                // stage; the card dropdown sets a finer stage when needed.
+                if (order && !lane.stages.includes(order.stage)) {
+                  void move(order, lane.entry);
+                }
+              }}
+              className={cn(
+                "flex min-w-0 flex-col rounded-xl border bg-surface transition-colors",
+                overLane === lane.id ? "border-brand bg-brand-soft" : "border-line"
+              )}
+            >
+              {/* ⚠️ THE LANE CARRIES ITS VALUE, not just its count. "Six orders
+                  in production" and "₺40,000 in production" are different facts,
+                  and only the second tells you what a stalled lane is costing. */}
+              <header className="row-compact border-b border-line">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-ink">
+                    {t(lane.labelKey as never)}
+                  </span>
+                  <span className="tnum text-2xs text-faint">{column.length}</span>
+                </div>
+                {columnValue > 0 && (
+                  <p className="tnum mt-0.5 text-2xs text-muted">
+                    {formatMinor(columnValue)}
+                  </p>
                 )}
-              >
-                {/* ⚠️ THE COLUMN CARRIES ITS VALUE, not just its count. "Six
-                    orders in printing" and "₺40,000 in printing" are different
-                    facts, and only the second one tells you what a stalled
-                    column is costing. The count alone made the board a
-                    to-do list; the money makes it a pipeline. */}
-                <header className="row-compact border-b border-line">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-ink">
-                      {t(STAGE_KEY[stage] as never)}
-                    </span>
-                    <span className="tnum text-2xs text-faint">
-                      {column.length}
-                    </span>
-                  </div>
-                  {columnValue > 0 && (
-                    <p className="tnum mt-0.5 text-2xs text-muted">
-                      {formatMinor(columnValue)}
-                    </p>
-                  )}
-                </header>
+              </header>
 
-                <div className="flex flex-1 flex-col gap-2 p-2">
-                  {column.length === 0 ? (
-                    <p className="px-1 py-6 text-center text-2xs text-faint">
-                      {t("shipping.emptyStage")}
-                    </p>
-                  ) : (
-                    column.map((order) => {
+              <div className="flex flex-1 flex-col gap-2 p-2">
+                {column.length === 0 ? (
+                  <p className="px-1 py-6 text-center text-2xs text-faint">
+                    {t("shipping.emptyStage")}
+                  </p>
+                ) : (
+                  column.map((order) => {
                       const client = order.client_id
                         ? clientsById.get(order.client_id)
                         : null;
@@ -213,7 +209,7 @@ export function OrderBoard({
                       const overdue =
                         !!order.promised_on &&
                         order.promised_on < today &&
-                        stage !== "delivered";
+                        order.stage !== "delivered";
 
                       return (
                         <article
@@ -222,7 +218,7 @@ export function OrderBoard({
                           onDragStart={() => setDragging(order.id)}
                           onDragEnd={() => {
                             setDragging(null);
-                            setOverStage(null);
+                            setOverLane(null);
                           }}
                           className={cn(
                             "rounded-lg border border-line bg-raised p-2.5",
@@ -256,7 +252,7 @@ export function OrderBoard({
                             {overdue && (
                               <Badge tone="danger">{t("shipping.overdue")}</Badge>
                             )}
-                            {stage === "delivered" && owed > 0 && (
+                            {order.stage === "delivered" && owed > 0 && (
                               <Badge tone="warning">
                                 {t("shipping.unpaidDelivered")}
                               </Badge>
@@ -288,7 +284,6 @@ export function OrderBoard({
               </section>
             );
           })}
-        </div>
       </div>
 
       {balanceFor && (

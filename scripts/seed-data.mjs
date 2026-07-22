@@ -40,7 +40,6 @@ const log = (...a) => console.log(...a);
 
 // --- date helpers (past, so charts have history) ---------------------------
 // Fixed anchor so the script is deterministic; adjust if you re-run much later.
-const TODAY = "2026-07-22";
 function daysAgo(n) {
   const d = new Date("2026-07-22T12:00:00Z");
   d.setUTCDate(d.getUTCDate() - n);

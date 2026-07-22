@@ -16,7 +16,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { toMajor } from "@/lib/money";
 import type { Supply } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
-import { formatMinor } from "@/lib/utils";
+import { cn, formatMinor } from "@/lib/utils";
 
 export function SuppliesPanel({ supplies: initial }: { supplies: Supply[] }) {
   const { t } = useI18n();
@@ -164,9 +164,17 @@ function RestockForm({
   const qtyId = useId();
   const costId = useId();
   const [quantity, setQuantity] = useState<number | null>(null);
+  // "total" = the price for the whole restock; "unit" = the price of ONE unit,
+  // multiplied by quantity on submit. last_price_minor is a total, so we
+  // pre-fill in total mode.
+  const [costMode, setCostMode] = useState<"total" | "unit">("total");
   const [cost, setCost] = useState<number | null>(
     supply.last_price_minor != null ? toMajor(supply.last_price_minor) : null
   );
+
+  // What the action always receives: the batch total.
+  const totalCost =
+    cost == null ? null : costMode === "unit" ? cost * (quantity ?? 0) : cost;
 
   return (
     <CreateOverlay
@@ -190,11 +198,44 @@ function RestockForm({
 
         <Field
           id={costId}
-          label={t("equipment.restockCost")}
+          label={
+            costMode === "unit"
+              ? t("equipment.costPerUnit", { unit: supply.unit })
+              : t("equipment.costTotal")
+          }
           optional={t("common.optional")}
-          hint={t("equipment.costHint")}
+          // In unit mode, show what the batch will come to, so the number
+          // that lands in Finance is never a surprise.
+          hint={
+            costMode === "unit" && totalCost != null
+              ? t("equipment.costTotalIs", { total: formatMinor(Math.round(totalCost * 100)) })
+              : t("equipment.costHint")
+          }
         >
-          <MoneyInput id={costId} value={cost} onChange={setCost} min={0} />
+          <div className="flex flex-col gap-2">
+            {/* Total vs per-unit — a lightweight segment, not a new primitive. */}
+            <div className="inline-flex self-start rounded-lg border border-line p-0.5">
+              {(["total", "unit"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setCostMode(mode)}
+                  aria-pressed={costMode === mode}
+                  className={cn(
+                    "rounded-md px-2.5 py-1 text-xs transition-colors",
+                    costMode === mode
+                      ? "bg-raised text-ink"
+                      : "text-muted hover:text-ink"
+                  )}
+                >
+                  {mode === "total"
+                    ? t("equipment.costModeTotal")
+                    : t("equipment.costModePerUnit", { unit: supply.unit })}
+                </button>
+              ))}
+            </div>
+            <MoneyInput id={costId} value={cost} onChange={setCost} min={0} />
+          </div>
         </Field>
 
         <div className="flex justify-end gap-2 border-t border-line pt-4">
@@ -208,7 +249,7 @@ function RestockForm({
           <Button
             variant="primary"
             loading={pending}
-            onClick={() => onSubmit(quantity ?? 0, cost)}
+            onClick={() => onSubmit(quantity ?? 0, totalCost)}
           >
             {t("equipment.restock")}
           </Button>

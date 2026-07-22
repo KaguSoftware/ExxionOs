@@ -44,6 +44,45 @@ export function isTerminal(stage: OrderStage): boolean {
   return stage === "delivered" || stage === "cancelled";
 }
 
+/**
+ * ⚠️ BOARD LANES — a DISPLAY grouping over the 8 real stages, nothing more.
+ * The stages, their CHECK constraint, and their timestamped history are
+ * untouched (cycle-time stats still read the real stage). The board just shows
+ * fewer, wider columns so all of it fits without a sideways scroll.
+ *
+ * `entry` is the stage a card lands on when DROPPED into the lane — the first
+ * step of that lane. The per-card dropdown still sets any of the 8 exactly.
+ * `cancelled` is deliberately NOT in a lane: it's an exit, shown opt-in.
+ */
+export type BoardLane = {
+  id: string;
+  labelKey: string;
+  stages: OrderStage[];
+  entry: OrderStage;
+};
+
+export const BOARD_LANES: BoardLane[] = [
+  { id: "new", labelKey: "shipping.laneNew", stages: ["enquiry", "quoted"], entry: "enquiry" },
+  {
+    id: "production",
+    labelKey: "shipping.laneProduction",
+    stages: ["printing", "post_processing"],
+    entry: "printing",
+  },
+  {
+    id: "fulfilment",
+    labelKey: "shipping.laneFulfilment",
+    stages: ["packed", "shipped"],
+    entry: "packed",
+  },
+  { id: "delivered", labelKey: "shipping.laneDelivered", stages: ["delivered"], entry: "delivered" },
+];
+
+/** The lane a stage belongs to (null for `cancelled`, which no lane owns). */
+export function laneForStage(stage: OrderStage): BoardLane | null {
+  return BOARD_LANES.find((lane) => lane.stages.includes(stage)) ?? null;
+}
+
 /** The sum a set of lines comes to, in kuruş. Exact — integers throughout. */
 export function linesTotalMinor(lines: OrderLine[]): number {
   return lines.reduce(
