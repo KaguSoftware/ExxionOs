@@ -35,12 +35,15 @@ export type Reminder = {
  * back, renamed, and retired. Nothing breaks if a row references a word that
  * was archived: the word IS the value.
  */
-export type VocabularyKind = "product_type" | "client_tag" | "supply_type";
+export type VocabularyKind =
+  | "product_type"
+  | "client_tag"
+  | "supply_item";
 
 export const VOCABULARY_KINDS: VocabularyKind[] = [
   "product_type",
   "client_tag",
-  "supply_type",
+  "supply_item",
 ];
 
 export type Vocabulary = {
@@ -338,11 +341,17 @@ export type Supply = {
   id: string;
   name: string;
   /**
-   * User-grown category label ("Filament", "Cardboard", "Stickers"…), backed by
-   * the `supply_type` vocabulary. Verbatim, like `products.kind`. Null = the
-   * supply hasn't been categorised, and lands in its own group in the UI.
+   * The FINANCE EXPENSE CATEGORY this supply is bought under ("Filament",
+   * "Packaging"…). Stored as the category NAME; a restock books its expense
+   * here via categoryIdByName(). Null = uncategorised. A category of "Filament"
+   * or "Resin" makes the supply a printing material (grams + per-kg cost).
    */
-  type: string | null;
+  category: string | null;
+  /**
+   * The specific item ("Cardboard", "PLA Black"…), backed by the `supply_item`
+   * vocabulary. Verbatim, like `products.kind`. Null = unnamed.
+   */
+  item: string | null;
   unit: string;
   quantity: string | number;
   low_threshold: string | number | null;

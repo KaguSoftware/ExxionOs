@@ -6,7 +6,39 @@
 
 ## 👋 START HERE — resuming in a brand-new chat
 
-### 🟣 LATEST SESSION — 2026-07-22, RESHAPING: Supplies tab reworked (filament vs packaging)
+### 🟢 LATEST — 2026-07-22, Supplies: Category (Finance) + Item; board lanes; restock pricing
+
+Three reshaping changes this session (migrations 0015 AND 0016 both applied by Parsa):
+
+**A. Supplies now have Category + Item (migration 0016, replaces 0015's `type`):**
+- **`supplies.category`** = a real **Finance expense category** name (searchable/creatable; Filament,
+  Packaging, Equipment…). ⚠️ **A restock books its expense under THIS category** (was hardcoded
+  "Equipment"). Typing a new category creates a real Finance expense category (`categoryIdByName`).
+- **`supplies.item`** = the specific thing (Cardboard, PLA Black…), backed by a new `supply_item`
+  vocabulary (ComboCreate). Replaces `supplies.type`.
+- **Printing behaviour is INFERRED from category**, no toggle: `isPrintingCategory()` in
+  `lib/equipment.ts` returns true for category `"Filament"`/`"Resin"` → grams + cost-per-kg, unit
+  locked to `g`, deducted per print. ⚠️ Matched by NAME — renaming those Finance categories stops
+  filament being costed (documented in 0016).
+- List **groups by category**. Sample supplies backfilled to the new shape.
+
+**B. Shipping board grouped into 4 lanes** (`ffb8c39`): the 8 stages overflowed the viewport and a
+card's stage dropdown got clipped by the `overflow-x-auto` container. `BOARD_LANES` in `lib/shipping.ts`
+groups them into New / In production / Fulfilment / Delivered (Cancelled opt-in) that FIT the screen.
+The 8 stages, their timestamped history and cycle-time stats are unchanged; the card dropdown still
+sets any exact stage; dropping onto a lane moves to that lane's `entry` stage.
+
+**C. Restock per-unit OR per-batch price** (`ffb8c39`): the restock dialog has a Total/Per-unit
+segment; per-unit is × quantity, and the batch total is shown before confirming.
+
+**Verified:** `tsc` · `lint` · `build` · `contrast` green; `/impeccable` on the reworked form + board.
+Migrations 0015 + 0016 applied. **Not driven in a browser yet** — worth Parsa opening `/equipment`
+(supplies grouped by category) and `/shipping` (4 lanes, dropdown no longer clipped).
+
+⚠️ **`0012` and `0013` may still be unapplied** — Parsa confirmed 0014/0015/0016 are pushed; verify
+0012 (product_stock) and 0013 (drop profile color) before relying on the Stock tab.
+
+### 🟣 EARLIER — 2026-07-22, RESHAPING: Supplies tab reworked (filament vs packaging)
 
 Second reshaping change, straight after the materials→supplies merge below. Parsa: *"supplies will
 mainly be filament, and packaging things like cardboard, stickers etc… for selecting the type,

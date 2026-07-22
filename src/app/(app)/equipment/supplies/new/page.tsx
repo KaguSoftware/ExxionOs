@@ -9,22 +9,33 @@ export default async function NewSupplyPage() {
   await getSessionContext();
   const supabase = await createClient();
 
-  const supplyTypes = await rowsOrThrow<Vocabulary>(
-    "supply.new.types",
-    supabase
-      .from("vocabularies")
-      .select("*")
-      .eq("kind", "supply_type")
-      .is("archived_at", null)
-      .order("sort_order")
-  );
+  const [categories, items] = await Promise.all([
+    rowsOrThrow<{ name: string }>(
+      "supply.new.categories",
+      supabase
+        .from("categories")
+        .select("name")
+        .eq("kind", "expense")
+        .is("archived_at", null)
+        .order("sort_order")
+    ),
+    rowsOrThrow<Vocabulary>(
+      "supply.new.items",
+      supabase
+        .from("vocabularies")
+        .select("*")
+        .eq("kind", "supply_item")
+        .is("archived_at", null)
+        .order("sort_order")
+    ),
+  ]);
 
   return (
     <CreatePage
       titleKey="equipment.newSupply"
       descriptionKey="equipment.newSupplyHint"
     >
-      <SupplyForm supplyTypes={supplyTypes} />
+      <SupplyForm categories={categories.map((c) => c.name)} items={items} />
     </CreatePage>
   );
 }

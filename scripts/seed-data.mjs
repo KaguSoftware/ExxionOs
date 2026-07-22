@@ -78,12 +78,6 @@ async function main() {
   const catId = (name) => cats.find((c) => c.name === name)?.id ?? null;
   const { data: profiles } = await db.from("profiles").select("id").order("created_at");
   const owner = profiles?.[0]?.id ?? null; // Parsa
-  const { data: supplyTypes } = await db
-    .from("vocabularies")
-    .select("label")
-    .eq("kind", "supply_type");
-  const hasType = (label) =>
-    supplyTypes?.some((v) => v.label === label) ? label : label;
 
   // Machine hour rate — costing needs it. ₺25/h.
   if (WRITE) {
@@ -95,19 +89,20 @@ async function main() {
   // EQUIPMENT — supplies (filament in grams + packaging), machines
   // ===========================================================================
   log("\nEquipment");
+  // category = a Finance expense category; item = the specific thing.
   const [plaBlack, plaWhite, resinGrey] = await insert("supplies", [
-    { name: "PLA Black", type: hasType("Filament"), unit: "g", quantity: 1000,
-      low_threshold: 300, cost_per_kg_minor: L(800), last_price_minor: L(800) },
-    { name: "PLA White", type: hasType("Filament"), unit: "g", quantity: 250,
-      low_threshold: 300, cost_per_kg_minor: L(800), last_price_minor: L(800) },
-    { name: "Grey Resin", type: hasType("Filament"), unit: "g", quantity: 500,
-      low_threshold: 200, cost_per_kg_minor: L(1400), last_price_minor: L(1400) },
+    { name: "PLA Black", category: "Filament", item: "PLA Black", unit: "g",
+      quantity: 1000, low_threshold: 300, cost_per_kg_minor: L(800), last_price_minor: L(800) },
+    { name: "PLA White", category: "Filament", item: "PLA White", unit: "g",
+      quantity: 250, low_threshold: 300, cost_per_kg_minor: L(800), last_price_minor: L(800) },
+    { name: "Grey Resin", category: "Resin", item: "Grey Resin", unit: "g",
+      quantity: 500, low_threshold: 200, cost_per_kg_minor: L(1400), last_price_minor: L(1400) },
   ]);
   const [smallBox, stickers] = await insert("supplies", [
-    { name: "Small mailer box", type: hasType("Boxes"), unit: "pcs", quantity: 40,
-      low_threshold: 15, cost_per_kg_minor: null, last_price_minor: L(4) },
-    { name: "Logo stickers", type: hasType("Stickers"), unit: "pcs", quantity: 8,
-      low_threshold: 20, cost_per_kg_minor: null, last_price_minor: L(1.5) },
+    { name: "Small mailer box", category: "Packaging", item: "Boxes", unit: "pcs",
+      quantity: 40, low_threshold: 15, cost_per_kg_minor: null, last_price_minor: L(4) },
+    { name: "Logo stickers", category: "Packaging", item: "Stickers", unit: "pcs",
+      quantity: 8, low_threshold: 20, cost_per_kg_minor: null, last_price_minor: L(1.5) },
   ]);
 
   const [printerA, printerB] = await insert("machines", [

@@ -17,19 +17,28 @@ export default async function EditSupplyPage({
   const supabase = await createClient();
 
   // One wave — nothing here depends on the supply row's contents.
-  const [supplyResult, supplyTypes] = await Promise.all([
+  const [supplyResult, categories, items] = await Promise.all([
     selectOrThrow<Supply>(
       "supply.edit",
       supabase.from("supplies").select("*").eq("id", id).maybeSingle()
     ),
-    // ⚠️ ALL types, not just active — this supply may carry a word archived
+    rowsOrThrow<{ name: string }>(
+      "supply.edit.categories",
+      supabase
+        .from("categories")
+        .select("name")
+        .eq("kind", "expense")
+        .is("archived_at", null)
+        .order("sort_order")
+    ),
+    // ⚠️ ALL items, not just active — this supply may carry a word archived
     // since, and `vocabOptions` keeps it visible so saving can't blank it.
     rowsOrThrow<Vocabulary>(
-      "supply.edit.types",
+      "supply.edit.items",
       supabase
         .from("vocabularies")
         .select("*")
-        .eq("kind", "supply_type")
+        .eq("kind", "supply_item")
         .order("sort_order")
     ),
   ]);
@@ -39,7 +48,11 @@ export default async function EditSupplyPage({
 
   return (
     <CreatePage titleKey="equipment.editSupply">
-      <SupplyForm existing={supply} supplyTypes={supplyTypes} />
+      <SupplyForm
+        existing={supply}
+        categories={categories.map((c) => c.name)}
+        items={items}
+      />
     </CreatePage>
   );
 }

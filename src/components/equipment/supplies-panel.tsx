@@ -55,7 +55,7 @@ export function SuppliesPanel({ supplies: initial }: { supplies: Supply[] }) {
   // the uncategorised bucket sinks to the bottom (an empty type isn't a name).
   // Within each group, low stock first — the question this tab answers is "what
   // am I about to run out of", not "what do I own".
-  const groups = groupByType(supplies, t("equipment.uncategorised"));
+  const groups = groupByCategory(supplies, t("equipment.uncategorised"));
 
   return (
     <>
@@ -279,17 +279,17 @@ function formatQuantity(value: string | number): string {
 export { formatQuantity };
 
 /**
- * Bucket supplies by their `type` label. Types are sorted alphabetically; the
- * uncategorised bucket (null/blank type) always sinks last — an empty type is
- * not a name to sort by. Within a bucket, low stock leads.
+ * Bucket supplies by their `category` (the Finance category). Categories sort
+ * alphabetically; the uncategorised bucket (null/blank) always sinks last — an
+ * empty category is not a name to sort by. Within a bucket, low stock leads.
  */
-function groupByType(
+function groupByCategory(
   supplies: Supply[],
   uncategorisedLabel: string
 ): { key: string; label: string; items: Supply[] }[] {
   const buckets = new Map<string, Supply[]>();
   for (const supply of supplies) {
-    const key = supply.type?.trim() || "";
+    const key = supply.category?.trim() || "";
     (buckets.get(key) ?? buckets.set(key, []).get(key)!).push(supply);
   }
 

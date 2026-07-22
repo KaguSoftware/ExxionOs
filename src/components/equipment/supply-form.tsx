@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
-import { Checkbox } from "@/components/ui/checkbox";
 import { ComboCreate } from "@/components/ui/combo-create";
 import { CreateForm } from "@/components/ui/create";
 import { Dropdown } from "@/components/ui/dropdown";
@@ -12,6 +11,7 @@ import { TextArea, TextInput } from "@/components/ui/input";
 import { MoneyInput, NumberInput } from "@/components/ui/number-input";
 import { createSupply, updateSupply } from "@/lib/actions/equipment";
 import { createVocabulary } from "@/lib/actions/vocabulary";
+import { isPrintingCategory } from "@/lib/equipment";
 import { useI18n } from "@/lib/i18n/client";
 import { toMajor } from "@/lib/money";
 import type { Supply, Vocabulary } from "@/lib/types";
@@ -21,17 +21,22 @@ import { vocabOptions } from "@/lib/vocab";
 
 export function SupplyForm({
   existing,
-  supplyTypes = [],
+  categories = [],
+  items = [],
 }: {
   existing?: Supply;
-  supplyTypes?: Vocabulary[];
+  /** Finance expense category names, for the Category picker. */
+  categories?: string[];
+  /** The `supply_item` vocabulary, for the Item picker. */
+  items?: Vocabulary[];
 }) {
   const { t } = useI18n();
   const router = useRouter();
   const { run, pending } = useAction();
 
   const nameId = useId();
-  const typeId = useId();
+  const categoryId = useId();
+  const itemId = useId();
   const unitId = useId();
   const qtyId = useId();
   const lowId = useId();
@@ -39,12 +44,8 @@ export function SupplyForm({
   const notesId = useId();
 
   const [name, setName] = useState(existing?.name ?? "");
-  const [type, setType] = useState<string | null>(existing?.type ?? null);
-  // A supply is a printing material iff it carries a per-kg cost — that is the
-  // one signal, so the toggle just mirrors whether cost_per_kg_minor is set.
-  const [isPrinting, setIsPrinting] = useState(
-    existing ? existing.cost_per_kg_minor != null : false
-  );
+  const [category, setCategory] = useState<string | null>(existing?.category ?? null);
+  const [item, setItem] = useState<string | null>(existing?.item ?? null);
   const [unit, setUnit] = useState(existing?.unit ?? "pcs");
   const [costPerKg, setCostPerKg] = useState<number | null>(
     existing?.cost_per_kg_minor == null ? null : toMajor(existing.cost_per_kg_minor)
@@ -57,40 +58,35 @@ export function SupplyForm({
   );
   const [notes, setNotes] = useState(existing?.notes ?? "");
 
-  // Live words of this kind, plus the supply's own type even if archived since —
-  // so opening and saving an old supply can't silently blank its category.
-  const [types, setTypes] = useState(supplyTypes);
-  const typeOptions = vocabOptions(
-    types,
-    "supply_type",
-    existing?.type ? [existing.type] : []
+  // ⚠️ THE PRINTING SIGNAL IS THE CATEGORY. Filament/Resin → weighed in grams,
+  // costed per kg, deducted per print. Any other category → counted, no cost.
+  // No toggle: the category the user already picks is the whole answer.
+  const isPrinting = isPrintingCategory(category);
+
+  // A printing material is ALWAYS tracked in grams — you buy per kg but count
+  // the spool in grams ("warn me under 300g", never "0.3 kg"). So the unit is
+  // forced to `g` while it's a printing material; only the per-kg COST is in kg.
+  const effectiveUnit = isPrinting ? "g" : unit;
+
+  const categoryOptions = categories.map((c) => ({ value: c, label: c }));
+  const [itemRows, setItemRows] = useState(items);
+  const itemOptions = vocabOptions(
+    itemRows,
+    "supply_item",
+    existing?.item ? [existing.item] : []
   ).map((v) => ({ value: v.label, label: v.label }));
 
   const emptyFields = name.trim() ? [] : [t("equipment.supplyName")];
 
-  // ⚠️ A printing material is ALWAYS tracked in grams — you buy per kg but count
-  // the spool in grams ("warn me under 300g", never "under 0.3 kg"). So the unit
-  // is forced to `g` and locked while the toggle is on; only the per-kg COST is
-  // in kg. Packaging keeps its free unit.
-  const effectiveUnit = isPrinting ? "g" : unit;
-
-  const togglePrinting = (next: boolean) => {
-    setIsPrinting(next);
-    // Turning it off drops the cost (packaging has no per-kg price) and restores
-    // a sensible free unit; the grams lock is lifted.
-    if (!next) {
-      setCostPerKg(null);
-      if (unit === "g") setUnit("pcs");
-    }
-  };
-
   const submit = async () => {
     const input = {
       name,
-      type,
+      category,
+      item,
       unit: effectiveUnit,
       quantity,
       lowThreshold,
+      // Only a printing material carries a per-kg cost.
       costPerKg: isPrinting ? costPerKg : null,
       notes: notes || null,
     };
@@ -121,30 +117,48 @@ export function SupplyForm({
       pending={pending}
       submitLabel={existing ? t("common.save") : t("common.create")}
     >
+      <Field id={nameId} label={t("equipment.supplyName")}>
+        <TextInput
+          id={nameId}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t("equipment.supplyNamePlaceholder")}
+          autoFocus
+        />
+      </Field>
+
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field id={nameId} label={t("equipment.supplyName")}>
-          <TextInput
-            id={nameId}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("equipment.supplyNamePlaceholder")}
-            autoFocus
+        <Field
+          id={categoryId}
+          label={t("equipment.supplyCategory")}
+          optional={t("common.optional")}
+          // A restock books its expense under this Finance category.
+          hint={t("equipment.supplyCategoryHint")}
+        >
+          <ComboCreate
+            id={categoryId}
+            value={category}
+            onChange={setCategory}
+            options={categoryOptions}
+            label={t("equipment.supplyCategory")}
+            placeholder={t("equipment.supplyCategoryPlaceholder")}
+            // Typing a new category creates it as a Finance expense category on
+            // save (see createSupply) — nothing to persist here, just adopt it.
+            onCreate={async (label) => label}
           />
         </Field>
-        <Field id={typeId} label={t("equipment.supplyType")} optional={t("common.optional")}>
+        <Field id={itemId} label={t("equipment.supplyItem")} optional={t("common.optional")}>
           <ComboCreate
-            id={typeId}
-            value={type}
-            onChange={setType}
-            options={typeOptions}
-            label={t("equipment.supplyType")}
-            placeholder={t("equipment.supplyTypePlaceholder")}
+            id={itemId}
+            value={item}
+            onChange={setItem}
+            options={itemOptions}
+            label={t("equipment.supplyItem")}
+            placeholder={t("equipment.supplyItemPlaceholder")}
             onCreate={async (label) => {
-              const result = await createVocabulary({ kind: "supply_type", label });
+              const result = await createVocabulary({ kind: "supply_item", label });
               if (!result.ok) return null;
-              // Adopt the row the server returned — it may be an existing word in
-              // a different spelling, and the list must show that spelling.
-              setTypes((rows) => [
+              setItemRows((rows) => [
                 ...rows.filter((r) => r.id !== result.data.id),
                 result.data,
               ]);
@@ -154,34 +168,23 @@ export function SupplyForm({
         </Field>
       </div>
 
-      {/* The one signal that splits filament from packaging — and the cost
-          field it reveals, grouped with it so the dependency reads. */}
-      <div className="rounded-xl border border-line p-4">
-        <Checkbox
-          checked={isPrinting}
-          onChange={(e) => togglePrinting(e.target.checked)}
-          label={t("equipment.isPrintingMaterial")}
-          description={t("equipment.isPrintingMaterialHint")}
-        />
-        {isPrinting && (
-          <Field
-            id={costId}
-            label={t("equipment.costPerKg")}
-            optional={t("common.optional")}
-            hint={t("equipment.costPerKgHint")}
-            className="mt-4 border-t border-line pt-4"
-          >
-            <MoneyInput id={costId} value={costPerKg} onChange={setCostPerKg} min={0} />
-          </Field>
-        )}
-      </div>
+      {/* Printing materials carry a per-kg cost that feeds print costing. Shown
+          only when the category is one — the category IS the signal. */}
+      {isPrinting && (
+        <Field
+          id={costId}
+          label={t("equipment.costPerKg")}
+          optional={t("common.optional")}
+          hint={t("equipment.costPerKgHint")}
+        >
+          <MoneyInput id={costId} value={costPerKg} onChange={setCostPerKg} min={0} />
+        </Field>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Field
           id={unitId}
           label={t("equipment.unit")}
-          // Filament is always counted in grams (you buy per kg but track the
-          // spool in grams), so the unit is fixed while it's a printing material.
           hint={isPrinting ? t("equipment.unitGramsLocked") : undefined}
         >
           {isPrinting ? (

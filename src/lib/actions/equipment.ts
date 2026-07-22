@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { syncTransaction } from "@/lib/actions/finance-link";
+import { categoryIdByName, syncTransaction } from "@/lib/actions/finance-link";
 import { getSessionContext } from "@/lib/data/session";
 import { toMinor } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
@@ -334,8 +334,10 @@ export async function deleteMaintenance(
 
 export type SupplyInput = {
   name: string;
-  /** User-grown category label ("Filament", "Cardboard"…). Null = uncategorised. */
-  type: string | null;
+  /** Finance expense category name ("Filament", "Packaging"…). Null = none. */
+  category: string | null;
+  /** The specific item ("Cardboard", "PLA Black"…). Null = unnamed. */
+  item: string | null;
   unit: string;
   quantity: number | null;
   lowThreshold: number | null;
@@ -357,7 +359,8 @@ export async function createSupply(
     .from("supplies")
     .insert({
       name,
-      type: input.type?.trim().slice(0, 60) || null,
+      category: input.category?.trim().slice(0, 60) || null,
+      item: input.item?.trim().slice(0, 80) || null,
       unit: input.unit.trim().slice(0, 20) || "pcs",
       quantity: input.quantity ?? 0,
       low_threshold: input.lowThreshold,
@@ -369,6 +372,9 @@ export async function createSupply(
     .single<Supply>();
 
   if (error) return { ok: false, error: error.message };
+  // A brand-new category typed here becomes a real Finance expense category, so
+  // it exists before the first restock books an expense under it.
+  await ensureCategory(supabase, input.category);
   refresh();
   return { ok: true, data };
 }
@@ -387,7 +393,8 @@ export async function updateSupply(
     .from("supplies")
     .update({
       name,
-      type: input.type?.trim().slice(0, 60) || null,
+      category: input.category?.trim().slice(0, 60) || null,
+      item: input.item?.trim().slice(0, 80) || null,
       unit: input.unit.trim().slice(0, 20) || "pcs",
       quantity: input.quantity ?? 0,
       low_threshold: input.lowThreshold,
@@ -398,11 +405,21 @@ export async function updateSupply(
     .eq("id", id);
 
   if (error) return { ok: false, error: error.message };
+  await ensureCategory(supabase, input.category);
   refresh();
   // ⚠️ Re-pricing a supply silently re-costs every product printed from it —
   // intended (cost is computed, not stored), so Creative must revalidate too.
   revalidatePath("/creative");
   return { ok: true, data: undefined };
+}
+
+/** Make sure a supply's category exists as a Finance expense category. */
+async function ensureCategory(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  category: string | null
+) {
+  const name = category?.trim();
+  if (name) await categoryIdByName(supabase, name, "expense");
 }
 
 /** Adjust stock without a purchase — a count correction, or usage. */
@@ -438,9 +455,9 @@ export async function restockSupply(input: {
 
   const { data: supply } = await supabase
     .from("supplies")
-    .select("name, quantity")
+    .select("name, quantity, category")
     .eq("id", input.supplyId)
-    .maybeSingle<{ name: string; quantity: string | number }>();
+    .maybeSingle<{ name: string; quantity: string | number; category: string | null }>();
 
   if (!supply) return { ok: false, error: "That supply no longer exists." };
 
@@ -452,7 +469,9 @@ export async function restockSupply(input: {
     amountMinor: costMinor,
     occurredOn: restockedOn,
     description: `${supply.name} restock`,
-    categoryName: "Equipment",
+    // ⚠️ Book under the supply's OWN category ("Packaging" for cardboard), not
+    // a hardcoded one. Falls back to "Equipment" only when uncategorised.
+    categoryName: supply.category?.trim() || "Equipment",
     sourceType: "supply",
     sourceId: input.supplyId,
     userId: ctx.userId,

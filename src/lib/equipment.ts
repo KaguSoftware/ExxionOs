@@ -18,6 +18,21 @@ export function isLowStock(supply: Pick<Supply, "quantity" | "low_threshold">) {
   return quantity <= threshold;
 }
 
+/**
+ * The Finance categories whose supplies are PRINTING MATERIALS — weighed in
+ * grams and costed per kg, deducted per print run.
+ *
+ * ⚠️ Matched by NAME against the seeded Finance categories. If you rename
+ * "Filament"/"Resin" in Finance, a supply in that renamed category stops being
+ * treated as filament (its cost stops feeding print costing). Documented in
+ * migration 0016; a rename-proof flag would need a column on categories.
+ */
+export const PRINTING_CATEGORIES = ["Filament", "Resin"] as const;
+
+export function isPrintingCategory(category: string | null | undefined): boolean {
+  return category != null && (PRINTING_CATEGORIES as readonly string[]).includes(category);
+}
+
 /** Machines that want a human: broken first, then needs-attention. */
 export function needsAttention(status: MachineStatus) {
   return status === "broken" || status === "needs_attention";
