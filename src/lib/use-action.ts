@@ -1,9 +1,16 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 
 import { useToast } from "@/components/ui/toast";
 import type { ActionResult } from "@/lib/types";
+
+/**
+ * Returned as `error` when a call was swallowed as a duplicate (see the guard
+ * in `run`). A caller that branches on failure can check for it; nothing should
+ * ever display it, which is why it is not a translation key.
+ */
+export const DUPLICATE_CALL = "__duplicate__";
 
 type RunOptions<T> = {
   /** Applied immediately, before the server is asked. */
@@ -32,6 +39,22 @@ export function useAction() {
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [running, setRunning] = useState(false);
+  /**
+   * ⚠️ THE DOUBLE-SUBMIT GUARD, AND IT HAS TO BE A REF.
+   *
+   * `pending` is state: it is not true until React re-renders, so two clicks
+   * inside one frame both see `pending === false` and both fire. Disabling the
+   * button on `pending` does not close that window either — the second click
+   * lands before the disabled attribute is committed. On a delete that means
+   * two DELETEs; on a print run it means the filament is deducted twice and
+   * the stock ledger is wrong with no way to tell from the UI.
+   *
+   * A ref flips SYNCHRONOUSLY, inside the same click handler, so the second
+   * call returns before it reaches the server. Guarding here covers every
+   * caller at once, which is why it lives in the shared hook instead of being
+   * re-implemented at each of the ~30 call sites.
+   */
+  const inFlight = useRef(false);
 
   const run = useCallback(
     async <T,>(
@@ -40,6 +63,14 @@ export function useAction() {
     ): Promise<ActionResult<T>> => {
       const { optimistic, rollback, onSuccess, successMessage, errorMessage } =
         options;
+
+      if (inFlight.current) {
+        // Not an error and NOT toasted: the user double-clicked, which is a
+        // normal thing to do. The first call is still handling it, so this one
+        // reports the sentinel rather than a failure anyone should show.
+        return { ok: false, error: DUPLICATE_CALL };
+      }
+      inFlight.current = true;
 
       optimistic?.();
       setRunning(true);
@@ -66,6 +97,7 @@ export function useAction() {
         toast.error(message);
         return { ok: false, error: message };
       } finally {
+        inFlight.current = false;
         setRunning(false);
       }
     },

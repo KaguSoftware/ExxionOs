@@ -4,7 +4,6 @@ import { ProductForm } from "@/components/creative/product-form";
 import { CreatePage } from "@/components/ui/create";
 import { rowsOrThrow, selectOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
-import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 import type {
   AppSettings,
@@ -21,7 +20,6 @@ export default async function EditProductPage({
 }) {
   const { id, productId } = await params;
   await getSessionContext();
-  const t = await getT();
   const supabase = await createClient();
 
   // One wave — nothing here depends on the product row's contents.
@@ -67,7 +65,7 @@ export default async function EditProductPage({
   if (!product) notFound();
 
   return (
-    <CreatePage title={t("creative.editProduct")}>
+    <CreatePage titleKey="creative.editProduct">
       <ProductForm
         collectionId={id}
         materials={materials}

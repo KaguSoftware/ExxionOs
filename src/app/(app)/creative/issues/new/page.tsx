@@ -2,7 +2,6 @@ import { IssueForm } from "@/components/creative/issue-form";
 import { CreatePage } from "@/components/ui/create";
 import { rowsOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
-import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 import type { Collection, Product } from "@/lib/types";
 
@@ -14,7 +13,6 @@ export default async function NewIssuePage({
 }) {
   const { collection } = await searchParams;
   await getSessionContext();
-  const t = await getT();
   const supabase = await createClient();
 
   const [collections, products] = await Promise.all([
@@ -29,7 +27,7 @@ export default async function NewIssuePage({
   ]);
 
   return (
-    <CreatePage title={t("creative.newIssue")} description={t("creative.noIssuesHint")}>
+    <CreatePage titleKey="creative.newIssue" descriptionKey="creative.noIssuesHint">
       <IssueForm
         collections={collections}
         products={products}

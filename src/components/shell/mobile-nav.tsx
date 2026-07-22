@@ -226,7 +226,7 @@ export function MobileNav({ profile }: { profile: Profile }) {
             </Link>
 
             {/* `md` size to match the taller touch rows around it. */}
-            <LocaleToggle locale={profile.locale} size="md" />
+            <LocaleToggle size="md" />
 
             <form action={signOut}>
               <button

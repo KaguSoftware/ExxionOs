@@ -1,16 +1,22 @@
 "use client";
 
 import { Languages } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import { updatePreferences } from "@/lib/actions/settings";
-import { useT } from "@/lib/i18n/client";
+import { useI18n } from "@/lib/i18n/client";
 import type { Locale } from "@/lib/i18n";
 import { useAction } from "@/lib/use-action";
 import { cn } from "@/lib/utils";
 
 /**
  * One-click language switch, in the shell rather than buried in Settings.
+ *
+ * ⚠️ INSTANT, AND DELIBERATELY NOT AWAITED. Both dictionaries ship in the
+ * client bundle, so switching is a context update — the tree re-renders in the
+ * new language in the same frame. The server action still fires, but only to
+ * persist the choice; the UI never waits on it and the button never disables.
+ * Do not reintroduce `router.refresh()` here: it re-fetched every query on the
+ * page to change words that were already on the client.
  *
  * ⚠️ A TOGGLE, NOT A PICKER. With exactly two locales a picker would ask you
  * to choose from a list whose answer is always "the other one" — the click
@@ -32,28 +38,34 @@ import { cn } from "@/lib/utils";
  * audit — but the audit is the work, and it is not this change.
  */
 export function LocaleToggle({
-  locale,
   className,
   size = "sm",
 }: {
-  locale: Locale;
   className?: string;
   /** `md` matches the taller touch rows in the mobile sheet. */
   size?: "sm" | "md";
 }) {
-  const t = useT();
-  const router = useRouter();
-  const { run, pending } = useAction();
+  // ⚠️ READS THE LIVE LOCALE FROM CONTEXT, not a `profile.locale` prop. The
+  // profile only updates on a server round-trip, so after an instant switch a
+  // prop-fed toggle would still compute `next` from the OLD value — offering
+  // to switch you to the language you just switched to.
+  const { t, locale, setLocale } = useI18n();
+  const { run } = useAction();
 
   const next: Locale = locale === "en" ? "fa" : "en";
   const nextLabel = next === "fa" ? "فارسی" : "English";
 
   const switchTo = () => {
+    // Instant. Both dictionaries are already in the bundle, so the whole tree
+    // re-renders in the new language in this frame — no fetch, no refresh, no
+    // spinner. The old path awaited a server action and then `router.refresh()`
+    // before a single word changed.
+    setLocale(next);
+
+    // Persistence only, in the background: writes profiles.locale + the cookie
+    // so the NEXT cold load starts in the right language. Nothing on screen is
+    // waiting on it, so the button is never disabled.
     void run(() => updatePreferences({ locale: next }), {
-      // The whole tree re-renders in the new language — that IS the feedback,
-      // so no success toast. Saying "saved" on top of a visibly changed UI is
-      // one more thing to dismiss.
-      onSuccess: () => router.refresh(),
       errorMessage: t("settings.saveFailed"),
     });
   };
@@ -62,7 +74,6 @@ export function LocaleToggle({
     <button
       type="button"
       onClick={switchTo}
-      disabled={pending}
       // The accessible name says what will happen; the visible label is just
       // the language name, which would otherwise be ambiguous out of context.
       aria-label={t("settings.switchTo", { language: nextLabel })}

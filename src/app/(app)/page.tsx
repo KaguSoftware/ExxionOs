@@ -1,18 +1,15 @@
-import { Check } from "lucide-react";
-
 import { Activity, type ActivityItem } from "@/components/dashboard/activity";
+import { AllClear, DashboardGreeting } from "@/components/dashboard/greeting";
 import { MonthSummary } from "@/components/dashboard/month-summary";
 import { NeedsYou } from "@/components/dashboard/needs-you";
 import { Reminders } from "@/components/dashboard/reminders";
 import { LiveRefresh } from "@/components/shell/live-refresh";
-import { PageHeader } from "@/components/ui/panel";
 import { countOrThrow, rowsOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
 import { goneQuiet, type ClientOrderRow } from "@/lib/clients";
 import { isLowStock } from "@/lib/equipment";
 import { groupCosts, overBudgetCampaigns } from "@/lib/marketing";
 import { totals } from "@/lib/finance-series";
-import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Campaign,
@@ -52,7 +49,6 @@ function orderCode(row: StageEventRow): string | null {
 
 export default async function DashboardPage() {
   const ctx = await getSessionContext();
-  const t = await getT();
   const supabase = await createClient();
 
   /**
@@ -362,7 +358,10 @@ export default async function DashboardPage() {
         ]}
       />
 
-      <PageHeader title={t(greeting, { name: firstName })} />
+      {/* Translated on the client so the instant language switch reaches the
+          page's own title. The KEY is chosen here (it needs the Istanbul hour);
+          the wording is resolved in the client leaf. */}
+      <DashboardGreeting greetingKey={greeting} name={firstName} />
 
       {/* ⚠️ Renders NOTHING when every count is zero. A permanent strip reading
           all zeros is furniture, not an answer to "what needs my attention?"
@@ -381,13 +380,7 @@ export default async function DashboardPage() {
           productsOutOfStock={productsOutOfStock}
         />
       ) : (
-        <p className="mb-5 flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-muted">
-          <Check aria-hidden className="size-4 shrink-0 text-success" />
-          <span className="text-ink">{t("dashboard.allClear")}</span>
-          <span className="hidden text-xs text-faint sm:inline">
-            {t("dashboard.allClearHint")}
-          </span>
-        </p>
+        <AllClear />
       )}
 
       {/* This month's money, linking into Finance. ⚠️ The link uses the REAL

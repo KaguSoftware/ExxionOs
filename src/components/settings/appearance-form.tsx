@@ -6,14 +6,17 @@ import type { LucideIcon } from "lucide-react";
 
 import { Panel } from "@/components/ui/panel";
 import { updatePreferences } from "@/lib/actions/settings";
-import { useT } from "@/lib/i18n/client";
+import { useI18n } from "@/lib/i18n/client";
 import type { Locale } from "@/lib/i18n";
 import type { Profile, Theme } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
 import { cn } from "@/lib/utils";
 
 export function AppearanceForm({ profile }: { profile: Profile }) {
-  const t = useT();
+  // `locale` from context, not `profile.locale`: the language switch is now
+  // instant and client-side, so the profile prop lags a frame behind and the
+  // selected chip must follow the live value.
+  const { t, locale, setLocale: applyLocale } = useI18n();
   const router = useRouter();
   const { run, pending } = useAction();
 
@@ -32,10 +35,12 @@ export function AppearanceForm({ profile }: { profile: Profile }) {
     });
   };
 
-  const setLocale = (locale: Locale) => {
-    if (locale === profile.locale) return;
-    void run(() => updatePreferences({ locale }), {
-      onSuccess: () => router.refresh(),
+  const setLocale = (next: Locale) => {
+    if (next === locale) return;
+    // Instant, then persist in the background — no router.refresh(). The
+    // dictionaries are already loaded; see LocaleToggle and I18nProvider.
+    applyLocale(next);
+    void run(() => updatePreferences({ locale: next }), {
       errorMessage: t("settings.saveFailed"),
     });
   };
@@ -71,7 +76,10 @@ export function AppearanceForm({ profile }: { profile: Profile }) {
           </div>
         </fieldset>
 
-        <fieldset disabled={pending}>
+        {/* NOT disabled on `pending`: the language change already applied
+            client-side, so the only thing in flight is the background save —
+            greying the chips would fight the instant switch the user just saw. */}
+        <fieldset>
           <legend className="mb-2 text-xs font-medium text-muted">
             {t("settings.language")}
           </legend>
@@ -79,7 +87,7 @@ export function AppearanceForm({ profile }: { profile: Profile }) {
             {locales.map(({ value, label }) => (
               <OptionChip
                 key={value}
-                selected={profile.locale === value}
+                selected={locale === value}
                 onClick={() => setLocale(value)}
                 label={label}
                 icon={<Languages aria-hidden className="size-4" />}

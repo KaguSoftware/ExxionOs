@@ -50,26 +50,4 @@ export function Panel({
   );
 }
 
-export function PageHeader({
-  title,
-  description,
-  action,
-}: {
-  title: ReactNode;
-  description?: ReactNode;
-  action?: ReactNode;
-}) {
-  return (
-    <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <div className="min-w-0">
-        {/* Page titles carry the brand voice; panel titles (h2 above) stay in
-            the working face — see `.font-display` in globals.css. */}
-        <h1 className="font-display text-2xl text-ink">{title}</h1>
-        {description && (
-          <p className="mt-1 max-w-[70ch] text-sm text-muted">{description}</p>
-        )}
-      </div>
-      {action && <div className="shrink-0">{action}</div>}
-    </header>
-  );
-}
+export { PageHeader } from "./page-header";

@@ -2,7 +2,6 @@ import { CreatePage } from "@/components/ui/create";
 import { OrderForm, type ProductOption } from "@/components/shipping/order-form";
 import { rowsOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
-import { getT } from "@/lib/i18n/server";
 import { createClient } from "@/lib/supabase/server";
 import type { Client } from "@/lib/types";
 
@@ -26,7 +25,6 @@ function collectionName(row: ProductRow): string {
 
 export default async function NewOrderPage() {
   await getSessionContext();
-  const t = await getT();
   const supabase = await createClient();
 
   // One wave: the clients an order can belong to, and the products a line can
@@ -54,8 +52,8 @@ export default async function NewOrderPage() {
 
   return (
     <CreatePage
-      title={t("shipping.newOrder")}
-      description={t("shipping.newOrderSubtitle")}
+      titleKey="shipping.newOrder"
+      descriptionKey="shipping.newOrderSubtitle"
       wide
     >
       <OrderForm clients={clients} products={options} />

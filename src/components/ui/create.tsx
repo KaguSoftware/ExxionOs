@@ -14,6 +14,7 @@ import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import type { TranslateKey } from "@/lib/i18n";
 import { useT } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
@@ -30,18 +31,35 @@ import { cn } from "@/lib/utils";
 
 export function CreatePage({
   title,
+  titleKey,
   description,
+  descriptionKey,
   children,
   wide = false,
 }: {
-  title: ReactNode;
+  title?: ReactNode;
+  /**
+   * ⚠️ PREFER THIS OVER `title` — pass the KEY, not the translated string.
+   *
+   * These pages are server components, so a `title={t("…")}` resolved up there
+   * is frozen in whatever language the request was made in. The language
+   * switch is now instant and client-side (see `I18nProvider`), which means a
+   * server-translated title would be the ONE string left in the old language,
+   * sitting at the top of the page in the largest type on screen. Passing the
+   * key lets this client component translate it live.
+   */
+  titleKey?: TranslateKey;
   description?: ReactNode;
+  descriptionKey?: TranslateKey;
   children: ReactNode;
   /** For composer-type surfaces that need more than a single column. */
   wide?: boolean;
 }) {
   const router = useRouter();
   const t = useT();
+
+  const heading = titleKey ? t(titleKey) : title;
+  const sub = descriptionKey ? t(descriptionKey) : description;
 
   return (
     <div className="animate-fade-rise mx-auto w-full px-4 py-6 md:px-8">
@@ -55,10 +73,8 @@ export function CreatePage({
           {t("common.back")}
         </button>
 
-        <h1 className="font-display text-2xl text-ink">{title}</h1>
-        {description && (
-          <p className="mt-1 max-w-[65ch] text-sm text-muted">{description}</p>
-        )}
+        <h1 className="font-display text-2xl text-ink">{heading}</h1>
+        {sub && <p className="mt-1 max-w-[65ch] text-sm text-muted">{sub}</p>}
 
         <div className="mt-6">{children}</div>
       </div>

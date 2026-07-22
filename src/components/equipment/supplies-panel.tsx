@@ -2,7 +2,7 @@
 
 import { Archive, PackagePlus, Pencil } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -156,6 +156,8 @@ function RestockForm({
   onSubmit: (quantity: number, cost: number | null) => void;
 }) {
   const { t } = useI18n();
+  const qtyId = useId();
+  const costId = useId();
   const [quantity, setQuantity] = useState<number | null>(null);
   const [cost, setCost] = useState<number | null>(
     supply.last_price_minor != null ? toMajor(supply.last_price_minor) : null
@@ -169,9 +171,11 @@ function RestockForm({
       onClose={onClose}
     >
       <div className="flex flex-col gap-4">
-        <Field id="restock-qty" label={t("equipment.restockQuantity")}>
+        {/* useId, not literal ids: this form renders inside a list, and two
+            mounted at once would point both labels at the first input. */}
+        <Field id={qtyId} label={t("equipment.restockQuantity")}>
           <NumberInput
-            id="restock-qty"
+            id={qtyId}
             value={quantity}
             onChange={setQuantity}
             min={0}
@@ -180,23 +184,26 @@ function RestockForm({
         </Field>
 
         <Field
-          id="restock-cost"
+          id={costId}
           label={t("equipment.restockCost")}
           optional={t("common.optional")}
           hint={t("equipment.costHint")}
         >
-          <MoneyInput id="restock-cost" value={cost} onChange={setCost} min={0} />
+          <MoneyInput id={costId} value={cost} onChange={setCost} min={0} />
         </Field>
 
         <div className="flex justify-end gap-2 border-t border-line pt-4">
           <Button variant="ghost" onClick={onClose} disabled={pending}>
             {t("common.cancel")}
           </Button>
+          {/* ⚠️ NOT `disabled={!quantity}`. A disabled primary button with no
+              explanation is the blocking validator this app forbids — every
+              other authoring surface asks once and then proceeds. It also
+              rejected a legitimate 0 (a stock correction), since !0 is true. */}
           <Button
             variant="primary"
             loading={pending}
-            disabled={!quantity}
-            onClick={() => quantity && onSubmit(quantity, cost)}
+            onClick={() => onSubmit(quantity ?? 0, cost)}
           >
             {t("equipment.restock")}
           </Button>

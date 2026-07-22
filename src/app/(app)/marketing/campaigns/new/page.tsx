@@ -1,7 +1,6 @@
 import { CampaignForm } from "@/components/marketing/campaign-form";
 import { CreatePage } from "@/components/ui/create";
 import { getSessionContext } from "@/lib/data/session";
-import { getT } from "@/lib/i18n/server";
 
 /**
  * ⚠️ A dedicated spacious surface, per the convention — never an inline
@@ -10,12 +9,11 @@ import { getT } from "@/lib/i18n/server";
  */
 export default async function NewCampaignPage() {
   await getSessionContext();
-  const t = await getT();
 
   return (
     <CreatePage
-      title={t("marketing.newCampaign")}
-      description={t("marketing.subtitle")}
+      titleKey="marketing.newCampaign"
+      descriptionKey="marketing.subtitle"
     >
       <CampaignForm />
     </CreatePage>

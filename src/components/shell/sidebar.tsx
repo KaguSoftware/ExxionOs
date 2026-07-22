@@ -79,7 +79,7 @@ export function Sidebar({ profile }: { profile: Profile }) {
           <Settings aria-hidden className="size-3.5 shrink-0 text-faint" />
         </Link>
 
-        <LocaleToggle locale={profile.locale} />
+        <LocaleToggle />
 
         <form action={signOut}>
           <button
