@@ -76,10 +76,11 @@ export function TransactionList({
   }
 
   return (
-    // bodyClassName overflow-hidden clips the first/last row's hover:bg-raised
-    // and the sticky day-header's full-width tint to the panel's rounded-xl
-    // corners. Safe for stickiness: the scroll container is the PAGE, not this
-    // body.
+    // Rows are inset rounded pills (.row-hover with a little side padding) so a
+    // hover floats inside the panel instead of a full-bleed bar. The day
+    // headers stay full-width — a sticky header must cover the content scrolling
+    // under it — but sit flush with overflow-hidden clipping their tint to the
+    // rounded panel.
     <Panel
       title={t("finance.transactions")}
       description={
@@ -87,19 +88,19 @@ export function TransactionList({
       }
       bodyClassName="p-0 overflow-hidden"
     >
-      <ul>
+      <ul className="pb-1.5">
         {groups.map((group) => (
           <Fragment key={group.date}>
-            <li className="sticky top-0 z-10 border-b border-line bg-surface/95 px-4 py-1.5 backdrop-blur-sm">
+            <li className="sticky top-0 z-10 mb-1.5 border-b border-line bg-surface/95 px-4 py-1.5 backdrop-blur-sm">
               <span className="text-2xs font-medium tracking-wide text-faint uppercase">
                 {formatDate(group.date, locale)}
               </span>
             </li>
             {group.rows.map((row) => (
-              <li key={row.id} className="border-b border-line last:border-0">
+              <li key={row.id} className="px-1.5">
                 <Link
                   href={`/finance/${row.id}`}
-                  className="row-comfortable flex items-center gap-3 transition-colors hover:bg-raised"
+                  className="row-hover row-comfortable flex items-center gap-3"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-ink">

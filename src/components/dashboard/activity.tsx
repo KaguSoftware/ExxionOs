@@ -57,6 +57,15 @@ export type ActivityItem =
 /** Day key for grouping — the part both grains genuinely share. */
 const dayOf = (at: string) => at.slice(0, 10);
 
+/**
+ * One activity row's LAYOUT (padding + radius so a hover has somewhere to sit),
+ * inside the panel's `p-1.5`. Interactive rows add `.row-hover` (globals.css)
+ * for the inset pill hover; a non-interactive row (deleted-client event) keeps
+ * the layout but no hover, since there's nowhere to click. Same idiom as the
+ * orders / clients / transactions lists, so every row list reads as one system.
+ */
+const ROW = "flex items-center gap-3 rounded-lg px-2.5 py-2";
+
 export function Activity({
   items,
   className,
@@ -78,12 +87,9 @@ export function Activity({
     <Panel
       title={t("dashboard.recentActivity")}
       className={className}
-      // ⚠️ `overflow-hidden` CLIPS the square-cornered row hover (and the day
-      // header's full-width tint) to the panel's rounded-xl corners. Without it
-      // the first/last row's `hover:bg-raised` paints square corners over the
-      // rounded panel — the "hover bg isn't rounded" bug. Same fix as the
-      // clients directory / order list containers.
-      bodyClassName={sorted.length === 0 ? undefined : "p-0 overflow-hidden"}
+      // A little inner padding so each row's hover pill floats INSIDE the panel
+      // with breathing room, rather than a full-bleed bar running edge to edge.
+      bodyClassName={sorted.length === 0 ? undefined : "p-1.5"}
     >
       {sorted.length === 0 ? (
         <EmptyState
@@ -93,15 +99,22 @@ export function Activity({
           description={t("dashboard.noActivityHint")}
         />
       ) : (
-        <ul>
+        <ul className="flex flex-col">
           {sorted.map((item, index) => {
             const previous = sorted[index - 1];
             const newDay = !previous || dayOf(previous.at) !== dayOf(item.at);
 
             return (
               <li key={`${item.type}-${item.id}`}>
+                {/* A light date label — no full-width fill or border, just a
+                    quiet heading, with a touch of top space between days. */}
                 {newDay && (
-                  <p className="border-b border-line bg-surface px-4 py-1.5 text-2xs font-medium tracking-wide text-faint uppercase">
+                  <p
+                    className={cn(
+                      "px-2.5 pb-1 pt-2 text-2xs font-medium tracking-wide text-faint uppercase",
+                      index === 0 && "pt-1"
+                    )}
+                  >
                     {formatDate(dayOf(item.at), locale)}
                   </p>
                 )}
@@ -122,10 +135,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
     return (
       <Link
         href={`/shipping/orders/${item.orderId}`}
-        className={cn(
-          "row-comfortable flex items-center gap-3 border-b border-line last:border-0",
-          "transition-colors hover:bg-raised"
-        )}
+        className={cn("row-hover", ROW)}
       >
         <Package aria-hidden className="size-4 shrink-0 text-faint" />
         <span className="min-w-0 flex-1 truncate text-sm text-ink">
@@ -157,17 +167,11 @@ function ActivityRow({ item }: { item: ActivityItem }) {
   );
 
   return item.clientId ? (
-    <Link
-      href={`/clients/${item.clientId}`}
-      className={cn(
-        "row-comfortable flex items-center gap-3 border-b border-line last:border-0",
-        "transition-colors hover:bg-raised"
-      )}
-    >
+    <Link href={`/clients/${item.clientId}`} className={cn("row-hover", ROW)}>
       {body}
     </Link>
   ) : (
-    <div className="row-comfortable flex items-center gap-3 border-b border-line last:border-0">
+    <div className={ROW}>
       {body}
     </div>
   );

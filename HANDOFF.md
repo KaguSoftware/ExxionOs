@@ -6,7 +6,81 @@
 
 ## 👋 START HERE — resuming in a brand-new chat
 
-### 🟢 LATEST — 2026-07-22, Supplies: Category (Finance) + Item; board lanes; restock pricing
+### 🟢 LATEST — 2026-07-22, Feature wave (11) + 2 ad-hoc features + system-wide hover fix
+
+All pushed to `main`. `tsc` · `lint` · `build` · `contrast` all green.
+
+**⚠️⚠️ THREE MIGRATIONS WRITTEN, NOT YET APPLIED — Parsa must `npx supabase db push`:**
+- **`0018_order_code_sequence.sql`** — a Postgres sequence + `next_order_code()` RPC for auto
+  `EX-###` order codes. Until applied, the new-order page's code auto-fill RPC returns null (the
+  field just stays blank — non-fatal).
+- **`0019_order_campaign.sql`** — `orders.campaign_id` (nullable, SET NULL) for campaign ROI.
+  Until applied, the marketing page's `taggedOrders`/ROI query throws (loud, by design).
+- **`0020_product_files.sql`** — `product_files` table (design files) reusing the `creative`
+  bucket. Until applied, the Creative products tab throws.
+
+**The 11-feature wave (commit `83f6912`, then fixes):**
+1. **⌘K global search** (`components/shell/global-search.tsx` + `actions/search.ts`) — palette over
+   clients/orders/products/collections/supplies/campaigns; fans out ONE action only while typing
+   (nothing in any page wave). ⚠️ **PORTALLED to `document.body`** (`399eaf1`/first fix) — mounted
+   in the sidebar which is `sticky h-dvh w-56`, a clipping ancestor; a `fixed` overlay inside it was
+   constrained to the 56-wide box (rendered as a floating backdrop-less field). Every overlay in the
+   app portals for this reason.
+2. **Auto order codes** — needs 0018. `nextOrderCode()` in `actions/shipping.ts`.
+3. **Low-stock reorder list** — a new Equipment tab (`components/equipment/reorder-panel.tsx`);
+   `suggestedReorder()` in `lib/equipment.ts` (to 2× threshold).
+4. **Dashboard money pulse** (`components/dashboard/money-pulse.tsx`) — open-order value +
+   outstanding, from orders already in the wave. ⚠️ Neither is revenue and it says so.
+5. **Per-client P&L** — `clientPnl()` in `lib/clients.ts`; a panel on `client-detail.tsx`.
+6. **Per-product margin %** — `productMarginPct()` in `lib/costing.ts` (margin was already shown).
+7. **Photo lightbox** (`components/creative/lightbox.tsx`) — click a thumb, full image signed at
+   open. (Staged-upload-on-create deliberately NOT built — storage-contract risk.)
+8. **CSV export** for clients/orders/supplies — `lib/csv.ts` (generic) + `lib/entity-export.ts`;
+   `finance-export.ts` refactored onto them.
+9. **Marketing schedule calendar** — a List/Calendar toggle in `components/marketing/schedule.tsx`
+   (month grid over the SAME events lens, Gregorian).
+10. **Campaign ROI** — needs 0019. `campaignRoi()` in `lib/marketing.ts`: revenue from
+    `transactions` (NEVER order totals), spend Finance-sourced, **untagged-order count shown**.
+11. **Transaction pagination** — client-side "show more" in `transaction-list.tsx` (render cap
+    only; the whole ~13mo window stays in memory so filtering is still instant).
+
+**Two ad-hoc features Parsa asked for mid-session:**
+- **Product design files** (`1320ac7`, needs **0020**) — a "Files" button beside Print-run on each
+  product uploads/keeps `.mb`/`.ma`/`.stl`. `components/creative/product-files-button.tsx` +
+  `attachProductFile`/`detachProductFile` in `actions/creative.ts`. Browser→bucket upload (a 100MB
+  scene never round-trips the server); downloads via `SignedFileLink`. 200MB cap, type-checked.
+- **Idea editing** (`b06d032`, NO migration) — a pencil on each idea row opens `IdeaForm` (now
+  edit-capable) in an overlay; new `updateIdea` action. Status stays on its own one-click control.
+
+**⚠️ SYSTEM-WIDE UI FIX — the row-hover pattern (this session's last work):**
+Parsa: *"when you hover a rounded element, the hovered bg isn't rounded… only half lights up."* The
+bug was **full-bleed edge-to-edge hover bars** on row lists — a `<li border-b hover:bg-raised>` whose
+hover painted a hard-cornered slab ignoring the panel's radius and padding. **First attempt (adding
+`overflow-hidden`) was WRONG** — it only stopped the corner poking out, the slab was still ugly.
+**The real fix: inset rounded pills.** New `.list-inset` (0.375rem pad) + `.row-hover` (rounded-lg,
+`hover:bg var(--raised)`, token-only) utilities in `globals.css`. Applied to the four offenders:
+**dashboard activity feed, shipping order-list, clients directory, finance transaction-list.** Every
+other surface was already clean (card grids self-round; icon-button hovers are `rounded`; nav links
+are `rounded-lg`). ✅ `/impeccable` review passed: consistent idiom, hover only on interactive rows,
+no raw colours / physical-direction classes. **The activity feed was ALSO de-noised earlier this
+session** — one line per order (its CURRENT stage, "now Printing"), not one row per stage transition.
+
+**⚠️ NOT DRIVEN IN A BROWSER by the assistant** (no valid session cookie in the harness). Parsa is
+using the live Vercel deploy and reporting UI issues from there — trust his screenshots over "it
+compiles". The ranked-feature plan lives at
+`C:\Users\p.mansouri\.claude\plans\go-through-the-entire-jiggly-raven.md`.
+
+### 🟢 EARLIER — 2026-07-22, Auto-reminders (birthdays + machine service)
+
+`bc1e10e` (+ migration **0017** APPLIED). Reminders now auto-create from two standing signals:
+client **birthdays** and machine **`next_service_on`** (a new column on the machine form).
+`materialiseAutoReminders()` in `lib/data/auto-reminders.ts` mirrors `materialiseRecurring` exactly:
+runs in `after()` on dashboard load, idempotent via a **unique index**
+`reminders (owner_id, source_type, source_id, due_on)`, catches up, never generates the future
+(birthdays only within 14 days). Generated rows show an "Auto" badge. ✅ Idempotency proven against
+prod (insert → 201, retries → 409, one row survives).
+
+### 🟢 EARLIER — 2026-07-22, Supplies: Category (Finance) + Item; board lanes; restock pricing
 
 Three reshaping changes this session (migrations 0015 AND 0016 both applied by Parsa):
 
@@ -778,7 +852,9 @@ toggle light/dark/system.
 
 ## File map (key files)
 - `src/app/globals.css` — **ALL design tokens**. The one file a rebrand touches. Contrast numbers
-  are recorded in comments; state colours are reserved.
+  are recorded in comments; state colours are reserved. ⚠️ **Row lists use `.list-inset` +
+  `.row-hover`** (inset rounded-pill hover) — NOT `<li border-b hover:bg-raised>`, which paints a
+  full-bleed edge-to-edge slab that ignores the panel's radius. Add a hover row via those utilities.
 - `src/lib/i18n/{en,fa,index,server,client}.ts` — dictionaries + `t()`. `en` is the shape; `fa`
   must match or `tsc` fails.
 - `src/lib/data/query.ts` — `rowsOrThrow`/`selectOrThrow`/`countOrThrow`. **Every new query uses
@@ -889,9 +965,10 @@ toggle light/dark/system.
 - `supabase/migrations/0001_foundation.sql` · `0002_backfill_profiles.sql` · `0003_finance.sql` ·
   `0004_creative.sql` · `0005_equipment.sql` · `0006_machine_purchase_expense.sql` ·
   `0007_material_stock.sql` · `0008_shipping.sql` · `0009_clients.sql` · `0010_marketing.sql` ·
-  `0011_vocabularies.sql` · **`0012_product_stock.sql`** · **`0013_drop_profile_color.sql`** ·
-  **`0014_supply_costing.sql`** · **`0015_supply_type.sql`** (the last FOUR are ⚠️ **NOT YET
-  APPLIED** — see the roadmap).
+  `0011_vocabularies.sql` … `0016_supply_category_item.sql` (all APPLIED per Parsa) ·
+  **`0017_auto_reminders.sql`** (APPLIED) · **`0018_order_code_sequence.sql`** ·
+  **`0019_order_campaign.sql`** · **`0020_product_files.sql`** (the last THREE are ⚠️ **WRITTEN,
+  NOT YET APPLIED** — see the LATEST section at the top).
 - `scripts/apply-migration.mjs` — Management-API applier (alternative to `db push`).
 
 ## Roadmap / next steps
@@ -979,21 +1056,23 @@ that contract must exist before anything can honour it.
 | Samples | ✅ **Shipped (Phase 7).** Costed from the product at read time, never expensed. Optional links to client and campaign | Opt-in "also log a print run" so a sample printed for the occasion deducts filament in one step | Later |
 | Marketing schedule | ✅ **Shipped (Phase 7)** as a LENS over `events` — filming, networking, campaign moments | A calendar view rather than two lists | Later |
 | Materials / Supplies | ✅ **MERGED + RESHAPED (2026-07-22, migrations 0014 + 0015).** One `supplies` row carries stock (grams/pieces, low-stock, restocks) AND the per-kg cost. Type is a **searchable/creatable category** (`supply_type` vocabulary); a **"printing material" checkbox** (signal = non-null cost) splits filament (grams+cost) from packaging (pieces). List grouped by type. `materials` table dropped | — | Done (pending 0014+0015 push) |
-| Product photos | Upload/remove on the product EDIT form only (a new product has no id to attach to yet) | Staged upload on create, reordering, a lightbox | Later |
+| Product photos | Upload/remove on the product EDIT form + **✅ a lightbox** (2026-07-22, `components/creative/lightbox.tsx`) | Staged upload on create + reordering (staged-create deliberately NOT built — storage-contract risk) | If asked |
+| Product design files | ✅ **Shipped (2026-07-22, migration 0020).** `.mb`/`.ma`/`.stl` per product, beside Print-run; browser→bucket upload, download at click | Versioning / preview | If asked |
 | Per-collection P&L | ✅ **Shipped (Phase 5).** Revenue from order lines meeting computed cost | Time series, per-product margin trends | Later |
 | Clients | ✅ **Shipped (Phase 6).** Directory (search · kind/source/tag filters · archive) + Insights (top clients, repeat rate, new vs returning, source breakdown, gone quiet) + per-client detail with order history and event timeline | Per-client P&L against computed cost; birthday reminders auto-created via the `reminders` back-link; CSV export | Later |
 | Events | ✅ **Table shipped (Phase 6)**, client lens only. Marketing kinds already pass the CHECK | The Marketing lens — filming days, networking, campaigns — over the SAME rows | Phase 7 |
 | Client tags | Free-form, lowercased, capped at 25. Filterable in the directory | A managed vocabulary if the free-form list gets messy | If asked |
 | Carrier / tracking | Plain text fields, by decision | No carrier API integration is planned | Not planned |
-| Order codes | Typed by hand (`EX-014`) | Auto-generated sequence if Parsa wants one | If asked |
+| Order codes | ✅ **Auto `EX-###` (2026-07-22, migration 0018 — PENDING PUSH).** Sequence + `next_order_code()` RPC pre-fills the new-order form, still editable | — | Done (pending 0018) |
 | Finance charts | 12-month in/out bars · category breakdown · net line | Budgets, per-collection P&L, forecasting — deliberately deferred until there's real data to budget against | Later |
 | Receipts | One file per transaction (5 MB, image/PDF), private bucket, signed at click | Multiple attachments; OCR of totals | Later |
-| Transaction window | The page loads ~13 months (cap 2000 rows) so filtering is instant client-side | Pagination or a server-side query once that cap is realistic — at ~50 rows/month it's ~3 years away | When the cap bites |
+| Transaction window | The page loads ~13 months (cap 2000 rows) so filtering is instant client-side; ✅ **client-side "show more" render cap (2026-07-22)** so a long ledger doesn't paint every row | Server-side query when the 2000 cap bites (~3 years away) | When the cap bites |
 | Branding | Neutral placeholder tokens, measured for contrast, all in one CSS block | Real Exxion identity — a variable swap, not a rewrite | When branding exists |
 | Dashboard | "Needs you" strip (reminders only) + reminders panel; activity area is a dashed placeholder | Per-section signals in the SAME `Promise.all` wave; real activity feed | Phases 2–7 |
 | Reminders | Personal, optional due date, optional `source_type`/`source_id` back-link | Equipment maintenance auto-creates them via the back-link | Phase 4 |
 | Realtime | `useRealtimeRefresh` + `<LiveRefresh>` built and mounted on the dashboard | In-place patching where a full refresh feels heavy | Later |
-| Search (⌘K) | None | Palette over content, loaded once + client-filtered | Later |
+| Search (⌘K) | ✅ **Shipped (2026-07-22).** Palette over clients/orders/products/collections/supplies/campaigns; fans out one action while typing; portalled to body | Fuzzy ranking, recent items | If asked |
+| Campaign ROI | ✅ **Shipped (2026-07-22, migration 0019 — PENDING PUSH).** `orders.campaign_id` (human-tagged); revenue from `transactions`, untagged-order count shown | — | Done (pending 0019) |
 | Notifications | None | In-app only if asked; **Telegram/email explicitly out of scope** | If asked |
 | Mobile | Full-screen menu, responsive shell; reasoned from code + build | **Not driven on a real phone yet** | Needs a live pass |
 | Storage | None; `SignedFileLink` exists ready for it | Private buckets for product photos, equipment docs, order photos | Phase 3+ |

@@ -434,6 +434,32 @@
     padding-block: 0.5rem;
   }
 
+  /* ------------------------------------------------------------------------
+     .list-inset / .row-hover — the ONE clean hover treatment for row lists.
+
+     The old pattern was a full-width `<li border-b hover:bg-raised>`: the hover
+     painted an edge-to-edge, hard-cornered slab that ignored the panel's
+     rounded corners and its padding. It looked raw and unfinished.
+
+     Instead: the LIST gets a little inner padding (`.list-inset`), and each ROW
+     is a `rounded-lg` pill (`.row-hover`). The hover background then floats
+     inside the panel with its own radius and breathing room. No per-row border
+     is needed — the whitespace and the hover shape separate the rows.
+     ------------------------------------------------------------------------ */
+  .list-inset {
+    padding: 0.375rem;
+  }
+
+  .row-hover {
+    border-radius: var(--radius);
+    transition:
+      background-color var(--dur-fast) ease,
+      color var(--dur-fast) ease;
+  }
+  .row-hover:hover {
+    background-color: var(--raised);
+  }
+
   /* One focus treatment app-wide. `data-no-ring` opts out for controls that
      draw their own (search fields inside a bordered shell). */
   /* One focus treatment app-wide.

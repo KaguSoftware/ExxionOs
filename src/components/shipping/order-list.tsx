@@ -122,7 +122,7 @@ export function OrderList({
       {filtered.length === 0 ? (
         <EmptyState title={t("shipping.noOrders")} />
       ) : (
-        <ul className="overflow-hidden rounded-xl border border-line">
+        <ul className="list-inset flex flex-col rounded-xl border border-line">
           {filtered.map((order) => {
             const client = order.client_id
               ? clientsById.get(order.client_id)
@@ -136,13 +136,10 @@ export function OrderList({
               !isTerminal(order.stage);
 
             return (
-              <li
-                key={order.id}
-                className="border-b border-line transition-colors last:border-0 hover:bg-raised"
-              >
+              <li key={order.id}>
                 <Link
                   href={`/shipping/orders/${order.id}`}
-                  className="row-comfortable flex flex-wrap items-center gap-3"
+                  className="row-hover row-comfortable flex flex-wrap items-center gap-3"
                 >
                   <div className="min-w-0 flex-1 basis-64">
                     <div className="flex flex-wrap items-center gap-2">
