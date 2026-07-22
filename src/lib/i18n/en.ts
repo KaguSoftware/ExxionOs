@@ -71,6 +71,7 @@ export const en = {
     overdue: "Overdue",
     dueToday: "Due today",
     recentActivity: "Recent activity",
+    nowStage: "now {stage}",
     noActivity: "Nothing has happened yet.",
     noActivityHint: "Order moves and client notes show up here as you work.",
     allClearHint: "Overdue orders, unpaid invoices and low stock appear here.",

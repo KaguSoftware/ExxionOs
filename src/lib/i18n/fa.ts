@@ -65,6 +65,7 @@ export const fa: Dictionary = {
     overdue: "گذشته از موعد",
     dueToday: "سررسید امروز",
     recentActivity: "فعالیت‌های اخیر",
+    nowStage: "اکنون {stage}",
     noActivity: "هنوز اتفاقی نیفتاده است.",
     noActivityHint: "جابه‌جایی سفارش‌ها و یادداشت‌های مشتری اینجا نشان داده می‌شود.",
     allClearHint: "سفارش‌های عقب‌افتاده، پرداخت‌نشده‌ها و موجودی کم اینجا ظاهر می‌شوند.",

@@ -210,7 +210,11 @@ export default async function DashboardPage() {
         .from("order_stage_events")
         .select("id, order_id, stage, entered_at, orders(code)")
         .order("entered_at", { ascending: false })
-        .limit(12)
+        // ⚠️ Wider than the ~10 shown, because these collapse to one row PER
+        // ORDER (see the activity build below) — a single busy order can own
+        // several of the newest events, so a tight limit would starve the feed
+        // of other orders after de-duping. Still one indexed read.
+        .limit(40)
     ),
     rowsOrThrow<Event>(
       "dashboard.events",
@@ -321,9 +325,21 @@ export default async function DashboardPage() {
    * 10 here rather than asking the database for a union: two ordered reads on
    * indexed columns are cheaper than a view, and the cut has to happen after
    * the merge anyway.
+   *
+   * ⚠️ ONE LINE PER ORDER, not one per stage. `stageEvents` arrives newest-first,
+   * so the FIRST row seen for an order_id is its LATEST stage — we keep that and
+   * drop the rest. Otherwise an order that walked New → Printing → Finishing →
+   * Shipped in a day filled the whole feed with near-identical "EX-002" rows,
+   * which is the noise Parsa asked to kill: the feed should say "EX-002 is now
+   * Printing", once, not narrate every step.
    */
+  const latestStageByOrder = new Map<string, (typeof stageEvents)[number]>();
+  for (const row of stageEvents) {
+    if (!latestStageByOrder.has(row.order_id)) latestStageByOrder.set(row.order_id, row);
+  }
+
   const activity: ActivityItem[] = [
-    ...stageEvents.map(
+    ...[...latestStageByOrder.values()].map(
       (row): ActivityItem => ({
         type: "order",
         id: row.id,

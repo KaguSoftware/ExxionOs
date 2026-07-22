@@ -126,8 +126,12 @@ function ActivityRow({ item }: { item: ActivityItem }) {
         <span className="min-w-0 flex-1 truncate text-sm text-ink">
           {item.code ?? t("shipping.order")}
         </span>
+        {/* One line per order — its CURRENT stage, read as a state ("now
+            Printing"), not a stage-by-stage narration. */}
         <span className="shrink-0 text-xs text-muted">
-          {t(STAGE_KEY[item.stage] as never)}
+          {t("dashboard.nowStage", {
+            stage: t(STAGE_KEY[item.stage] as never),
+          })}
         </span>
       </Link>
     );

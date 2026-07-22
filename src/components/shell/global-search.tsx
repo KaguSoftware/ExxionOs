@@ -17,6 +17,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 
 import { globalSearch, type SearchResult, type SearchResultType } from "@/lib/actions/search";
 import { useI18n } from "@/lib/i18n/client";
@@ -167,15 +168,23 @@ export function GlobalSearch() {
         </kbd>
       </button>
 
-      {open && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("search.open")}
-          onClick={close}
-          className="animate-fade-in fixed inset-0 flex items-start justify-center p-4 pt-[12vh] backdrop-blur-[2px]"
-          style={{ zIndex: "var(--z-modal)", backgroundColor: "var(--scrim)" }}
-        >
+      {/* ⚠️ PORTALLED TO document.body. The trigger lives in the sidebar, which
+          is `sticky h-dvh w-56` — a positioned, clipping ancestor. A `fixed`
+          overlay rendered inside it gets constrained to that 56-wide box (the
+          bug where the search field floated mid-page with no backdrop). Every
+          other overlay in the app portals for exactly this reason; see the note
+          in ui/create.tsx. */}
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("search.open")}
+            onClick={close}
+            className="animate-fade-in fixed inset-0 flex items-start justify-center p-4 pt-[12vh] backdrop-blur-[2px]"
+            style={{ zIndex: "var(--z-modal)", backgroundColor: "var(--scrim)" }}
+          >
           <div
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-xl overflow-hidden rounded-xl border border-line bg-raised shadow-lg"
@@ -245,8 +254,10 @@ export function GlobalSearch() {
               )}
             </div>
           </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )
+      }
     </>
   );
 }
