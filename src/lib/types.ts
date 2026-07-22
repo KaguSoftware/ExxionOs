@@ -20,6 +20,8 @@ export type Reminder = {
   done_at: string | null;
   source_type: string | null;
   source_id: string | null;
+  /** True when auto-created by the reminder generator; false = entered by hand. */
+  generated: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -312,6 +314,11 @@ export type Machine = {
    * system existed and were expensed at the time. See migration 0006.
    */
   purchase_transaction_id: string | null;
+  /**
+   * When the machine is next due for service. ⚠️ Null = no schedule set (the
+   * normal case), not "overdue". Drives an auto-reminder — see 0017.
+   */
+  next_service_on: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;

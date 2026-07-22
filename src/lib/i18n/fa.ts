@@ -56,6 +56,9 @@ export const fa: Dictionary = {
     addReminder: "افزودن یادآور",
     reminderPlaceholder: "چه کاری باید انجام شود؟",
     noReminders: "هنوز یادآوری ثبت نشده است.",
+    reminderAuto: "خودکار",
+    reminderBirthday: "تولد {name} را تبریک بگویید",
+    reminderService: "سرویس {name}",
     overdue: "گذشته از موعد",
     dueToday: "سررسید امروز",
     recentActivity: "فعالیت‌های اخیر",
@@ -470,6 +473,8 @@ export const fa: Dictionary = {
     serial: "شمارهٔ سریال",
     location: "محل",
     purchasedOn: "تاریخ خرید",
+    nextServiceOn: "سرویس بعدی",
+    nextServiceHint: "با نزدیک شدن این تاریخ یک یادآوری نمایش داده می‌شود.",
     purchasePrice: "قیمت خرید",
     logPurchase: "این خرید در بخش مالی ثبت شود",
     logPurchaseHint:

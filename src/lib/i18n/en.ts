@@ -62,6 +62,9 @@ export const en = {
     addReminder: "Add a reminder",
     reminderPlaceholder: "What needs doing?",
     noReminders: "No reminders yet.",
+    reminderAuto: "Auto",
+    reminderBirthday: "Wish {name} a happy birthday",
+    reminderService: "Service {name}",
     overdue: "Overdue",
     dueToday: "Due today",
     recentActivity: "Recent activity",
@@ -483,6 +486,8 @@ export const en = {
     serial: "Serial number",
     location: "Location",
     purchasedOn: "Bought",
+    nextServiceOn: "Next service",
+    nextServiceHint: "A reminder appears as this date approaches.",
     purchasePrice: "Purchase price",
     logPurchase: "Log this purchase in Finance",
     logPurchaseHint:

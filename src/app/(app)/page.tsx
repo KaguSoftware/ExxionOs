@@ -1,11 +1,15 @@
+import { after } from "next/server";
+
 import { Activity, type ActivityItem } from "@/components/dashboard/activity";
 import { AllClear, DashboardGreeting } from "@/components/dashboard/greeting";
 import { MonthSummary } from "@/components/dashboard/month-summary";
 import { NeedsYou } from "@/components/dashboard/needs-you";
 import { Reminders } from "@/components/dashboard/reminders";
 import { LiveRefresh } from "@/components/shell/live-refresh";
+import { materialiseAutoReminders } from "@/lib/data/auto-reminders";
 import { countOrThrow, rowsOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
+import { getT } from "@/lib/i18n/server";
 import { goneQuiet, type ClientOrderRow } from "@/lib/clients";
 import { isLowStock } from "@/lib/equipment";
 import { groupCosts, overBudgetCampaigns } from "@/lib/marketing";
@@ -337,6 +341,28 @@ export default async function DashboardPage() {
 
   const greeting = greetingKey();
   const firstName = ctx.profile.full_name.split(/\s+/)[0] || "";
+
+  /**
+   * Generate the reminders that birthdays and machine-service dates owe, AFTER
+   * the response ships — the user never waits on bookkeeping, and the realtime
+   * subscription below pulls the new rows in on the next refresh. Idempotency
+   * is the unique index (0017), not this call site, so running it every load is
+   * safe. `getT()` reads the cookie, which is unavailable inside `after()`, so
+   * the copy is resolved out here and closed over.
+   */
+  const t = await getT();
+  after(async () => {
+    try {
+      await materialiseAutoReminders(supabase, ctx.userId, {
+        birthday: (name) => t("dashboard.reminderBirthday", { name }),
+        service: (name) => t("dashboard.reminderService", { name }),
+      });
+    } catch (error) {
+      // Must never take the dashboard down: the reminders that exist still
+      // render; the next load adds any this attempt missed.
+      console.error("auto-reminder materialisation failed", error);
+    }
+  });
 
   return (
     <div className="animate-fade-rise px-4 py-6 md:px-8">

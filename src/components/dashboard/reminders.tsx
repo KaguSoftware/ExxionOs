@@ -1,8 +1,9 @@
 "use client";
 
-import { BellOff, Plus, Trash2 } from "lucide-react";
+import { BellOff, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -142,7 +143,18 @@ export function Reminders({
                   aria-label={reminder.body}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm leading-snug text-ink">{reminder.body}</p>
+                  <p className="flex items-center gap-1.5 text-sm leading-snug text-ink">
+                    <span className="min-w-0">{reminder.body}</span>
+                    {reminder.generated && (
+                      <Badge
+                        tone="neutral"
+                        icon={<Sparkles aria-hidden className="size-3" />}
+                        className="shrink-0"
+                      >
+                        {t("dashboard.reminderAuto")}
+                      </Badge>
+                    )}
+                  </p>
                   {reminder.due_on && (
                     <p
                       className={cn(

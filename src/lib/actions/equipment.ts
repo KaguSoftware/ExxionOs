@@ -57,6 +57,8 @@ export type MachineInput = {
    * to today, so the right month is charged.
    */
   logPurchaseExpense?: boolean;
+  /** When the machine is next due for service; drives an auto-reminder (0017). */
+  nextServiceOn: string | null;
   notes: string | null;
 };
 
@@ -71,6 +73,7 @@ function machineRow(input: MachineInput) {
     purchased_on: input.purchasedOn,
     purchase_price_minor:
       input.purchasePrice == null ? null : Math.abs(toMinor(input.purchasePrice)),
+    next_service_on: input.nextServiceOn,
     notes: input.notes?.trim().slice(0, 4000) || null,
   };
 }

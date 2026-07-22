@@ -34,6 +34,7 @@ export function MachineForm({ existing }: { existing?: Machine }) {
   const locationId = useId();
   const boughtId = useId();
   const priceId = useId();
+  const serviceId = useId();
   const notesId = useId();
 
   const [name, setName] = useState(existing?.name ?? "");
@@ -51,6 +52,9 @@ export function MachineForm({ existing }: { existing?: Machine }) {
     existing?.purchase_price_minor == null
       ? null
       : toMajor(existing.purchase_price_minor)
+  );
+  const [nextServiceOn, setNextServiceOn] = useState<string | null>(
+    existing?.next_service_on ?? null
   );
   const [notes, setNotes] = useState(existing?.notes ?? "");
   // Pre-ticked only if this machine ALREADY has a linked purchase expense —
@@ -74,6 +78,7 @@ export function MachineForm({ existing }: { existing?: Machine }) {
       purchasedOn,
       purchasePrice: price,
       logPurchaseExpense: logPurchase,
+      nextServiceOn,
       notes: notes || null,
     };
 
@@ -185,6 +190,21 @@ export function MachineForm({ existing }: { existing?: Machine }) {
             <MoneyInput id={priceId} value={price} onChange={setPrice} min={0} />
           </Field>
         </div>
+
+        {/* When set, a reminder is auto-created as the date approaches (0017). */}
+        <Field
+          id={serviceId}
+          label={t("equipment.nextServiceOn")}
+          hint={t("equipment.nextServiceHint")}
+          optional={t("common.optional")}
+        >
+          <DatePicker
+            id={serviceId}
+            value={nextServiceOn}
+            onChange={setNextServiceOn}
+            className="w-full sm:w-56"
+          />
+        </Field>
 
         {/* Only offered once there's a price to log. Off by default: a machine
             you bought last year was already expensed then, and logging it now
