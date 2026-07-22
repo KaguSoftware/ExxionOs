@@ -12,6 +12,7 @@ import type {
   Collection,
   Issue,
   Product,
+  ProductFile,
   ProductStockMovement,
   StoredImage,
   Supply,
@@ -39,6 +40,7 @@ export default async function CollectionPage({
     issues,
     settings,
     images,
+    files,
     supplies,
     soldLines,
     stockMovements,
@@ -74,6 +76,15 @@ export default async function CollectionPage({
           .from("product_images")
           .select("id, path, sort_order, product_id")
           .order("sort_order")
+      ),
+      // Source/design files per product (.mb/.ma/.stl). Newest first; the panel
+      // picks each product's own by id, same shape as images above.
+      rowsOrThrow<ProductFile>(
+        "collection.files",
+        supabase
+          .from("product_files")
+          .select("*")
+          .order("created_at", { ascending: false })
       ),
       // Prices the products AND names the stock a print run draws from. ALL
       // supplies (not just active) — a product may point at one archived since,
@@ -118,6 +129,7 @@ export default async function CollectionPage({
           "issues",
           "collections",
           "product_stock_movements",
+          "product_files",
         ]}
       />
       <Suspense>
@@ -127,6 +139,7 @@ export default async function CollectionPage({
           issues={issues}
           machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
           images={images}
+          files={files}
           supplies={supplies}
           soldLines={soldLines}
           stockMovements={stockMovements}

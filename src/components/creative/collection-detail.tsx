@@ -14,6 +14,7 @@ import type {
   CollectionStatus,
   Issue,
   Product,
+  ProductFile,
   ProductStockMovement,
   StoredImage,
   Supply,
@@ -32,6 +33,7 @@ export function CollectionDetail({
   issues,
   machineRateMinor,
   images,
+  files = [],
   supplies,
   soldLines,
   stockMovements = [],
@@ -41,6 +43,8 @@ export function CollectionDetail({
   issues: Issue[];
   machineRateMinor: number;
   images: (StoredImage & { product_id: string })[];
+  /** Source/design files (.mb/.ma/.stl) per product. */
+  files?: ProductFile[];
   /** Prices the products AND names the stock a print run draws from. */
   supplies: Supply[];
   /** Every order line app-wide; filtered to this collection by the P&L panel. */
@@ -98,6 +102,7 @@ export function CollectionDetail({
                 supplies={supplies}
                 machineRateMinor={machineRateMinor}
                 images={images}
+                files={files}
                 collectionId={collection.id}
                 stockMovements={stockMovements}
               />

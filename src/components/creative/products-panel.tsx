@@ -4,6 +4,7 @@ import { Package, Pencil } from "lucide-react";
 import Link from "next/link";
 
 import { PrintRunButton } from "@/components/creative/print-run-button";
+import { ProductFilesButton } from "@/components/creative/product-files-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { productCost, productMargin, productMarginPct } from "@/lib/costing";
@@ -11,6 +12,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { isLow, onHandByProduct } from "@/lib/stock";
 import type {
   Product,
+  ProductFile,
   ProductStockMovement,
   StoredImage,
   Supply,
@@ -22,6 +24,7 @@ export function ProductsPanel({
   supplies = [],
   machineRateMinor,
   images,
+  files = [],
   collectionId,
   stockMovements = [],
 }: {
@@ -30,6 +33,8 @@ export function ProductsPanel({
   supplies?: Supply[];
   machineRateMinor: number;
   images: (StoredImage & { product_id: string })[];
+  /** Source/design files (.mb/.ma/.stl) per product. */
+  files?: ProductFile[];
   collectionId: string;
   /** The stock ledger; on-hand is summed from it, never stored. */
   stockMovements?: ProductStockMovement[];
@@ -37,6 +42,14 @@ export function ProductsPanel({
   const { t } = useI18n();
 
   const onHand = onHandByProduct(stockMovements);
+
+  // Group files by product once, newest first (they arrive already ordered).
+  const filesByProduct = new Map<string, ProductFile[]>();
+  for (const file of files) {
+    const list = filesByProduct.get(file.product_id);
+    if (list) list.push(file);
+    else filesByProduct.set(file.product_id, [file]);
+  }
 
   if (products.length === 0) {
     return (
@@ -164,12 +177,18 @@ export function ProductsPanel({
             </div>
 
             {/* Printing is what consumes filament — so the action lives on the
-                product. The supply it draws from is the product's own supply. */}
-            <div className="mt-3 border-t border-line pt-2">
+                product. The supply it draws from is the product's own supply.
+                The design files (.mb/.ma/.stl) sit beside it: the source lives
+                with the product. */}
+            <div className="mt-3 flex items-center gap-1 border-t border-line pt-2">
               <PrintRunButton
                 productId={product.id}
                 gramsEach={Number(product.grams) || null}
                 supplyName={supply?.name ?? null}
+              />
+              <ProductFilesButton
+                productId={product.id}
+                files={filesByProduct.get(product.id) ?? []}
               />
             </div>
           </li>

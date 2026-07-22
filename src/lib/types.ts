@@ -275,6 +275,21 @@ export type StoredImage = {
   sort_order: number;
 };
 
+/**
+ * A source/design file attached to a product (.mb / .ma / .stl). A DOWNLOAD,
+ * not a thumbnail — the name and size are stored so the list renders without
+ * signing a URL per row (SignedFileLink signs at click). See 0020.
+ */
+export type ProductFile = {
+  id: string;
+  product_id: string;
+  path: string;
+  name: string;
+  size_bytes: number | null;
+  created_by: string | null;
+  created_at: string;
+};
+
 // --- equipment -------------------------------------------------------------
 
 export type MachineStatus =

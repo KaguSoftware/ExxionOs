@@ -79,6 +79,7 @@ const CONTENT = [
   // Creative (phase 3)
   "issue_images",
   "product_images",
+  "product_files",
   "issues",
   "products",
   "ideas",

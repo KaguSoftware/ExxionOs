@@ -625,3 +625,56 @@ export async function detachImage(
   refreshCreative();
   return { ok: true, data: undefined };
 }
+
+// --- product files (.mb / .ma / .stl) --------------------------------------
+
+/**
+ * Record a source file already uploaded to the `creative` bucket (the upload
+ * itself goes browser → bucket, like photos; only the path reaches here).
+ * Returns the new row so the client can render it without a refetch.
+ */
+export async function attachProductFile(input: {
+  productId: string;
+  path: string;
+  name: string;
+  sizeBytes: number | null;
+}): Promise<ActionResult<{ id: string; created_at: string }>> {
+  const ctx = await getSessionContext();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("product_files")
+    .insert({
+      product_id: input.productId,
+      path: input.path,
+      name: input.name.slice(0, 255),
+      size_bytes: input.sizeBytes,
+      created_by: ctx.userId,
+    })
+    .select("id, created_at")
+    .single<{ id: string; created_at: string }>();
+
+  if (error) return { ok: false, error: error.message };
+  refreshCreative();
+  return { ok: true, data };
+}
+
+export async function detachProductFile(id: string): Promise<ActionResult> {
+  await getSessionContext();
+  const supabase = await createClient();
+
+  const { data: row } = await supabase
+    .from("product_files")
+    .select("path")
+    .eq("id", id)
+    .maybeSingle<{ path: string }>();
+
+  const { error } = await supabase.from("product_files").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  // Remove the file too, or the bucket accumulates orphans nobody can reach.
+  if (row?.path) await supabase.storage.from("creative").remove([row.path]);
+
+  refreshCreative();
+  return { ok: true, data: undefined };
+}
