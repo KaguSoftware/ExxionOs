@@ -2,6 +2,7 @@ import { after } from "next/server";
 
 import { Activity, type ActivityItem } from "@/components/dashboard/activity";
 import { AllClear, DashboardGreeting } from "@/components/dashboard/greeting";
+import { MoneyPulse } from "@/components/dashboard/money-pulse";
 import { MonthSummary } from "@/components/dashboard/month-summary";
 import { NeedsYou } from "@/components/dashboard/needs-you";
 import { Reminders } from "@/components/dashboard/reminders";
@@ -11,6 +12,7 @@ import { countOrThrow, rowsOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
 import { getT } from "@/lib/i18n/server";
 import { goneQuiet, type ClientOrderRow } from "@/lib/clients";
+import { isTerminal } from "@/lib/shipping";
 import { isLowStock } from "@/lib/equipment";
 import { groupCosts, overBudgetCampaigns } from "@/lib/marketing";
 import { totals } from "@/lib/finance-series";
@@ -277,6 +279,25 @@ export default async function DashboardPage() {
   ).length;
 
   /**
+   * Money pulse — two forward-looking figures the "this month" strip can't show,
+   * both from orders already in the wave (no new query):
+   *
+   * - **Open-order value**: the agreed price of work still in the pipeline
+   *   (not delivered, not cancelled). ⚠️ This is the ONE place `total_minor`
+   *   (the AGREED PRICE) is summed on purpose and LABELLED as such — it answers
+   *   "what's on the books", never "what we earned". Earned money is Finance.
+   * - **Outstanding**: of that open work, how much is still owed after deposits
+   *   — `outstandingMinor` per order, which subtracts payments already received.
+   */
+  let openOrderValueMinor = 0;
+  let outstandingTotalMinor = 0;
+  for (const o of activeOrders) {
+    if (isTerminal(o.stage)) continue;
+    openOrderValueMinor += o.total_minor;
+    outstandingTotalMinor += Math.max(0, o.total_minor - (paidByOrder.get(o.id) ?? 0));
+  }
+
+  /**
    * Regulars — two orders or more — with nothing for 90 days.
    *
    * The empty revenue map is deliberate: `goneQuiet` filters on order COUNT and
@@ -413,6 +434,10 @@ export default async function DashboardPage() {
           filter params from `use-finance-filters.ts` — a made-up param would
           silently land on an unfiltered view. */}
       <MonthSummary totals={monthTotals} monthStart={monthStart} today={today} />
+      <MoneyPulse
+        openOrderValueMinor={openOrderValueMinor}
+        outstandingMinor={outstandingTotalMinor}
+      />
 
       {/* ⚠️ Reminders was pinned into a 20rem rail and its composer — text input
           + date picker + button — had nowhere to go; the input collapsed to a

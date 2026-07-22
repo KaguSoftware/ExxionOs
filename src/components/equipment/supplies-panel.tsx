@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, PackagePlus, Pencil } from "lucide-react";
+import { Archive, Download, PackagePlus, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useId, useState } from "react";
 
@@ -11,6 +11,8 @@ import { Field } from "@/components/ui/field";
 import { CreateOverlay } from "@/components/ui/create";
 import { MoneyInput, NumberInput } from "@/components/ui/number-input";
 import { archiveSupply, restockSupply } from "@/lib/actions/equipment";
+import { downloadCsv } from "@/lib/csv";
+import { suppliesToCsv } from "@/lib/entity-export";
 import { isLowStock } from "@/lib/equipment";
 import { useI18n } from "@/lib/i18n/client";
 import { toMajor } from "@/lib/money";
@@ -59,6 +61,15 @@ export function SuppliesPanel({ supplies: initial }: { supplies: Supply[] }) {
 
   return (
     <>
+      <div className="mb-3 flex justify-end">
+        <Button
+          size="sm"
+          onClick={() => downloadCsv(suppliesToCsv(supplies), "supplies")}
+          icon={<Download aria-hidden className="size-3.5" />}
+        >
+          {t("common.exportCsv")}
+        </Button>
+      </div>
       <div className="flex flex-col gap-6">
         {groups.map(({ label, key, items }) => (
           <section key={key}>
@@ -149,7 +160,7 @@ export function SuppliesPanel({ supplies: initial }: { supplies: Supply[] }) {
   );
 }
 
-function RestockForm({
+export function RestockForm({
   supply,
   pending,
   onClose,

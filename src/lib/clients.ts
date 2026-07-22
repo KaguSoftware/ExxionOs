@@ -1,9 +1,12 @@
+import { productCost } from "@/lib/costing";
 import type {
   Client,
   ClientKind,
   ClientSource,
   EventKind,
   Order,
+  Product,
+  Supply,
   Transaction,
 } from "@/lib/types";
 
@@ -305,6 +308,63 @@ export function goneQuiet(
     .sort(
       (a, b) => (b.stats.daysSinceLastOrder ?? 0) - (a.stats.daysSinceLastOrder ?? 0)
     );
+}
+
+export type ClientPnlLine = {
+  product_id: string | null;
+  quantity: number;
+};
+
+export type ClientPnl = {
+  /** Money that ARRIVED — passed in, from `transactions`. */
+  revenueMinor: number;
+  /** What it cost to MAKE what this client ordered, at today's prices. */
+  costMinor: number;
+  /** revenue − cost. */
+  marginMinor: number;
+  /** ⚠️ Order-line quantities that couldn't be costed (product deleted, or
+   *  never costed). Reported, never folded into cost as 0 — same honesty as the
+   *  per-collection P&L, so the margin is never flattered. */
+  uncostedUnits: number;
+};
+
+/**
+ * Per-client P&L.
+ *
+ * ⚠️ REVENUE IS `revenueMinor` (money received, from `transactions`) — NEVER the
+ * sum of `orders.total_minor`. COST is computed at READ TIME from the ordered
+ * products (`productCost`), exactly like the per-collection P&L, so re-pricing a
+ * filament re-costs history correctly rather than reading a stale stored number.
+ * A line whose product was deleted or was never costed is COUNTED in
+ * `uncostedUnits` and left out of cost, so the margin never quietly overstates.
+ */
+export function clientPnl(
+  revenueMinor: number,
+  lines: ClientPnlLine[],
+  products: Product[],
+  supplies: Supply[],
+  machineHourRateMinor: number
+): ClientPnl {
+  const byId = new Map(products.map((p) => [p.id, p]));
+  let costMinor = 0;
+  let uncostedUnits = 0;
+
+  for (const line of lines) {
+    const qty = Math.max(1, line.quantity);
+    const product = line.product_id ? byId.get(line.product_id) : undefined;
+    const cost = product
+      ? productCost(product, supplies, machineHourRateMinor)
+      : null;
+    if (!cost) uncostedUnits += qty;
+    else costMinor += cost.totalMinor * qty;
+  }
+
+  return {
+    revenueMinor,
+    costMinor,
+    marginMinor: revenueMinor - costMinor,
+    uncostedUnits,
+  };
 }
 
 /** Top clients by MONEY RECEIVED. Never by `orders.total_minor`. */

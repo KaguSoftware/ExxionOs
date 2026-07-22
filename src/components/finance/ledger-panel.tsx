@@ -100,7 +100,9 @@ export function LedgerPanel({
           />
           <Button
             size="sm"
-            onClick={() => downloadCsv(transactionsToCsv(visible, categories))}
+            onClick={() =>
+              downloadCsv(transactionsToCsv(visible, categories), "finance")
+            }
             icon={<Download aria-hidden className="size-3.5" />}
             disabled={visible.length === 0}
           >

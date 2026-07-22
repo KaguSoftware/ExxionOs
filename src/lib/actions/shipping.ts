@@ -63,6 +63,8 @@ export type OrderLineInput = {
 export type OrderInput = {
   code: string | null;
   clientId: string | null;
+  /** Optional attribution to the campaign that won this order — see 0019. */
+  campaignId: string | null;
   title: string;
   notes: string | null;
   promisedOn: string | null;
@@ -76,6 +78,7 @@ function orderRow(input: OrderInput, totalMinor: number) {
   return {
     code: input.code?.trim().slice(0, 40) || null,
     client_id: input.clientId,
+    campaign_id: input.campaignId,
     title: input.title.trim().slice(0, 200) || "Untitled order",
     notes: input.notes?.trim().slice(0, 4000) || null,
     total_minor: totalMinor,
@@ -85,6 +88,21 @@ function orderRow(input: OrderInput, totalMinor: number) {
     shipping_cost_minor:
       input.shippingCost == null ? null : Math.abs(toMinor(input.shippingCost)),
   };
+}
+
+/**
+ * The next order code to suggest ("EX-014"), from the Postgres sequence (0018).
+ * The sequence hands out the next integer atomically, so two orders started at
+ * once get distinct codes. Only a SUGGESTION — the form field stays editable,
+ * and a null return (the RPC is missing / failed) just leaves the field blank,
+ * never blocks order creation.
+ */
+export async function nextOrderCode(): Promise<string | null> {
+  await getSessionContext();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("next_order_code");
+  if (error || typeof data !== "string") return null;
+  return data;
 }
 
 /**

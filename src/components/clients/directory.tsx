@@ -1,10 +1,11 @@
 "use client";
 
-import { Users } from "lucide-react";
+import { Download, Users } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Dropdown } from "@/components/ui/dropdown";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TextInput } from "@/components/ui/input";
@@ -14,6 +15,8 @@ import {
   clientStats,
   type ClientOrderRow,
 } from "@/lib/clients";
+import { downloadCsv } from "@/lib/csv";
+import { clientsToCsv } from "@/lib/entity-export";
 import { useI18n } from "@/lib/i18n/client";
 import { CLIENT_KINDS, CLIENT_SOURCES } from "@/lib/types";
 import type { Client } from "@/lib/types";
@@ -163,6 +166,19 @@ export function ClientDirectory({
         >
           {t("clients.showArchived")}
         </button>
+
+        {/* Exports the FILTERED rows on screen, never the whole table. */}
+        <Button
+          size="sm"
+          onClick={() =>
+            downloadCsv(clientsToCsv(rows.map((r) => r.client)), "clients")
+          }
+          icon={<Download aria-hidden className="size-3.5" />}
+          disabled={rows.length === 0}
+          className="ms-auto"
+        >
+          {t("common.exportCsv")}
+        </Button>
       </div>
 
       {/* ⚠️ The list below is `overflow-hidden`, and that is what CLIPS the row

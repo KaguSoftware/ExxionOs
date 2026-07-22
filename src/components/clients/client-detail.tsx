@@ -22,14 +22,16 @@ import {
 } from "@/lib/clients";
 import { useI18n } from "@/lib/i18n/client";
 import { STAGE_KEY } from "@/lib/shipping";
+import type { ClientPnl } from "@/lib/clients";
 import type { Client, Event, Order, Vocabulary } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
-import { formatDate, formatMinor } from "@/lib/utils";
+import { cn, formatDate, formatMinor } from "@/lib/utils";
 
 export function ClientDetail({
   client,
   orders,
   revenue,
+  pnl,
   events,
   today,
   tagVocabulary = [],
@@ -39,6 +41,8 @@ export function ClientDetail({
   orders: Order[];
   /** Money received by this client, in kuruş — from `transactions`. */
   revenue: number;
+  /** Per-client P&L — revenue received vs read-time cost of what they ordered. */
+  pnl: ClientPnl;
   events: Event[];
   today: string;
   tagVocabulary?: Vocabulary[];
@@ -194,6 +198,35 @@ export function ClientDetail({
           )}
         </Panel>
 
+        {/* Per-client P&L. ⚠️ Revenue = money received; cost = read-time cost of
+            what they ordered; uncosted lines are stated, never counted as free. */}
+        <Panel
+          title={t("clients.pnl")}
+          description={t("clients.pnlHint")}
+          className="lg:col-span-2"
+        >
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <Stat
+              label={t("clients.pnlRevenue")}
+              value={formatMinor(pnl.revenueMinor)}
+            />
+            <Stat
+              label={t("clients.pnlCost")}
+              value={formatMinor(pnl.costMinor)}
+            />
+            <Stat
+              label={t("clients.pnlMargin")}
+              value={`${pnl.marginMinor >= 0 ? "+" : "−"}${formatMinor(Math.abs(pnl.marginMinor))}`}
+              tone={pnl.marginMinor >= 0 ? "up" : "down"}
+            />
+          </dl>
+          {pnl.uncostedUnits > 0 && (
+            <p className="mt-3 border-t border-line pt-2 text-2xs text-faint">
+              {t("clients.pnlUncosted", { count: pnl.uncostedUnits })}
+            </p>
+          )}
+        </Panel>
+
         <div className="lg:col-span-2">
           <EventTimeline clientId={client.id} events={events} today={today} />
         </div>
@@ -234,11 +267,29 @@ export function ClientDetail({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  /** Margin sign colour — carried by the +/− in the value too, never alone. */
+  tone?: "up" | "down";
+}) {
   return (
     <div className="rounded-xl border border-line bg-surface px-3 py-2.5">
       <dt className="text-xs text-muted">{label}</dt>
-      <dd className="mt-0.5 text-lg font-medium text-ink tnum">{value}</dd>
+      <dd
+        className={cn(
+          "mt-0.5 text-lg font-medium tnum",
+          tone === "up" && "text-success",
+          tone === "down" && "text-danger",
+          !tone && "text-ink"
+        )}
+      >
+        {value}
+      </dd>
     </div>
   );
 }

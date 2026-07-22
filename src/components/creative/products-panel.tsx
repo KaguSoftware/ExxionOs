@@ -6,7 +6,7 @@ import Link from "next/link";
 import { PrintRunButton } from "@/components/creative/print-run-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
-import { productCost, productMargin } from "@/lib/costing";
+import { productCost, productMargin, productMarginPct } from "@/lib/costing";
 import { useI18n } from "@/lib/i18n/client";
 import { isLow, onHandByProduct } from "@/lib/stock";
 import type {
@@ -56,6 +56,7 @@ export function ProductsPanel({
         // migration. See lib/costing.ts.
         const cost = productCost(product, supplies, machineRateMinor);
         const margin = productMargin(product, cost);
+        const marginPct = productMarginPct(product, cost);
         const supply = supplies.find((s) => s.id === product.supply_id);
         const photoCount = images.filter((i) => i.product_id === product.id).length;
         // Summed from the ledger, like cost above — never a stored column.
@@ -138,6 +139,9 @@ export function ProductsPanel({
                   >
                     {margin >= 0 ? "+" : "−"}
                     {formatMinor(Math.abs(margin))}
+                    {marginPct != null && (
+                      <span className="ms-1 text-faint">({marginPct}%)</span>
+                    )}
                   </span>
                 </Row>
               )}

@@ -45,8 +45,19 @@ export default async function MarketingPage() {
   await getSessionContext();
   const supabase = await createClient();
 
-  const [campaigns, costs, spend, events, samples, productRows, supplies, settings, clients] =
-    await Promise.all([
+  const [
+    campaigns,
+    costs,
+    spend,
+    events,
+    samples,
+    productRows,
+    supplies,
+    settings,
+    clients,
+    taggedOrders,
+    orderRevenueRows,
+  ] = await Promise.all([
       rowsOrThrow<Campaign>(
         "marketing.campaigns",
         supabase.from("campaigns").select("*").order("created_at", { ascending: false })
@@ -109,7 +120,35 @@ export default async function MarketingPage() {
         "marketing.clients",
         supabase.from("clients").select("*").order("created_at")
       ),
+      /**
+       * ⚠️ REAL ROI INPUTS (0019). Which orders a human attributed to a
+       * campaign, and — separately — the money that ACTUALLY ARRIVED per order
+       * (`transactions`, source_type='order'). Revenue is NEVER `total_minor`;
+       * a tagged-but-unpaid order contributes ₺0. Both inside the one wave.
+       */
+      rowsOrThrow<{ id: string; campaign_id: string | null }>(
+        "marketing.taggedOrders",
+        supabase
+          .from("orders")
+          .select("id, campaign_id")
+          .not("campaign_id", "is", null)
+      ),
+      rowsOrThrow<{ source_id: string | null; amount_minor: number; direction: string }>(
+        "marketing.orderRevenue",
+        supabase
+          .from("transactions")
+          .select("source_id, amount_minor, direction")
+          .eq("source_type", "order")
+      ),
     ]);
+
+  // Money received per order — refunds subtract, exactly as revenueByClient.
+  const orderRevenue = orderRevenueRows
+    .filter((r) => r.source_id)
+    .map((r) => ({
+      order_id: r.source_id as string,
+      amount_minor: r.direction === "out" ? -r.amount_minor : r.amount_minor,
+    }));
 
   const productOptions: SampleProductOption[] = productRows.map((p) => ({
     id: p.id,
@@ -132,6 +171,8 @@ export default async function MarketingPage() {
           supplies={supplies}
           machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
           clients={clients}
+          taggedOrders={taggedOrders}
+          orderRevenue={orderRevenue}
           /**
            * ⚠️ Stamped once on the server. The schedule splits upcoming from
            * past against this date, and `react-hooks/purity` is an error here

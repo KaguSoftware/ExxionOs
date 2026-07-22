@@ -3,6 +3,8 @@
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
+import { Lightbox } from "@/components/creative/lightbox";
+
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { attachImage, detachImage } from "@/lib/actions/creative";
@@ -54,6 +56,8 @@ export function ImageStrip({
       every other destructive action in Creative routes through a dialog, and
       this one used to fire on a single click of a 20px icon. */
   const [confirmRemove, setConfirmRemove] = useState<StoredImage | null>(null);
+  /** The photo open in the lightbox, or null. */
+  const [viewing, setViewing] = useState<StoredImage | null>(null);
 
   // Adopt server truth during render, never in an effect.
   const [seen, setSeen] = useState(images);
@@ -180,16 +184,25 @@ export function ImageStrip({
                 empty — a signing failure degrades to a placeholder, never a
                 broken-image box. */}
             {urls[image.id] ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={urls[image.id]}
-                // Named, not alt="" — these are product photos a user is
-                // managing, not decoration, so a screen reader should announce
-                // that each one is there.
-                alt={t("creative.photos")}
-                className="size-full object-cover"
-                loading="lazy"
-              />
+              // Clicking opens the lightbox — the full-size image is signed at
+              // click (see Lightbox), never baked into this thumbnail's URL.
+              <button
+                type="button"
+                onClick={() => setViewing(image)}
+                aria-label={t("creative.viewPhoto")}
+                className="block size-full"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={urls[image.id]}
+                  // Named, not alt="" — these are product photos a user is
+                  // managing, not decoration, so a screen reader should announce
+                  // that each one is there.
+                  alt={t("creative.photos")}
+                  className="size-full object-cover"
+                  loading="lazy"
+                />
+              </button>
             ) : (
               <div className="skeleton size-full" />
             )}
@@ -265,6 +278,15 @@ export function ImageStrip({
           if (image) void remove(image);
         }}
       />
+
+      {viewing && (
+        <Lightbox
+          bucket="creative"
+          path={viewing.path}
+          alt={t("creative.photos")}
+          onClose={() => setViewing(null)}
+        />
+      )}
     </div>
   );
 }

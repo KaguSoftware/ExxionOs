@@ -19,6 +19,26 @@ export function isLowStock(supply: Pick<Supply, "quantity" | "low_threshold">) {
 }
 
 /**
+ * A suggested reorder quantity for a low supply: enough to reach TWICE the
+ * threshold, so a restock clears the warning with headroom rather than landing
+ * exactly on the line and re-tripping next week.
+ *
+ * ⚠️ Returns null when there's no threshold to aim at (nothing to suggest) or
+ * the numbers don't parse — the caller shows a blank, never a fabricated 0.
+ * `numeric`-as-string is coerced, same as `isLowStock`.
+ */
+export function suggestedReorder(
+  supply: Pick<Supply, "quantity" | "low_threshold">
+): number | null {
+  if (supply.low_threshold == null || supply.low_threshold === "") return null;
+  const quantity = Number(supply.quantity);
+  const threshold = Number(supply.low_threshold);
+  if (!Number.isFinite(quantity) || !Number.isFinite(threshold)) return null;
+  const target = threshold * 2;
+  return Math.max(0, Math.ceil(target - quantity));
+}
+
+/**
  * The Finance categories whose supplies are PRINTING MATERIALS — weighed in
  * grams and costed per kg, deducted per print run.
  *

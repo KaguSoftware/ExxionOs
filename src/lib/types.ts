@@ -545,6 +545,10 @@ export type Order = {
   id: string;
   code: string | null;
   client_id: string | null;
+  /** Optional attribution to the campaign that won this order — see 0019.
+   *  Null is the honest default ("no known campaign"); ROI reports only over
+   *  tagged orders. SET NULL, so archiving a campaign never deletes the sale. */
+  campaign_id: string | null;
   stage: OrderStage;
   title: string;
   notes: string | null;

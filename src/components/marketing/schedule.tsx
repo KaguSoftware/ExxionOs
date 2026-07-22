@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, List, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useState } from "react";
 
@@ -51,6 +51,7 @@ export function MarketingSchedule({
 
   const [composing, setComposing] = useState(false);
   const [deleting, setDeleting] = useState<Event | null>(null);
+  const [view, setView] = useState<"list" | "calendar">("list");
 
   const [kind, setKind] = useState<EventKind>("filming");
   const [title, setTitle] = useState("");
@@ -107,13 +108,42 @@ export function MarketingSchedule({
 
   return (
     <>
-      <div className="mb-3 flex justify-end">{addButton}</div>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        {/* List ↔ Calendar. A segmented toggle: the same rows, two shapes —
+            a scannable list, or a month grid for spotting clashes and gaps. */}
+        <div
+          role="group"
+          aria-label={t("marketing.viewToggle")}
+          className="inline-flex overflow-hidden rounded-lg border border-line"
+        >
+          <ViewButton
+            active={view === "list"}
+            onClick={() => setView("list")}
+            icon={<List aria-hidden className="size-3.5" />}
+            label={t("marketing.viewList")}
+          />
+          <ViewButton
+            active={view === "calendar"}
+            onClick={() => setView("calendar")}
+            icon={<CalendarDays aria-hidden className="size-3.5" />}
+            label={t("marketing.viewCalendar")}
+          />
+        </div>
+        {addButton}
+      </div>
 
       {events.length === 0 ? (
         <EmptyState
           icon={<CalendarDays aria-hidden className="size-4" />}
           title={t("marketing.noEvents")}
           description={t("marketing.noEventsHint")}
+        />
+      ) : view === "calendar" ? (
+        <ScheduleCalendar
+          events={events}
+          today={today}
+          locale={locale}
+          kindLabel={kindLabel}
         />
       ) : (
         <div className="flex flex-col gap-5">
@@ -209,6 +239,160 @@ export function MarketingSchedule({
         }}
       />
     </>
+  );
+}
+
+function ViewButton({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={
+        "inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors " +
+        (active ? "bg-raised text-ink" : "text-muted hover:text-ink")
+      }
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+/**
+ * A month grid over the SAME `events` rows — a lens on the lens. Gregorian in
+ * both locales (the project keeps the calendar Gregorian; only digits and month
+ * names localise), week starting Monday. Purely a different arrangement of the
+ * data already in memory — no new query, no new table.
+ *
+ * ⚠️ `today` comes from the server and is the ONLY "now" — month navigation is
+ * relative to it, never to a render-time clock read (`react-hooks/purity`).
+ */
+function ScheduleCalendar({
+  events,
+  today,
+  locale,
+  kindLabel,
+}: {
+  events: Event[];
+  today: string;
+  locale: string;
+  kindLabel: (kind: string) => string;
+}) {
+  const { t } = useI18n();
+  // Which month is shown, as an offset in months from today's month.
+  const [monthOffset, setMonthOffset] = useState(0);
+
+  const [baseYear, baseMonth] = today.split("-").map(Number);
+  // Normalise the offset into a concrete year/month (0-indexed month math).
+  const anchor = baseMonth - 1 + monthOffset;
+  const year = baseYear + Math.floor(anchor / 12);
+  const month = ((anchor % 12) + 12) % 12; // 0-11
+
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, Event[]>();
+    for (const e of events) {
+      const list = map.get(e.occurred_on);
+      if (list) list.push(e);
+      else map.set(e.occurred_on, [e]);
+    }
+    return map;
+  }, [events]);
+
+  const monthLabel = new Intl.DateTimeFormat(locale === "fa" ? "fa-IR" : "en-GB", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, month, 1)));
+
+  // Grid: pad to a Monday start. JS getUTCDay is 0=Sun; shift so Mon=0.
+  const firstDow = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7;
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const cells: (string | null)[] = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push(
+      `${year}-${`${month + 1}`.padStart(2, "0")}-${`${d}`.padStart(2, "0")}`
+    );
+  }
+
+  const weekdays = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setMonthOffset((o) => o - 1)}
+          className="rounded-md border border-line px-2 py-1 text-xs text-muted transition-colors hover:text-ink"
+          aria-label={t("marketing.prevMonth")}
+        >
+          <span aria-hidden>‹</span>
+        </button>
+        <span className="text-sm font-medium text-ink">{monthLabel}</span>
+        <button
+          type="button"
+          onClick={() => setMonthOffset((o) => o + 1)}
+          className="rounded-md border border-line px-2 py-1 text-xs text-muted transition-colors hover:text-ink"
+          aria-label={t("marketing.nextMonth")}
+        >
+          <span aria-hidden>›</span>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {weekdays.map((w) => (
+          <div
+            key={w}
+            className="pb-1 text-center text-2xs font-medium tracking-wide text-faint uppercase"
+          >
+            {t(`marketing.dow_${w}` as never)}
+          </div>
+        ))}
+        {cells.map((date, i) => {
+          if (!date) return <div key={`pad-${i}`} />;
+          const dayNum = Number(date.slice(-2));
+          const dayEvents = eventsByDay.get(date) ?? [];
+          const isToday = date === today;
+          return (
+            <div
+              key={date}
+              className={
+                "min-h-16 rounded-md border p-1 " +
+                (isToday ? "border-brand bg-brand-soft" : "border-line")
+              }
+            >
+              <div className="mb-0.5 text-2xs text-faint tnum">{dayNum}</div>
+              <div className="flex flex-col gap-0.5">
+                {dayEvents.slice(0, 3).map((e) => (
+                  <div
+                    key={e.id}
+                    title={`${kindLabel(e.kind)} · ${e.title}`}
+                    className="truncate rounded bg-raised px-1 py-0.5 text-2xs text-ink"
+                  >
+                    {e.title || kindLabel(e.kind)}
+                  </div>
+                ))}
+                {dayEvents.length > 3 && (
+                  <div className="px-1 text-2xs text-faint">
+                    +{dayEvents.length - 3}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

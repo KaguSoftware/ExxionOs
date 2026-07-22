@@ -33,6 +33,8 @@ export function MarketingPanels({
   supplies,
   machineRateMinor,
   clients,
+  taggedOrders,
+  orderRevenue,
   today,
 }: {
   campaigns: Campaign[];
@@ -46,6 +48,8 @@ export function MarketingPanels({
   supplies: Supply[];
   machineRateMinor: number;
   clients: Client[];
+  taggedOrders: { id: string; campaign_id: string | null }[];
+  orderRevenue: { order_id: string; amount_minor: number }[];
   /** Stamped on the server — see the call site in `(app)/marketing/page.tsx`. */
   today: string;
 }) {
@@ -122,6 +126,8 @@ export function MarketingPanels({
               supplies={supplies}
               machineRateMinor={machineRateMinor}
               clients={clients}
+              taggedOrders={taggedOrders}
+              orderRevenue={orderRevenue}
             />
           ),
         },

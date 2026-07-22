@@ -8,7 +8,11 @@ import { Panel } from "@/components/ui/panel";
 import { CATEGORY_COLORS, OTHER_COLOR } from "@/lib/chart-palette";
 import { CLIENT_SOURCE_KEY } from "@/lib/clients";
 import { useI18n } from "@/lib/i18n/client";
-import { givenAwayMinor, newClientsBySourceByMonth } from "@/lib/marketing";
+import {
+  campaignRoi,
+  givenAwayMinor,
+  newClientsBySourceByMonth,
+} from "@/lib/marketing";
 import type {
   Campaign,
   Client,
@@ -26,18 +30,19 @@ export type MarketingSpendRow = Pick<
 >;
 
 /**
- * ⚠️ WHAT THIS TAB DELIBERATELY DOES NOT CLAIM.
+ * ⚠️ ROI HERE IS HUMAN-ATTRIBUTED, NEVER INFERRED.
  *
- * There is no "this campaign earned ₺X" figure anywhere here, and there must
- * not be one: nothing in the data proves a given order was caused by a given
- * campaign. An invented attribution number is worse than none, because it gets
- * believed and then spent against. What is reported is what can be defended —
- * money that actually went out, what the giveaways were worth, and which
- * channel new clients SAID they came from. Reading a rise next to a campaign is
- * a judgement the human makes; the software does not make it for them.
+ * Phase 7 refused any "this campaign earned ₺X" figure because nothing in the
+ * data linked an order to a campaign, and an invented attribution number is
+ * worse than none — it gets believed and then spent against. Migration 0019
+ * added `orders.campaign_id`: a human can now tag the campaign that won an
+ * order. The ROI panel below reports return ONLY over those tagged orders, with
+ * the untagged count stated out loud, and revenue read from `transactions`
+ * (money that arrived), never from `orders.total_minor`. The software still
+ * makes no claim the human didn't; it just totals what the human recorded.
  *
- * If real ROI is ever wanted, it needs `orders.campaign_id` and the discipline
- * of tagging every order — a decision, not a chart.
+ * The channel signal (which channel new clients SAID they came from) stays what
+ * it was — a signal, not proof — and is deliberately separate from ROI.
  */
 export function MarketingInsights({
   campaigns,
@@ -47,6 +52,8 @@ export function MarketingInsights({
   supplies,
   machineRateMinor,
   clients,
+  taggedOrders,
+  orderRevenue,
 }: {
   campaigns: Campaign[];
   /**
@@ -62,10 +69,27 @@ export function MarketingInsights({
   supplies: Supply[];
   machineRateMinor: number;
   clients: Client[];
+  /** Orders carrying a campaign tag (or null) — feeds real ROI (0019). */
+  taggedOrders: { id: string; campaign_id: string | null }[];
+  /** Money that ARRIVED per order, from `transactions` — never order totals. */
+  orderRevenue: { order_id: string; amount_minor: number }[];
 }) {
   const { t } = useI18n();
   const mode = useChartMode();
   const palette = CATEGORY_COLORS[mode];
+
+  /**
+   * ⚠️ REAL ROI, from human-tagged orders only. Revenue is money received
+   * (`transactions` → order), spend is the ledger (`campaign_costs`). The
+   * untagged count is shown so the figure never claims to cover the whole book.
+   */
+  const receivedByOrder = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of orderRevenue) {
+      map.set(row.order_id, (map.get(row.order_id) ?? 0) + row.amount_minor);
+    }
+    return map;
+  }, [orderRevenue]);
 
   /**
    * ⚠️ SPEND IS READ FROM FINANCE, not from summing `campaigns.budget_minor`
@@ -91,6 +115,20 @@ export function MarketingInsights({
         .slice(0, 8),
     [campaigns, spendByCampaign]
   );
+
+  const { roi, untaggedOrders } = useMemo(() => {
+    const byName = new Map(campaigns.map((c) => [c.id, c.name]));
+    const result = campaignRoi(campaigns, taggedOrders, receivedByOrder, spendByCampaign);
+    return {
+      roi: result.roi
+        // Show only campaigns that have some tagged activity — a campaign with
+        // no tagged order and no spend has nothing to say about ROI.
+        .filter((r) => r.orderCount > 0 || r.spendMinor > 0)
+        .map((r) => ({ ...r, name: byName.get(r.campaignId) ?? "" }))
+        .sort((a, b) => b.netMinor - a.netMinor),
+      untaggedOrders: result.untaggedOrders,
+    };
+  }, [campaigns, taggedOrders, receivedByOrder, spendByCampaign]);
 
   const given = useMemo(
     () => givenAwayMinor(samples, products, supplies, machineRateMinor),
@@ -150,6 +188,58 @@ export function MarketingInsights({
               </li>
             ))}
           </ul>
+        )}
+      </Panel>
+
+      <Panel
+        title={t("marketing.roi")}
+        description={t("marketing.roiHint")}
+      >
+        {roi.length === 0 ? (
+          <EmptyState
+            title={t("marketing.roiEmpty")}
+            description={t("marketing.roiEmptyHint")}
+          />
+        ) : (
+          <>
+            <ul className="flex flex-col divide-y divide-line">
+              {roi.map((row) => (
+                <li
+                  key={row.campaignId}
+                  className="flex items-baseline justify-between gap-3 py-2 first:pt-0"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm text-ink" title={row.name}>
+                      {row.name}
+                    </p>
+                    <p className="text-2xs text-faint tnum">
+                      {formatMinor(row.revenueMinor)} − {formatMinor(row.spendMinor)} ·{" "}
+                      {t("marketing.roiOrders", { count: row.orderCount })}
+                    </p>
+                  </div>
+                  {/* ⚠️ +/− is REQUIRED secondary encoding for the green/red
+                      floor-band pair — never colour alone. */}
+                  <span
+                    className={
+                      "tnum shrink-0 text-sm font-semibold " +
+                      (row.netMinor >= 0 ? "text-success" : "text-danger")
+                    }
+                  >
+                    {row.netMinor >= 0 ? "+" : "−"}
+                    {formatMinor(Math.abs(row.netMinor))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {/* ⚠️ The untagged orders are stated out loud: ROI covers only what
+                a human attributed, and hiding the rest would let the figure
+                pose as the whole business. */}
+            {untaggedOrders > 0 && (
+              <p className="mt-3 border-t border-line pt-2 text-2xs text-faint">
+                {t("marketing.roiUntagged", { count: untaggedOrders })}
+              </p>
+            )}
+          </>
         )}
       </Panel>
 

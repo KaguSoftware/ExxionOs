@@ -31,23 +31,32 @@ type DraftLine = OrderLineInput & { key: string };
 let keySeq = 0;
 const nextKey = () => `line-${keySeq++}`;
 
+/** A campaign an order can be attributed to. */
+export type CampaignOption = { id: string; name: string };
+
 export function OrderForm({
   order,
   lines: existingLines,
   clients,
   products,
+  campaigns,
+  suggestedCode,
 }: {
   order?: Order;
   lines?: OrderLine[];
   clients: Client[];
   products: ProductOption[];
+  campaigns: CampaignOption[];
+  /** Next code from the sequence (0018), pre-filled on a NEW order only. */
+  suggestedCode?: string | null;
 }) {
   const { t } = useI18n();
   const { run, pending } = useAction();
   const router = useRouter();
   const ids = useId();
 
-  const [code, setCode] = useState(order?.code ?? "");
+  const [code, setCode] = useState(order?.code ?? suggestedCode ?? "");
+  const [campaignId, setCampaignId] = useState<string>(order?.campaign_id ?? "");
   const [title, setTitle] = useState(order?.title ?? "");
   const [clientId, setClientId] = useState<string>(order?.client_id ?? "");
   const [promisedOn, setPromisedOn] = useState<string | null>(
@@ -123,6 +132,7 @@ export function OrderForm({
     const payload = {
       code: code.trim() || null,
       clientId: clientId || null,
+      campaignId: campaignId || null,
       title,
       notes: notes.trim() || null,
       promisedOn,
@@ -209,6 +219,28 @@ export function OrderForm({
             />
           </Field>
         </div>
+
+        {campaigns.length > 0 && (
+          <Field
+            id={`${ids}-campaign`}
+            label={t("shipping.campaign")}
+            optional={t("common.optional")}
+            hint={t("shipping.campaignHint")}
+            className="min-w-48"
+          >
+            <Dropdown
+              id={`${ids}-campaign`}
+              value={campaignId}
+              onChange={setCampaignId}
+              options={[
+                { value: "", label: t("shipping.noCampaign") },
+                ...campaigns.map((c) => ({ value: c.id, label: c.name })),
+              ]}
+              label={t("shipping.campaign")}
+              placeholder={t("shipping.noCampaign")}
+            />
+          </Field>
+        )}
 
         {/* --- line items --------------------------------------------------- */}
         <div className="border-t border-line pt-4">

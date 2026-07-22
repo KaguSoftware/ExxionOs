@@ -6,7 +6,11 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { BalancePrompt } from "@/components/shipping/balance-prompt";
-import { OrderForm, type ProductOption } from "@/components/shipping/order-form";
+import {
+  OrderForm,
+  type CampaignOption,
+  type ProductOption,
+} from "@/components/shipping/order-form";
 import { PaymentForm } from "@/components/shipping/payment-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,6 +46,7 @@ export function OrderDetail({
   events,
   clients,
   products,
+  campaigns,
 }: {
   order: Order;
   lines: OrderLine[];
@@ -49,6 +54,7 @@ export function OrderDetail({
   events: OrderStageEvent[];
   clients: Client[];
   products: ProductOption[];
+  campaigns: CampaignOption[];
 }) {
   const { t, locale } = useI18n();
   const { run } = useAction();
@@ -142,6 +148,7 @@ export function OrderDetail({
           lines={lines}
           clients={clients}
           products={products}
+          campaigns={campaigns}
         />
       </div>
     );

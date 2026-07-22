@@ -1,12 +1,15 @@
 "use client";
 
-import { PackageOpen } from "lucide-react";
+import { Download, PackageOpen } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Dropdown } from "@/components/ui/dropdown";
 import { EmptyState } from "@/components/ui/empty-state";
+import { downloadCsv } from "@/lib/csv";
+import { ordersToCsv } from "@/lib/entity-export";
 import { useI18n } from "@/lib/i18n/client";
 import { STAGE_KEY, STAGE_RANK, isTerminal, outstandingMinor } from "@/lib/shipping";
 import { ORDER_STAGES } from "@/lib/types";
@@ -94,6 +97,24 @@ export function OrderList({
             className="w-48"
           />
         )}
+
+        {/* Exports the FILTERED rows on screen, never the whole table. */}
+        <Button
+          size="sm"
+          onClick={() =>
+            downloadCsv(
+              ordersToCsv(filtered, (id) =>
+                id ? (clientsById.get(id)?.name ?? "") : ""
+              ),
+              "orders"
+            )
+          }
+          icon={<Download aria-hidden className="size-3.5" />}
+          disabled={filtered.length === 0}
+          className="ms-auto"
+        >
+          {t("common.exportCsv")}
+        </Button>
       </div>
 
       {/* `overflow-hidden` on the list clips the row hover to the rounded

@@ -4,6 +4,7 @@ import { LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { GlobalSearch } from "@/components/shell/global-search";
 import { LocaleToggle } from "@/components/shell/locale-toggle";
 import { Logomark } from "@/components/shell/wordmark";
 import { signOut } from "@/lib/actions/auth";
@@ -41,6 +42,10 @@ export function Sidebar({ profile }: { profile: Profile }) {
           <Logomark className="size-6" />
           <span className="font-display text-base">{t("app.name")}</span>
         </Link>
+      </div>
+
+      <div className="px-3 pb-2">
+        <GlobalSearch />
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-2">

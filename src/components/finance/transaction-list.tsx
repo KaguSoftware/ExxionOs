@@ -2,14 +2,24 @@
 
 import { Paperclip, Receipt, Repeat } from "lucide-react";
 import Link from "next/link";
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Panel } from "@/components/ui/panel";
 import { useI18n } from "@/lib/i18n/client";
 import type { Category, Transaction } from "@/lib/types";
 import { cn, formatDate, formatMinor } from "@/lib/utils";
+
+/**
+ * How many rows to render before "Show more". The whole ~13-month window is
+ * already in memory (the page loads it in one wave so filtering stays instant),
+ * so this is a pure RENDER cap — no round-trip — that keeps a long ledger from
+ * painting thousands of DOM nodes at once. Filtering still runs over every row;
+ * only the rendered slice is bounded.
+ */
+const PAGE_SIZE = 100;
 
 export function TransactionList({
   rows,
@@ -22,6 +32,17 @@ export function TransactionList({
   emptyIsFiltered: boolean;
 }) {
   const { t, locale } = useI18n();
+
+  const [limit, setLimit] = useState(PAGE_SIZE);
+
+  // Reset the window to the top whenever the filtered set changes, so a new
+  // filter doesn't land the reader deep in a previously-expanded list. Adopted
+  // during render (never an effect) — the same pattern as the reminders panel.
+  const [seenRows, setSeenRows] = useState(rows);
+  if (seenRows !== rows) {
+    setSeenRows(rows);
+    setLimit(PAGE_SIZE);
+  }
 
   if (rows.length === 0) {
     return (
@@ -41,10 +62,14 @@ export function TransactionList({
     );
   }
 
+  // Only the first `limit` rows are rendered; "Show more" raises the cap.
+  const visible = rows.slice(0, limit);
+  const hasMore = rows.length > visible.length;
+
   // Group by day so a long ledger reads as days rather than an undifferentiated
   // wall of rows.
   const groups: { date: string; rows: Transaction[] }[] = [];
-  for (const row of rows) {
+  for (const row of visible) {
     const last = groups[groups.length - 1];
     if (last && last.date === row.occurred_on) last.rows.push(row);
     else groups.push({ date: row.occurred_on, rows: [row] });
@@ -53,7 +78,9 @@ export function TransactionList({
   return (
     <Panel
       title={t("finance.transactions")}
-      description={`${rows.length}`}
+      description={
+        hasMore ? `${visible.length} / ${rows.length}` : `${rows.length}`
+      }
       bodyClassName="p-0"
     >
       <ul>
@@ -118,6 +145,19 @@ export function TransactionList({
           </Fragment>
         ))}
       </ul>
+      {hasMore && (
+        <div className="border-t border-line p-3 text-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLimit((n) => n + PAGE_SIZE)}
+          >
+            {t("finance.showMore", {
+              count: Math.min(PAGE_SIZE, rows.length - visible.length),
+            })}
+          </Button>
+        </div>
+      )}
     </Panel>
   );
 }

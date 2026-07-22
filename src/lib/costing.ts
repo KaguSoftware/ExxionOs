@@ -73,6 +73,21 @@ export function productMargin(
 }
 
 /**
+ * Margin as a percentage OF THE PRICE (gross margin), rounded to a whole
+ * percent. `null` when margin is unknown or the price is 0 — a percentage of
+ * zero is undefined, not 0%. Lets a ₺50 margin on a ₺100 item read differently
+ * from the same ₺50 on a ₺500 one, which the absolute figure alone hides.
+ */
+export function productMarginPct(
+  product: Pick<Product, "price_minor">,
+  cost: CostBreakdown | null
+): number | null {
+  const margin = productMargin(product, cost);
+  if (margin == null || !product.price_minor) return null;
+  return Math.round((margin / product.price_minor) * 100);
+}
+
+/**
  * Postgres `numeric` arrives over PostgREST as a STRING, not a number — it is
  * arbitrary-precision and would lose exactness as a JS float. Parse it here,
  * once, rather than letting `"12.5" * 2` silently succeed elsewhere.

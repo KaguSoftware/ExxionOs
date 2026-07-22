@@ -2,12 +2,16 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { OrderDetail } from "@/components/shipping/order-detail";
-import type { ProductOption } from "@/components/shipping/order-form";
+import type {
+  CampaignOption,
+  ProductOption,
+} from "@/components/shipping/order-form";
 import { LiveRefresh } from "@/components/shell/live-refresh";
 import { rowsOrThrow, selectOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
 import { createClient } from "@/lib/supabase/server";
 import type {
+  Campaign,
   Client,
   Order,
   OrderLine,
@@ -47,7 +51,7 @@ export default async function OrderPage({
    * than first — nothing here depends on its contents, only on the id from the
    * URL, so making it sequential would add ~305ms to buy nothing.
    */
-  const [orderResult, lines, payments, events, clients, products] =
+  const [orderResult, lines, payments, events, clients, products, campaigns] =
     await Promise.all([
       selectOrThrow<Order>(
         "order.row",
@@ -84,6 +88,14 @@ export default async function OrderPage({
           .select("id, name, price_minor, collections(name)")
           .order("name")
       ),
+      rowsOrThrow<Pick<Campaign, "id" | "name">>(
+        "order.campaigns",
+        supabase
+          .from("campaigns")
+          .select("id, name")
+          .is("archived_at", null)
+          .order("name")
+      ),
     ]);
 
   const order = orderResult.data;
@@ -94,6 +106,11 @@ export default async function OrderPage({
     name: p.name,
     collectionName: collectionName(p),
     priceMinor: p.price_minor,
+  }));
+
+  const campaignOptions: CampaignOption[] = campaigns.map((c) => ({
+    id: c.id,
+    name: c.name,
   }));
 
   return (
@@ -109,6 +126,7 @@ export default async function OrderPage({
           events={events}
           clients={clients}
           products={options}
+          campaigns={campaignOptions}
         />
       </Suspense>
     </>

@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { MachinesPanel } from "@/components/equipment/machines-panel";
 import { MaintenancePanel } from "@/components/equipment/maintenance-panel";
+import { ReorderPanel } from "@/components/equipment/reorder-panel";
 import { SuppliesPanel } from "@/components/equipment/supplies-panel";
 import { TabbedPanels } from "@/components/shell/tabbed-panels";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,12 @@ export function EquipmentPanels({
             </Link>
           ),
           content: <SuppliesPanel supplies={supplies} />,
+        },
+        {
+          id: "reorder",
+          label: t("equipment.reorder"),
+          count: lowCount,
+          content: <ReorderPanel supplies={supplies} />,
         },
         {
           id: "maintenance",

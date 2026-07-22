@@ -207,6 +207,75 @@ export function overBudgetCampaigns(
   });
 }
 
+/**
+ * Return-on-investment per campaign — real, not invented.
+ *
+ * ⚠️ THE ATTRIBUTION IS HUMAN-ENTERED (orders.campaign_id, 0019), never guessed.
+ * This function reports ROI ONLY for orders a human explicitly tagged to a
+ * campaign, and it surfaces `untaggedOrders` so the figure never pretends to
+ * cover the whole business. Phase 7 refused to show ROI at all because nothing
+ * linked an order to a campaign; 0019 adds that link, and this respects its
+ * limits rather than papering over them.
+ *
+ * ⚠️ REVENUE IS MONEY THAT ARRIVED (`transactions`), NEVER `orders.total_minor`.
+ * Same rule as `revenueByClient()` — a tagged order that was quoted but never
+ * paid contributes ₺0, not its agreed price. `receivedByOrder` is the sum of
+ * `transactions` where `source_type='order'`, keyed by order id, sign already
+ * applied (refunds subtract).
+ *
+ * ⚠️ SPEND IS FINANCE-SOURCED (`spendByCampaign`, the sum of `transactions`
+ * tagged to the campaign) — the SAME figure the spend panel shows, never the
+ * budget. Passing it in keeps ROI and the spend bars consistent by construction.
+ */
+export type CampaignRoi = {
+  campaignId: string;
+  /** Money received on orders tagged to this campaign. */
+  revenueMinor: number;
+  /** What the campaign actually spent (from Finance). */
+  spendMinor: number;
+  /** revenue − spend. */
+  netMinor: number;
+  /** How many tagged orders fed the revenue figure. */
+  orderCount: number;
+};
+
+export function campaignRoi(
+  campaigns: Pick<Campaign, "id">[],
+  taggedOrders: { id: string; campaign_id: string | null }[],
+  receivedByOrder: Map<string, number>,
+  spendByCampaign: Map<string, number>
+): { roi: CampaignRoi[]; untaggedOrders: number } {
+  let untaggedOrders = 0;
+  const ordersByCampaign = new Map<string, string[]>();
+  for (const order of taggedOrders) {
+    if (!order.campaign_id) {
+      untaggedOrders++;
+      continue;
+    }
+    const list = ordersByCampaign.get(order.campaign_id);
+    if (list) list.push(order.id);
+    else ordersByCampaign.set(order.campaign_id, [order.id]);
+  }
+
+  const roi = campaigns.map((campaign) => {
+    const orderIds = ordersByCampaign.get(campaign.id) ?? [];
+    const revenueMinor = orderIds.reduce(
+      (sum, id) => sum + (receivedByOrder.get(id) ?? 0),
+      0
+    );
+    const spendMinor = Math.max(0, spendByCampaign.get(campaign.id) ?? 0);
+    return {
+      campaignId: campaign.id,
+      revenueMinor,
+      spendMinor,
+      netMinor: revenueMinor - spendMinor,
+      orderCount: orderIds.length,
+    };
+  });
+
+  return { roi, untaggedOrders };
+}
+
 /** Group helper — costs arrive as one flat list from the page's single wave. */
 export function groupCosts(costs: CampaignCost[]): Map<string, CampaignCost[]> {
   const map = new Map<string, CampaignCost[]>();
