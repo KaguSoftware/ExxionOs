@@ -2,10 +2,10 @@ import { notFound } from "next/navigation";
 
 import { SupplyForm } from "@/components/equipment/supply-form";
 import { CreatePage } from "@/components/ui/create";
-import { selectOrThrow } from "@/lib/data/query";
+import { rowsOrThrow, selectOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
 import { createClient } from "@/lib/supabase/server";
-import type { Supply } from "@/lib/types";
+import type { Supply, Vocabulary } from "@/lib/types";
 
 export default async function EditSupplyPage({
   params,
@@ -16,16 +16,30 @@ export default async function EditSupplyPage({
   await getSessionContext();
   const supabase = await createClient();
 
-  const { data: supply } = await selectOrThrow<Supply>(
-    "supply.edit",
-    supabase.from("supplies").select("*").eq("id", id).maybeSingle()
-  );
+  // One wave — nothing here depends on the supply row's contents.
+  const [supplyResult, supplyTypes] = await Promise.all([
+    selectOrThrow<Supply>(
+      "supply.edit",
+      supabase.from("supplies").select("*").eq("id", id).maybeSingle()
+    ),
+    // ⚠️ ALL types, not just active — this supply may carry a word archived
+    // since, and `vocabOptions` keeps it visible so saving can't blank it.
+    rowsOrThrow<Vocabulary>(
+      "supply.edit.types",
+      supabase
+        .from("vocabularies")
+        .select("*")
+        .eq("kind", "supply_type")
+        .order("sort_order")
+    ),
+  ]);
 
+  const supply = supplyResult.data;
   if (!supply) notFound();
 
   return (
     <CreatePage titleKey="equipment.editSupply">
-      <SupplyForm existing={supply} />
+      <SupplyForm existing={supply} supplyTypes={supplyTypes} />
     </CreatePage>
   );
 }

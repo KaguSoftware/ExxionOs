@@ -35,9 +35,13 @@ export type Reminder = {
  * back, renamed, and retired. Nothing breaks if a row references a word that
  * was archived: the word IS the value.
  */
-export type VocabularyKind = "product_type" | "client_tag";
+export type VocabularyKind = "product_type" | "client_tag" | "supply_type";
 
-export const VOCABULARY_KINDS: VocabularyKind[] = ["product_type", "client_tag"];
+export const VOCABULARY_KINDS: VocabularyKind[] = [
+  "product_type",
+  "client_tag",
+  "supply_type",
+];
 
 export type Vocabulary = {
   id: string;
@@ -125,7 +129,6 @@ export type TransactionSource =
 
 // --- creative --------------------------------------------------------------
 
-export type MaterialKind = "filament" | "resin" | "other";
 export type CollectionStatus = "planned" | "in_progress" | "done" | "archived";
 export type IdeaStatus = "new" | "exploring" | "dropped" | "made";
 export type Severity = "low" | "medium" | "high";
@@ -138,7 +141,6 @@ export const COLLECTION_STATUSES: CollectionStatus[] = [
 ];
 export const IDEA_STATUSES: IdeaStatus[] = ["new", "exploring", "dropped", "made"];
 export const SEVERITIES: Severity[] = ["low", "medium", "high"];
-export const MATERIAL_KINDS: MaterialKind[] = ["filament", "resin", "other"];
 
 /**
  * What came off the plate.
@@ -335,8 +337,12 @@ export type MaintenanceLog = {
 export type Supply = {
   id: string;
   name: string;
-  /** filament / resin / other — groups the costing dropdown. */
-  kind: MaterialKind;
+  /**
+   * User-grown category label ("Filament", "Cardboard", "Stickers"…), backed by
+   * the `supply_type` vocabulary. Verbatim, like `products.kind`. Null = the
+   * supply hasn't been categorised, and lands in its own group in the UI.
+   */
+  type: string | null;
   unit: string;
   quantity: string | number;
   low_threshold: string | number | null;

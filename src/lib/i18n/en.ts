@@ -530,6 +530,12 @@ export const en = {
     lowThresholdHint: "Leave empty to never warn.",
     costPerKg: "Cost per kg",
     costPerKgHint: "Used to cost prints. Leave empty for non-printing supplies.",
+    supplyType: "Type",
+    supplyTypePlaceholder: "Filament, cardboard, stickers…",
+    isPrintingMaterial: "This is a printing material",
+    isPrintingMaterialHint:
+      "Filament or resin — weighed in grams and costed per kg. Leave off for packaging.",
+    uncategorised: "Uncategorised",
     lowStock: "Low",
     restock: "Restock",
     restockQuantity: "How many",

@@ -3,31 +3,35 @@
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
+import { Checkbox } from "@/components/ui/checkbox";
+import { ComboCreate } from "@/components/ui/combo-create";
 import { CreateForm } from "@/components/ui/create";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Field } from "@/components/ui/field";
 import { TextArea, TextInput } from "@/components/ui/input";
 import { MoneyInput, NumberInput } from "@/components/ui/number-input";
 import { createSupply, updateSupply } from "@/lib/actions/equipment";
+import { createVocabulary } from "@/lib/actions/vocabulary";
 import { useI18n } from "@/lib/i18n/client";
 import { toMajor } from "@/lib/money";
-import type { MaterialKind, Supply } from "@/lib/types";
-import { MATERIAL_KINDS, SUPPLY_UNITS } from "@/lib/types";
+import type { Supply, Vocabulary } from "@/lib/types";
+import { SUPPLY_UNITS } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
+import { vocabOptions } from "@/lib/vocab";
 
-const KIND_KEY: Record<MaterialKind, string> = {
-  filament: "creative.filament",
-  resin: "creative.resin",
-  other: "creative.other",
-};
-
-export function SupplyForm({ existing }: { existing?: Supply }) {
+export function SupplyForm({
+  existing,
+  supplyTypes = [],
+}: {
+  existing?: Supply;
+  supplyTypes?: Vocabulary[];
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const { run, pending } = useAction();
 
   const nameId = useId();
-  const kindId = useId();
+  const typeId = useId();
   const unitId = useId();
   const qtyId = useId();
   const lowId = useId();
@@ -35,7 +39,12 @@ export function SupplyForm({ existing }: { existing?: Supply }) {
   const notesId = useId();
 
   const [name, setName] = useState(existing?.name ?? "");
-  const [kind, setKind] = useState<MaterialKind>(existing?.kind ?? "filament");
+  const [type, setType] = useState<string | null>(existing?.type ?? null);
+  // A supply is a printing material iff it carries a per-kg cost — that is the
+  // one signal, so the toggle just mirrors whether cost_per_kg_minor is set.
+  const [isPrinting, setIsPrinting] = useState(
+    existing ? existing.cost_per_kg_minor != null : false
+  );
   const [unit, setUnit] = useState(existing?.unit ?? "pcs");
   const [costPerKg, setCostPerKg] = useState<number | null>(
     existing?.cost_per_kg_minor == null ? null : toMajor(existing.cost_per_kg_minor)
@@ -48,16 +57,36 @@ export function SupplyForm({ existing }: { existing?: Supply }) {
   );
   const [notes, setNotes] = useState(existing?.notes ?? "");
 
+  // Live words of this kind, plus the supply's own type even if archived since —
+  // so opening and saving an old supply can't silently blank its category.
+  const [types, setTypes] = useState(supplyTypes);
+  const typeOptions = vocabOptions(
+    types,
+    "supply_type",
+    existing?.type ? [existing.type] : []
+  ).map((v) => ({ value: v.label, label: v.label }));
+
   const emptyFields = name.trim() ? [] : [t("equipment.supplyName")];
+
+  // Turning the printing toggle on nudges the unit to kg (filament is weighed);
+  // turning it off clears the cost, since packaging has no per-kg price.
+  const togglePrinting = (next: boolean) => {
+    setIsPrinting(next);
+    if (next) {
+      if (unit === "pcs") setUnit("kg");
+    } else {
+      setCostPerKg(null);
+    }
+  };
 
   const submit = async () => {
     const input = {
       name,
-      kind,
+      type,
       unit,
       quantity,
       lowThreshold,
-      costPerKg,
+      costPerKg: isPrinting ? costPerKg : null,
       notes: notes || null,
     };
 
@@ -97,31 +126,50 @@ export function SupplyForm({ existing }: { existing?: Supply }) {
             autoFocus
           />
         </Field>
-        <Field id={kindId} label={t("creative.material")}>
-          <Dropdown
-            id={kindId}
-            value={kind}
-            onChange={(v) => setKind(v as MaterialKind)}
-            options={MATERIAL_KINDS.map((k) => ({
-              value: k,
-              label: t(KIND_KEY[k] as never),
-            }))}
-            label={t("creative.material")}
-            placeholder={t("creative.filament")}
+        <Field id={typeId} label={t("equipment.supplyType")} optional={t("common.optional")}>
+          <ComboCreate
+            id={typeId}
+            value={type}
+            onChange={setType}
+            options={typeOptions}
+            label={t("equipment.supplyType")}
+            placeholder={t("equipment.supplyTypePlaceholder")}
+            onCreate={async (label) => {
+              const result = await createVocabulary({ kind: "supply_type", label });
+              if (!result.ok) return null;
+              // Adopt the row the server returned — it may be an existing word in
+              // a different spelling, and the list must show that spelling.
+              setTypes((rows) => [
+                ...rows.filter((r) => r.id !== result.data.id),
+                result.data,
+              ]);
+              return result.data.label;
+            }}
           />
         </Field>
       </div>
 
-      <Field
-        id={costId}
-        label={t("equipment.costPerKg")}
-        optional={t("common.optional")}
-        // Null means "not a printing material" — a box or tape has no per-kg
-        // price. Said out loud so an empty field doesn't look like a bug.
-        hint={t("equipment.costPerKgHint")}
-      >
-        <MoneyInput id={costId} value={costPerKg} onChange={setCostPerKg} min={0} />
-      </Field>
+      {/* The one signal that splits filament from packaging — and the cost
+          field it reveals, grouped with it so the dependency reads. */}
+      <div className="rounded-xl border border-line p-4">
+        <Checkbox
+          checked={isPrinting}
+          onChange={(e) => togglePrinting(e.target.checked)}
+          label={t("equipment.isPrintingMaterial")}
+          description={t("equipment.isPrintingMaterialHint")}
+        />
+        {isPrinting && (
+          <Field
+            id={costId}
+            label={t("equipment.costPerKg")}
+            optional={t("common.optional")}
+            hint={t("equipment.costPerKgHint")}
+            className="mt-4 border-t border-line pt-4"
+          >
+            <MoneyInput id={costId} value={costPerKg} onChange={setCostPerKg} min={0} />
+          </Field>
+        )}
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Field id={unitId} label={t("equipment.unit")}>

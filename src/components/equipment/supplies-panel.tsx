@@ -51,77 +51,82 @@ export function SuppliesPanel({ supplies: initial }: { supplies: Supply[] }) {
     );
   }
 
-  // Low stock first — the question this tab answers is "what am I about to run
-  // out of", not "what do I own".
-  const sorted = [...supplies].sort((a, b) => {
-    const lowA = isLowStock(a) ? 0 : 1;
-    const lowB = isLowStock(b) ? 0 : 1;
-    return lowA - lowB || a.name.localeCompare(b.name);
-  });
+  // Grouped by type — filament, cardboard, stickers… Types sort alphabetically;
+  // the uncategorised bucket sinks to the bottom (an empty type isn't a name).
+  // Within each group, low stock first — the question this tab answers is "what
+  // am I about to run out of", not "what do I own".
+  const groups = groupByType(supplies, t("equipment.uncategorised"));
 
   return (
     <>
-      <ul className="rounded-xl border border-line">
-        {sorted.map((supply) => {
-          const low = isLowStock(supply);
-          return (
-            <li
-              key={supply.id}
-              className="flex flex-wrap items-center gap-3 row-comfortable border-b border-line last:border-0"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-sm text-ink" title={supply.name}>{supply.name}</span>
-                  {/* Word + tone, never colour alone. */}
-                  {low && <Badge tone="warning">{t("equipment.lowStock")}</Badge>}
-                </div>
-                <p className="mt-0.5 text-xs text-muted">
-                  {t("equipment.inStock", {
-                    quantity: formatQuantity(supply.quantity),
-                    unit: supply.unit,
-                  })}
-                  {supply.low_threshold != null && (
-                    <span className="text-faint">
-                      {" · "}
-                      {t("equipment.lowThreshold")}{" "}
-                      {formatQuantity(supply.low_threshold)}
-                    </span>
-                  )}
-                </p>
-              </div>
+      <div className="flex flex-col gap-6">
+        {groups.map(({ label, key, items }) => (
+          <section key={key}>
+            <h3 className="mb-2 text-xs font-medium text-muted">{label}</h3>
+            <ul className="overflow-hidden rounded-xl border border-line">
+              {items.map((supply) => {
+                const low = isLowStock(supply);
+                return (
+                  <li
+                    key={supply.id}
+                    className="flex flex-wrap items-center gap-3 row-comfortable border-b border-line last:border-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-sm text-ink" title={supply.name}>{supply.name}</span>
+                        {/* Word + tone, never colour alone. */}
+                        {low && <Badge tone="warning">{t("equipment.lowStock")}</Badge>}
+                      </div>
+                      <p className="mt-0.5 text-xs text-muted">
+                        {t("equipment.inStock", {
+                          quantity: formatQuantity(supply.quantity),
+                          unit: supply.unit,
+                        })}
+                        {supply.low_threshold != null && (
+                          <span className="text-faint">
+                            {" · "}
+                            {t("equipment.lowThreshold")}{" "}
+                            {formatQuantity(supply.low_threshold)}
+                          </span>
+                        )}
+                      </p>
+                    </div>
 
-              {supply.last_price_minor != null && (
-                <span className="tnum shrink-0 text-xs text-faint">
-                  {formatMinor(supply.last_price_minor)}
-                </span>
-              )}
+                    {supply.last_price_minor != null && (
+                      <span className="tnum shrink-0 text-xs text-faint">
+                        {formatMinor(supply.last_price_minor)}
+                      </span>
+                    )}
 
-              <div className="flex shrink-0 items-center gap-1.5">
-                <Button size="sm" onClick={() => setRestocking(supply)}>
-                  {t("equipment.restock")}
-                </Button>
-                <Link
-                  href={`/equipment/supplies/${supply.id}`}
-                  aria-label={t("common.edit")}
-                  className="rounded p-1.5 text-faint transition-colors hover:bg-raised hover:text-ink"
-                >
-                  <Pencil aria-hidden className="size-3.5" />
-                </Link>
-                {/* Archive, never delete — restock history references it. */}
-                <button
-                  type="button"
-                  onClick={() => archive(supply)}
-                  aria-label={t("finance.archive")}
-                  title={t("finance.archive")}
-                  className="rounded p-1.5 text-faint transition-colors hover:bg-raised hover:text-ink"
-                >
-                  <Archive aria-hidden className="size-3.5" />
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <Button size="sm" onClick={() => setRestocking(supply)}>
+                        {t("equipment.restock")}
+                      </Button>
+                      <Link
+                        href={`/equipment/supplies/${supply.id}`}
+                        aria-label={t("common.edit")}
+                        className="rounded p-1.5 text-faint transition-colors hover:bg-raised hover:text-ink"
+                      >
+                        <Pencil aria-hidden className="size-3.5" />
+                      </Link>
+                      {/* Archive, never delete — restock history references it. */}
+                      <button
+                        type="button"
+                        onClick={() => archive(supply)}
+                        aria-label={t("finance.archive")}
+                        title={t("finance.archive")}
+                        className="rounded p-1.5 text-faint transition-colors hover:bg-raised hover:text-ink"
+                      >
+                        <Archive aria-hidden className="size-3.5" />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
+      </div>
 
       {restocking && (
         <RestockForm
@@ -231,3 +236,39 @@ function formatQuantity(value: string | number): string {
 }
 
 export { formatQuantity };
+
+/**
+ * Bucket supplies by their `type` label. Types are sorted alphabetically; the
+ * uncategorised bucket (null/blank type) always sinks last — an empty type is
+ * not a name to sort by. Within a bucket, low stock leads.
+ */
+function groupByType(
+  supplies: Supply[],
+  uncategorisedLabel: string
+): { key: string; label: string; items: Supply[] }[] {
+  const buckets = new Map<string, Supply[]>();
+  for (const supply of supplies) {
+    const key = supply.type?.trim() || "";
+    (buckets.get(key) ?? buckets.set(key, []).get(key)!).push(supply);
+  }
+
+  const sortItems = (list: Supply[]) =>
+    [...list].sort((a, b) => {
+      const lowA = isLowStock(a) ? 0 : 1;
+      const lowB = isLowStock(b) ? 0 : 1;
+      return lowA - lowB || a.name.localeCompare(b.name);
+    });
+
+  return [...buckets.entries()]
+    .sort(([a], [b]) => {
+      // Empty type ("") sorts after every real label.
+      if (a === "") return 1;
+      if (b === "") return -1;
+      return a.localeCompare(b);
+    })
+    .map(([key, items]) => ({
+      key: key || " uncategorised",
+      label: key || uncategorisedLabel,
+      items: sortItems(items),
+    }));
+}

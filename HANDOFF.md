@@ -6,7 +6,40 @@
 
 ## 👋 START HERE — resuming in a brand-new chat
 
-### 🟣 LATEST SESSION — 2026-07-22, RESHAPING: "materials" folded into "supplies"
+### 🟣 LATEST SESSION — 2026-07-22, RESHAPING: Supplies tab reworked (filament vs packaging)
+
+Second reshaping change, straight after the materials→supplies merge below. Parsa: *"supplies will
+mainly be filament, and packaging things like cardboard, stickers etc… for selecting the type,
+nothing is better than the dropdown you can search or create."*
+
+**What changed (all decided with Parsa):**
+- **Supply `type` is now a searchable/creatable category** (ComboCreate), backed by a NEW
+  `supply_type` vocabulary kind — the same picker the product form uses. Replaces the old fixed
+  `kind` enum (filament/resin/other). Seed types: Filament, Cardboard, Stickers, Tape, Boxes.
+- **A per-supply "This is a printing material" checkbox** drives the form: ON → shows cost-per-kg +
+  nudges unit to kg (filament/resin, deducted by grams); OFF → hides cost, counts pieces (packaging).
+  ⚠️ **The signal is `cost_per_kg_minor != null`** — no new boolean column; the toggle just
+  shows/clears the cost, and costing already treats null price as uncosted. The checkbox + its cost
+  field are grouped in a bordered block.
+- **The Supplies list is grouped by type** (heading per group; uncategorised sinks last; low-stock
+  leads within each group; `overflow-hidden rounded-xl` per group so row hover clips).
+- **Vocabulary plumbing** gained a `supply_type` branch in `refresh`/`renameVocabulary`/
+  `countVocabularyUsage` (renaming a type propagates to `supplies.type`, label-not-FK like
+  product types). `MaterialKind`/`MATERIAL_KINDS` deleted (nothing used them after the merge).
+
+- **Migration `0015_supply_type.sql`** (⚠️ **WRITTEN, NOT APPLIED**): adds `supplies.type`, drops
+  `supplies.kind`, widens the `vocabularies.kind` CHECK to allow `supply_type`, seeds the starter
+  types. Additive except the kind→type swap; safe on the wiped DB.
+
+**Verified:** `tsc` · `lint` · `build` · `npm run contrast` all green. `/impeccable` polish pass
+(grouped the toggle+cost field). NOT driven in a browser; **0015 unapplied**, so the Supplies tab
+throws until Parsa pushes.
+
+⚠️ **NEXT SESSION, FIRST THING:** Parsa must `npx supabase db push` to apply **0012, 0013, 0014,
+AND 0015** (all still pending). The Equipment → Supplies tab throws loudly until 0015 lands (missing
+`type` column) — by design, not a bug.
+
+### 🔵 EARLIER — 2026-07-22, "materials" folded into "supplies"
 
 The first real reshaping change (Parsa: *"wtf is material doing in the settings tab? filament
 should be added in the supplies tab"*). **All business data was WIPED first** (`npm run wipe` +
@@ -825,7 +858,8 @@ toggle light/dark/system.
   `0004_creative.sql` · `0005_equipment.sql` · `0006_machine_purchase_expense.sql` ·
   `0007_material_stock.sql` · `0008_shipping.sql` · `0009_clients.sql` · `0010_marketing.sql` ·
   `0011_vocabularies.sql` · **`0012_product_stock.sql`** · **`0013_drop_profile_color.sql`** ·
-  **`0014_supply_costing.sql`** (the last THREE are ⚠️ **NOT YET APPLIED** — see the roadmap).
+  **`0014_supply_costing.sql`** · **`0015_supply_type.sql`** (the last FOUR are ⚠️ **NOT YET
+  APPLIED** — see the roadmap).
 - `scripts/apply-migration.mjs` — Management-API applier (alternative to `db push`).
 
 ## Roadmap / next steps
@@ -858,7 +892,7 @@ toggle light/dark/system.
    - **Shell** (`4f523da`) — user colour removed, Finance category safe-delete, language toggle
      in the sidebar and mobile sheet.
 
-⚠️ **THREE MIGRATIONS ARE WRITTEN BUT NOT APPLIED** — `SUPABASE_ACCESS_TOKEN` is empty in
+⚠️ **FOUR MIGRATIONS ARE WRITTEN BUT NOT APPLIED** — `SUPABASE_ACCESS_TOKEN` is empty in
 `.env.local`, so `npm run migrate` cannot run and **only Parsa can push these**:
 - **`0012_product_stock.sql`** — until it lands, the Creative **Stock** tab and the dashboard
   out-of-stock signal throw `PGRST205`. That is deliberate (see `lib/data/query.ts`): a missing
@@ -871,6 +905,9 @@ toggle light/dark/system.
   and the `materials` table**. Until it lands, the Supplies cost field, product costing, and
   print-run deduction throw. Reverses 0007's two-table split. Safe to push on the wiped DB — no
   data to migrate.
+- **`0015_supply_type.sql`** (2026-07-22) — reworks the Supplies tab: adds `supplies.type`
+  (searchable category), **drops `supplies.kind`**, widens `vocabularies.kind` CHECK to allow
+  `supply_type`, seeds starter types. Until it lands, the Supplies tab throws (missing `type`).
 
 **⚠️ The stock idempotency key is subtler than it looks.** `product_stock_movements_once_idx` is
 `(reason, source_id, product_id, delta_sign, apply_seq)` and every part earns its place — four
@@ -909,7 +946,7 @@ that contract must exist before anything can honour it.
 | Campaigns | ✅ **Shipped (Phase 7).** Budget vs actual, itemised costs each writing one Finance expense, archive | Per-campaign ROI — needs `orders.campaign_id` and the discipline of tagging orders. Deliberately NOT guessed at | If asked |
 | Samples | ✅ **Shipped (Phase 7).** Costed from the product at read time, never expensed. Optional links to client and campaign | Opt-in "also log a print run" so a sample printed for the occasion deducts filament in one step | Later |
 | Marketing schedule | ✅ **Shipped (Phase 7)** as a LENS over `events` — filming, networking, campaign moments | A calendar view rather than two lists | Later |
-| Materials / Supplies | ✅ **MERGED (2026-07-22, migration 0014).** One `supplies` row now carries both stock (grams on hand, low-stock, restocks) AND the per-kg cost + kind that costs prints. Added once in Equipment → Supplies. The separate `materials` table is dropped | — | Done (pending 0014 push) |
+| Materials / Supplies | ✅ **MERGED + RESHAPED (2026-07-22, migrations 0014 + 0015).** One `supplies` row carries stock (grams/pieces, low-stock, restocks) AND the per-kg cost. Type is a **searchable/creatable category** (`supply_type` vocabulary); a **"printing material" checkbox** (signal = non-null cost) splits filament (grams+cost) from packaging (pieces). List grouped by type. `materials` table dropped | — | Done (pending 0014+0015 push) |
 | Product photos | Upload/remove on the product EDIT form only (a new product has no id to attach to yet) | Staged upload on create, reordering, a lightbox | Later |
 | Per-collection P&L | ✅ **Shipped (Phase 5).** Revenue from order lines meeting computed cost | Time series, per-product margin trends | Later |
 | Clients | ✅ **Shipped (Phase 6).** Directory (search · kind/source/tag filters · archive) + Insights (top clients, repeat rate, new vs returning, source breakdown, gone quiet) + per-client detail with order history and event timeline | Per-client P&L against computed cost; birthday reminders auto-created via the `reminders` back-link; CSV export | Later |
@@ -994,10 +1031,18 @@ that contract must exist before anything can honour it.
 - ⚠️ **Filament deducts on a PRINT RUN, never on product creation** — a product is a design.
   Undo restores from the run's `grams_used` snapshot, not the product's current grams.
 - ⚠️ **`materials` and `supplies` are ONE table now (0014).** A supply carries `cost_per_kg_minor`
-  (nullable — null = not a printing material) and `kind`. `products.supply_id` is what costing and
-  print-run deduction both read. There is no `materials` table and no `products.material_id` — don't
-  reintroduce them. Re-pricing a supply re-costs every product printed from it (why `updateSupply`
-  revalidates `/creative`).
+  (nullable — null = not a printing material) and a free-text `type` (0015, searchable category
+  backed by the `supply_type` vocabulary — NOT the old `kind` enum, which is dropped).
+  `products.supply_id` is what costing and print-run deduction both read. There is no `materials`
+  table and no `products.material_id` — don't reintroduce them. Re-pricing a supply re-costs every
+  product printed from it (why `updateSupply` revalidates `/creative`).
+- ⚠️ **"Is this a printing material?" has NO dedicated column** — the signal is
+  `supplies.cost_per_kg_minor != null`. The supply form's checkbox just shows/clears the cost field;
+  costing keys off the null-ness. Don't add an `is_printing` boolean — it would be a second source of
+  truth that can disagree with the cost.
+- ⚠️ **Adding a new `vocabularies.kind` needs BOTH a CHECK widen (migration) AND branches** in
+  `refresh`/`renameVocabulary`/`countVocabularyUsage` (`actions/vocabulary.ts`). `supply_type` (0015)
+  is the third kind after `product_type`/`client_tag`; it propagates to `supplies.type` on rename.
 - ⚠️ **Never store a computed product cost.** It is derived from the material's current price and
   the machine rate on purpose; a cached copy is wrong the moment either changes.
 - ⚠️ **`detect.mjs` reports one KNOWN-FALSE "broken image"** in `image-strip.tsx` — its regex

@@ -517,6 +517,12 @@ export const fa: Dictionary = {
     lowThresholdHint: "برای عدم هشدار خالی بگذارید.",
     costPerKg: "قیمت هر کیلوگرم",
     costPerKgHint: "برای محاسبه هزینه چاپ. برای اقلام غیرچاپی خالی بگذارید.",
+    supplyType: "نوع",
+    supplyTypePlaceholder: "فیلامنت، مقوا، برچسب…",
+    isPrintingMaterial: "این یک ماده چاپ است",
+    isPrintingMaterialHint:
+      "فیلامنت یا رزین — با گرم وزن می‌شود و بر اساس کیلوگرم هزینه می‌گیرد. برای بسته‌بندی خاموش بگذارید.",
+    uncategorised: "دسته‌بندی‌نشده",
     lowStock: "کم",
     restock: "تأمین مجدد",
     restockQuantity: "چه تعداد",

@@ -12,10 +12,9 @@ import type {
   MachineStatus,
   MaintenanceKind,
   MaintenanceLog,
-  MaterialKind,
   Supply,
 } from "@/lib/types";
-import { MACHINE_STATUSES, MAINTENANCE_KINDS, MATERIAL_KINDS } from "@/lib/types";
+import { MACHINE_STATUSES, MAINTENANCE_KINDS } from "@/lib/types";
 import { todayInIstanbul } from "@/lib/utils";
 
 function pick<T extends string>(value: unknown, allowed: T[], fallback: T): T {
@@ -335,7 +334,8 @@ export async function deleteMaintenance(
 
 export type SupplyInput = {
   name: string;
-  kind: MaterialKind;
+  /** User-grown category label ("Filament", "Cardboard"…). Null = uncategorised. */
+  type: string | null;
   unit: string;
   quantity: number | null;
   lowThreshold: number | null;
@@ -357,7 +357,7 @@ export async function createSupply(
     .from("supplies")
     .insert({
       name,
-      kind: pick(input.kind, MATERIAL_KINDS, "filament"),
+      type: input.type?.trim().slice(0, 60) || null,
       unit: input.unit.trim().slice(0, 20) || "pcs",
       quantity: input.quantity ?? 0,
       low_threshold: input.lowThreshold,
@@ -387,7 +387,7 @@ export async function updateSupply(
     .from("supplies")
     .update({
       name,
-      kind: pick(input.kind, MATERIAL_KINDS, "filament"),
+      type: input.type?.trim().slice(0, 60) || null,
       unit: input.unit.trim().slice(0, 20) || "pcs",
       quantity: input.quantity ?? 0,
       low_threshold: input.lowThreshold,
