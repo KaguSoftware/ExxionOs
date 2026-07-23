@@ -59,12 +59,13 @@ export function PricingCalculator({
     [grams, hours, laborHours, supply, supplies, machineRateMinor, laborRateMinor]
   );
 
-  // Suggested price from the target margin. A margin of 100%+ is undefined
-  // (you can't keep 100% of the price AND cover a cost), so it's clamped just
-  // under. Null cost → no suggestion.
-  const marginFrac = Math.min(Math.max((margin ?? 0) / 100, 0), 0.95);
+  // Suggested price = cost marked up by the target percent: price = cost ×
+  // (1 + markup). This is MARKUP-on-cost, not gross-margin-on-price, so any
+  // positive percent is valid and the price grows linearly — a 300% markup is
+  // 4× cost. Null cost → no suggestion.
+  const markupFrac = Math.max((margin ?? 0) / 100, 0);
   const suggestedMinor =
-    cost == null ? null : Math.round(cost.totalMinor / (1 - marginFrac));
+    cost == null ? null : Math.round(cost.totalMinor * (1 + markupFrac));
   const profitMinor =
     suggestedMinor == null || cost == null ? null : suggestedMinor - cost.totalMinor;
 
@@ -118,7 +119,7 @@ export function PricingCalculator({
               value={margin}
               onChange={setMargin}
               min={0}
-              max={95}
+              max={300}
               step={5}
               suffix="%"
             />

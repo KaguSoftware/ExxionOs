@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Inter, Space_Grotesk, Vazirmatn } from "next/font/google";
 import { cookies } from "next/headers";
 
 import { ToastProvider } from "@/components/ui/toast";
@@ -15,6 +15,21 @@ import "./globals.css";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
+});
+
+/**
+ * The PERSIAN body face. The Latin stack has no Arabic-script glyphs, so
+ * without this, Farsi fell through to the OS default (Tahoma on Windows) —
+ * heavy, blocky, and dated. Vazirmatn is a neat modern Persian sans; loading
+ * it here (not just naming it in the CSS stack) is what makes the browser
+ * actually reach for it. Regular + medium only — the UI never needs bolder,
+ * and the app leans on weight sparingly.
+ */
+const vazirmatn = Vazirmatn({
+  variable: "--font-vazir",
+  subsets: ["arabic"],
+  weight: ["400", "500", "700"],
   display: "swap",
 });
 
@@ -84,7 +99,7 @@ export default async function RootLayout({
       // `data-theme` absent = follow the OS (globals.css makes dark the
       // :root default and light an explicit override).
       data-theme={theme}
-      className={`${inter.variable} ${spaceGrotesk.variable} h-full`}
+      className={`${inter.variable} ${vazirmatn.variable} ${spaceGrotesk.variable} h-full`}
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
