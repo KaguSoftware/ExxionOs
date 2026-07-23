@@ -69,6 +69,16 @@ export function ConfirmDialog({
   // whole page to find the row they were on.
   const restoreRef = useRef<HTMLElement | null>(null);
 
+  // ⚠️ `onCancel` in a ref so the effect below can call the latest one without
+  // listing it in deps. Callers pass it inline, so it changes every render;
+  // depending on it re-ran this effect (which calls `panelRef.current?.focus()`)
+  // on every render, stealing focus — the same "typing un-focuses the field"
+  // bug fixed in CreateOverlay. Keyed on `open` alone, it runs once per open.
+  const onCancelRef = useRef(onCancel);
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  }, [onCancel]);
+
   useEffect(() => {
     if (!open) return;
 
@@ -85,7 +95,7 @@ export function ConfirmDialog({
         e.preventDefault();
         // Don't let Escape cancel while the action is mid-flight — the write is
         // already happening, and closing now would just hide its outcome.
-        if (!busyRef.current) onCancel();
+        if (!busyRef.current) onCancelRef.current();
         return;
       }
       // Focus trap: keep Tab inside the dialog.
@@ -114,7 +124,8 @@ export function ConfirmDialog({
       document.body.style.overflow = prevOverflow;
       restoreRef.current?.focus();
     };
-  }, [open, onCancel]);
+    // `open` ONLY — see the onCancelRef note above.
+  }, [open]);
 
   if (!open || typeof document === "undefined") return null;
 

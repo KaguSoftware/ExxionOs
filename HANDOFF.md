@@ -6,11 +6,12 @@
 
 ## 👋 START HERE — resuming in a brand-new chat
 
-### 🟢 LATEST — 2026-07-22, Feature wave (11) + 2 ad-hoc features + system-wide hover fix
+### 🟢 LATEST — 2026-07-23, Focus-steal typing bug (system-wide) + measured filament per print
 
-All pushed to `main`. `tsc` · `lint` · `build` · `contrast` all green.
+**NOT committed yet** — working tree has the changes below. `tsc` · `lint` · `build` all green
+(4 pre-existing lint warnings, all in `scripts/seed-data.mjs`, untouched).
 
-**⚠️⚠️ THREE MIGRATIONS WRITTEN, NOT YET APPLIED — Parsa must `npx supabase db push`:**
+**⚠️⚠️ FOUR MIGRATIONS WRITTEN, NOT YET APPLIED — Parsa must `npx supabase db push`:**
 - **`0018_order_code_sequence.sql`** — a Postgres sequence + `next_order_code()` RPC for auto
   `EX-###` order codes. Until applied, the new-order page's code auto-fill RPC returns null (the
   field just stays blank — non-fatal).
@@ -18,6 +19,36 @@ All pushed to `main`. `tsc` · `lint` · `build` · `contrast` all green.
   Until applied, the marketing page's `taggedOrders`/ROI query throws (loud, by design).
 - **`0020_product_files.sql`** — `product_files` table (design files) reusing the `creative`
   bucket. Until applied, the Creative products tab throws.
+- **`0021_product_measured_grams.sql`** (NEW this session) — `products.measured_grams numeric`
+  (`> 0` or null). The weighed truth, supports included. Until applied, saving a measured weight or
+  logging a first-print weigh **errors** (loud, by design). ⚠️ **Could NOT be applied by the
+  assistant** — `npm run migrate` needs `SUPABASE_ACCESS_TOKEN` in `.env.local`, which is blank;
+  `npx supabase db push` (CLI already authed) is the path.
+
+**⚠️ THE TYPING BUG — root cause + system-wide fix (this session's first work):**
+Parsa: *"whenever you go to type in the fields, it stops you after one single char — it un-focuses
+the field"* (screenshot: the print-run Notes field showing just `d`). Root cause: **`CreateOverlay`
+(`ui/create.tsx`) and `ConfirmDialog` (`ui/confirm-dialog.tsx`) listed the caller's `onClose`/
+`onCancel` in a focus `useEffect`'s deps.** Callers pass those inline (`onClose={() => setOpen(false)}`),
+so they're a NEW function every render → every keystroke re-ran the effect → `panelRef.focus()` stole
+focus after one char. It hit **only overlay/dialog surfaces** (print run, idea edit, every confirm)
+— `/…/new` PAGE forms have no such effect, which is why it was "about half the pages". **Fix: hold
+the callback in a ref (synced in its own effect — writing a ref during render is banned by
+`react-hooks/refs` here) and key the focus effect on `[open]` alone.** Covers every overlay + dialog
+at once.
+
+**⚠️ MEASURED FILAMENT PER PRINT (Parsa: "add filament usage incl. supports per print… weigh it the
+first time, use it everywhere for supplies + price"). Decision: MEASURED OVERRIDES ESTIMATE.**
+- New `products.measured_grams` (0021) = weighed grams per unit, **supports included** — the truth.
+- The print-run overlay (`creative/print-run-button.tsx`) asks you to **weigh one unit ONLY on the
+  first print** (while `measured_grams` is null). That number is **written back to the product inside
+  `recordPrintRun`** and, from then on, is the single source for BOTH stock deduction AND costing.
+- **`lib/costing.ts` gained `effectiveGrams(product)`** = `measured_grams ?? grams`. `productCost`
+  now takes `measured_grams` and prefers it; `recordPrintRun` deducts against it too. One rule, one
+  place — costing, deduction and every preview agree.
+- Editable later on the product form (new "Measured grams" field). Product cards show the measured
+  weight marked with a ● dot once known, else the estimate.
+- ⚠️ `products.select("*")` everywhere means `measured_grams` flows through with no query edits.
 
 **The 11-feature wave (commit `83f6912`, then fixes):**
 1. **⌘K global search** (`components/shell/global-search.tsx` + `actions/search.ts`) — palette over
@@ -1058,6 +1089,7 @@ that contract must exist before anything can honour it.
 | Materials / Supplies | ✅ **MERGED + RESHAPED (2026-07-22, migrations 0014 + 0015).** One `supplies` row carries stock (grams/pieces, low-stock, restocks) AND the per-kg cost. Type is a **searchable/creatable category** (`supply_type` vocabulary); a **"printing material" checkbox** (signal = non-null cost) splits filament (grams+cost) from packaging (pieces). List grouped by type. `materials` table dropped | — | Done (pending 0014+0015 push) |
 | Product photos | Upload/remove on the product EDIT form + **✅ a lightbox** (2026-07-22, `components/creative/lightbox.tsx`) | Staged upload on create + reordering (staged-create deliberately NOT built — storage-contract risk) | If asked |
 | Product design files | ✅ **Shipped (2026-07-22, migration 0020).** `.mb`/`.ma`/`.stl` per product, beside Print-run; browser→bucket upload, download at click | Versioning / preview | If asked |
+| Filament per print | ✅ **Shipped (2026-07-23, migration 0021 — PENDING PUSH).** `products.measured_grams` (supports included) captured on FIRST print via the print-run overlay, then overrides the estimate for stock deduction AND cost everywhere (`effectiveGrams()`); editable on the product form | Per-run weight history / averaging across runs (chose single measured value, not per-run) — and "warn if a later run's weight drifts far from measured" | If asked |
 | Per-collection P&L | ✅ **Shipped (Phase 5).** Revenue from order lines meeting computed cost | Time series, per-product margin trends | Later |
 | Clients | ✅ **Shipped (Phase 6).** Directory (search · kind/source/tag filters · archive) + Insights (top clients, repeat rate, new vs returning, source breakdown, gone quiet) + per-client detail with order history and event timeline | Per-client P&L against computed cost; birthday reminders auto-created via the `reminders` back-link; CSV export | Later |
 | Events | ✅ **Table shipped (Phase 6)**, client lens only. Marketing kinds already pass the CHECK | The Marketing lens — filming days, networking, campaigns — over the SAME rows | Phase 7 |

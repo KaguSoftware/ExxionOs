@@ -25,8 +25,20 @@ export type CostBreakdown = {
  * for a product nobody has costed yet claims it is FREE, which is a different
  * and much more damaging statement than "we don't know".
  */
+/**
+ * The filament weight to cost/deduct AGAINST: the measured weight (supports
+ * included) if this product has been weighed, else the estimate. One place
+ * decides, so costing, the print-run deduction and any UI preview all agree —
+ * "measured overrides estimate" lives here and nowhere else. See 0021.
+ */
+export function effectiveGrams(
+  product: Pick<Product, "grams" | "measured_grams">
+): number | null {
+  return numeric(product.measured_grams) ?? numeric(product.grams);
+}
+
 export function productCost(
-  product: Pick<Product, "grams" | "print_hours" | "supply_id">,
+  product: Pick<Product, "grams" | "measured_grams" | "print_hours" | "supply_id">,
   supplies: Pick<Supply, "id" | "cost_per_kg_minor">[],
   machineHourRateMinor: number
 ): CostBreakdown | null {
@@ -34,7 +46,7 @@ export function productCost(
     ? (supplies.find((s) => s.id === product.supply_id) ?? null)
     : null;
 
-  const grams = numeric(product.grams);
+  const grams = effectiveGrams(product);
   const hours = numeric(product.print_hours);
 
   // Material cost needs a supply WITH a per-kg price and a weight; machine cost

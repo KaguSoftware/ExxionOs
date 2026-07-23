@@ -240,6 +240,12 @@ export type Product = {
   /** The supply printed from — its cost_per_kg_minor costs this product. */
   supply_id: string | null;
   grams: string | number | null;
+  /**
+   * Weighed grams per unit, SUPPORTS INCLUDED — the truth, captured on the first
+   * print. Overrides `grams` for stock deduction and costing once set; null
+   * means never weighed, fall back to the `grams` estimate. See 0021.
+   */
+  measured_grams: string | number | null;
   print_hours: string | number | null;
   price_minor: number | null;
   notes: string | null;

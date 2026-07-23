@@ -46,6 +46,7 @@ export function ProductForm({
   const kindId = useId();
   const supplyFieldId = useId();
   const gramsId = useId();
+  const measuredId = useId();
   const hoursId = useId();
   const priceId = useId();
   const notesId = useId();
@@ -64,6 +65,9 @@ export function ProductForm({
   ).map((v) => ({ value: v.label, label: v.label }));
   const [supplyId, setSupplyId] = useState<string | null>(existing?.supply_id ?? null);
   const [grams, setGrams] = useState<number | null>(toNumber(existing?.grams));
+  const [measuredGrams, setMeasuredGrams] = useState<number | null>(
+    toNumber(existing?.measured_grams)
+  );
   const [hours, setHours] = useState<number | null>(toNumber(existing?.print_hours));
   const [price, setPrice] = useState<number | null>(
     existing?.price_minor == null ? null : toMajor(existing.price_minor)
@@ -74,7 +78,7 @@ export function ProductForm({
   // Live cost preview using the SAME function the list uses — so what you see
   // while typing is exactly what the card will show.
   const preview = productCost(
-    { grams, print_hours: hours, supply_id: supplyId },
+    { grams, measured_grams: measuredGrams, print_hours: hours, supply_id: supplyId },
     supplies,
     machineRateMinor
   );
@@ -101,6 +105,7 @@ export function ProductForm({
       kind: kind?.trim() || null,
       supplyId,
       grams,
+      measuredGrams,
       printHours: hours,
       price,
       notes: notes || null,
@@ -216,6 +221,25 @@ export function ProductForm({
             <MoneyInput id={priceId} value={price} onChange={setPrice} min={0} />
           </Field>
         </div>
+
+        {/* The MEASURED weight — the truth once a unit has been weighed
+            (supports included). Usually captured on the first print run, but
+            editable here so a re-weigh or correction has a home. When set it
+            overrides the estimate for stock deduction AND cost everywhere. */}
+        <Field
+          id={measuredId}
+          label={t("creative.measuredGrams")}
+          hint={t("creative.measuredGramsHint")}
+          optional={t("common.optional")}
+        >
+          <NumberInput
+            id={measuredId}
+            value={measuredGrams}
+            onChange={setMeasuredGrams}
+            min={0}
+            step={1}
+          />
+        </Field>
 
         {/* Live cost, computed from the same helper the cards use. */}
         <div className="rounded-lg border border-line bg-surface p-3">

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { effectiveGrams } from "@/lib/costing";
 import { getSessionContext } from "@/lib/data/session";
 import { toMinor } from "@/lib/money";
 import { appendMovement } from "@/lib/stock-write";
@@ -240,8 +241,13 @@ export type ProductInput = {
   kind: string | null;
   /** The supply printed from — its cost_per_kg_minor costs this product. */
   supplyId: string | null;
-  /** Grams of material. Null when unknown — see costing.ts. */
+  /** Grams of material (the ESTIMATE). Null when unknown — see costing.ts. */
   grams: number | null;
+  /**
+   * Weighed grams per unit, supports included — the truth once known. Usually
+   * captured on first print, but editable here too. Overrides `grams`.
+   */
+  measuredGrams: number | null;
   printHours: number | null;
   /** Decimal lira as typed; converted to kuruş here and nowhere else. */
   price: number | null;
@@ -255,6 +261,7 @@ function productRow(input: ProductInput) {
     kind: input.kind?.trim().slice(0, 60) || null,
     supply_id: input.supplyId,
     grams: input.grams,
+    measured_grams: input.measuredGrams,
     print_hours: input.printHours,
     // ⚠️ The ONE conversion point for this table. Null stays null — an unpriced
     // product must not become ₺0,00, which reads as "free".
@@ -422,6 +429,13 @@ export async function recordPrintRun(input: {
   outcome?: PrintOutcome;
   printedOn?: string;
   notes?: string | null;
+  /**
+   * Weighed grams for ONE unit, supports included. Sent from the print-run
+   * overlay the first time a product is printed (while it has no
+   * `measured_grams` yet). When present and the product hasn't been weighed, it
+   * is written back to the product and becomes the truth for every future run.
+   */
+  measuredGrams?: number | null;
 }): Promise<
   ActionResult<{
     gramsUsed: number | null;
@@ -437,16 +451,37 @@ export async function recordPrintRun(input: {
 
   const { data: product } = await supabase
     .from("products")
-    .select("id, collection_id, grams, supply_id")
+    .select("id, collection_id, grams, measured_grams, supply_id")
     .eq("id", input.productId)
     .maybeSingle<{
       id: string;
       collection_id: string;
       grams: string | number | null;
+      measured_grams: string | number | null;
       supply_id: string | null;
     }>();
 
   if (!product) return { ok: false, error: "That product no longer exists." };
+
+  // ⚠️ CAPTURE THE MEASURED WEIGHT ON FIRST PRINT. If the product has never been
+  // weighed and this run carries a weight, write it to the product NOW — before
+  // computing the deduction below, so the very run that measures it also deducts
+  // against the measured number rather than the stale estimate. Once set, we
+  // never overwrite it here (re-weighing is an explicit edit on the product).
+  const measuredIn =
+    input.measuredGrams != null && input.measuredGrams > 0
+      ? input.measuredGrams
+      : null;
+  const alreadyMeasured =
+    product.measured_grams != null && Number(product.measured_grams) > 0;
+  if (measuredIn != null && !alreadyMeasured) {
+    const { error } = await supabase
+      .from("products")
+      .update({ measured_grams: measuredIn })
+      .eq("id", product.id);
+    if (error) return { ok: false, error: error.message };
+    product.measured_grams = measuredIn;
+  }
 
   // The product points straight at the supply it's printed from. The link may
   // be absent, and that's fine: the run is still recorded, just no deduction.
@@ -460,10 +495,11 @@ export async function recordPrintRun(input: {
     supply = data ?? null;
   }
 
-  // `numeric` arrives as a string over PostgREST.
-  const gramsEach = Number(product.grams);
-  const gramsUsed =
-    Number.isFinite(gramsEach) && gramsEach > 0 ? gramsEach * units : null;
+  // Measured (supports included) if the product has been weighed, else the
+  // estimate — the single rule lives in `effectiveGrams`. `numeric` arrives as
+  // a string over PostgREST, which that helper parses.
+  const gramsEach = effectiveGrams(product);
+  const gramsUsed = gramsEach != null ? gramsEach * units : null;
 
   const { data: run, error: runError } = await supabase
     .from("print_runs")

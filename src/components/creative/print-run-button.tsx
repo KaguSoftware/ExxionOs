@@ -43,11 +43,18 @@ const OUTCOME_HINT: Record<PrintOutcome, string> = {
  */
 export function PrintRunButton({
   productId,
-  gramsEach,
+  estimateGrams,
+  measuredGrams,
   supplyName,
 }: {
   productId: string;
-  gramsEach: number | null;
+  /** The design-time estimate (`products.grams`), used until a print is weighed. */
+  estimateGrams: number | null;
+  /**
+   * The weighed truth (`products.measured_grams`), supports included. Null until
+   * the first print is weighed — that's when the overlay asks for it.
+   */
+  measuredGrams: number | null;
   /** Null when the material isn't linked to a tracked supply. */
   supplyName: string | null;
 }) {
@@ -57,19 +64,37 @@ export function PrintRunButton({
   const { run, pending } = useAction();
 
   const unitsId = useId();
+  const weighId = useId();
   const dateId = useId();
   const notesId = useId();
+
+  // Ask to weigh only while this product has never been weighed. Once measured,
+  // the field disappears (re-weighing is an explicit edit on the product form)
+  // and the stored measurement drives the deduction.
+  const needsWeigh = measuredGrams == null;
 
   const [open, setOpen] = useState(false);
   const [units, setUnits] = useState<number | null>(1);
   const [outcome, setOutcome] = useState<PrintOutcome>("good");
   const [printedOn, setPrintedOn] = useState(todayInIstanbul());
   const [notes, setNotes] = useState("");
+  // The weighed grams for ONE unit, typed here on first print. Null until then.
+  const [weighed, setWeighed] = useState<number | null>(null);
 
   const submit = async () => {
     const count = units ?? 1;
     const result = await run(
-      () => recordPrintRun({ productId, units: count, outcome, printedOn, notes }),
+      () =>
+        recordPrintRun({
+          productId,
+          units: count,
+          outcome,
+          printedOn,
+          notes,
+          // Only send a measurement when we're capturing one — never overwrite
+          // a stored weight from here.
+          measuredGrams: needsWeigh ? weighed : null,
+        }),
       { errorMessage: t("creative.saveFailed") }
     );
 
@@ -92,10 +117,15 @@ export function PrintRunButton({
       setUnits(1);
       setOutcome("good");
       setNotes("");
+      setWeighed(null);
       router.refresh();
     }
   };
 
+  // Grams for ONE unit that this run will actually deduct against: the stored
+  // measurement if there is one, else what you're weighing right now, else the
+  // estimate. Keeps the preview honest with the deduction the action will do.
+  const gramsEach = measuredGrams ?? (needsWeigh ? weighed : null) ?? estimateGrams;
   const preview =
     gramsEach != null && units != null ? Math.round(gramsEach * units) : null;
 
@@ -126,6 +156,29 @@ export function PrintRunButton({
                 allowDecimal={false}
               />
             </Field>
+
+            {/* ⚠️ SHOWN ONLY ON THE FIRST PRINT (product not yet weighed). This
+                is where filament weight becomes real data: weigh one unit WITH
+                its supports and the number is written back to the product,
+                driving every future deduction and cost. After that this field
+                is gone and the stored weight is used silently. */}
+            {needsWeigh && (
+              <Field
+                id={weighId}
+                label={t("creative.weighPrint")}
+                hint={t("creative.weighPrintHint")}
+                optional={t("common.optional")}
+              >
+                <NumberInput
+                  id={weighId}
+                  value={weighed}
+                  onChange={setWeighed}
+                  min={0}
+                  step={1}
+                  suffix="g"
+                />
+              </Field>
+            )}
 
             {/* ⚠️ A RADIO GROUP, NOT A DROPDOWN. Three options whose
                 CONSEQUENCES differ, and the difference ("this one adds no
@@ -195,6 +248,14 @@ export function PrintRunButton({
                   })
                 : t("creative.stockNotAdded", { units: units ?? 1 })}
             </p>
+
+            {/* When the product is already weighed, say so — otherwise the
+                deduction figure looks like it came from nowhere. */}
+            {measuredGrams != null && (
+              <p className="text-2xs text-faint">
+                {t("creative.usingMeasured", { grams: measuredGrams })}
+              </p>
+            )}
 
             <div className="flex justify-end gap-2 border-t border-line pt-4">
               <Button variant="ghost" onClick={() => setOpen(false)} disabled={pending}>

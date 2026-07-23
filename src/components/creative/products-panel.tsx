@@ -171,7 +171,14 @@ export function ProductsPanel({
 
             <div className="mt-2 flex flex-wrap items-center gap-2 text-2xs text-faint">
               {supply && <span>{supply.name}</span>}
-              {product.grams && <span>· {product.grams}g</span>}
+              {/* The MEASURED weight wins — it's the truth, supports included.
+                  A dot marks it as weighed-not-estimated so the two never read
+                  the same. Falls back to the estimate until a print is weighed. */}
+              {product.measured_grams ? (
+                <span>· {Number(product.measured_grams)}g ●</span>
+              ) : (
+                product.grams && <span>· {product.grams}g</span>
+              )}
               {product.print_hours && <span>· {product.print_hours}h</span>}
               {photoCount > 0 && <span className="ms-auto">{photoCount} 📷</span>}
             </div>
@@ -183,7 +190,8 @@ export function ProductsPanel({
             <div className="mt-3 flex items-center gap-1 border-t border-line pt-2">
               <PrintRunButton
                 productId={product.id}
-                gramsEach={Number(product.grams) || null}
+                estimateGrams={Number(product.grams) || null}
+                measuredGrams={Number(product.measured_grams) || null}
                 supplyName={supply?.name ?? null}
               />
               <ProductFilesButton

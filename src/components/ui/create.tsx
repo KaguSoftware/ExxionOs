@@ -183,6 +183,25 @@ export function CreateOverlay({
   const titleId = useId();
 
   /**
+   * ⚠️ `onClose` in a REF, so the focus/Escape effect below can call the latest
+   * one WITHOUT depending on it.
+   *
+   * Callers pass `onClose` inline (`onClose={() => setOpen(false)}`), so it is a
+   * new function every render. When that effect listed `onClose` in its deps, a
+   * single keystroke in any field re-rendered the parent, gave a fresh
+   * `onClose`, and re-ran the effect — whose cleanup + body call
+   * `panelRef.current?.focus()`, yanking focus off the input after ONE
+   * character. That was the "typing un-focuses the field" bug, and it hit every
+   * overlay form (print run, idea edit, …) while `/…/new` PAGE forms — which
+   * have no such effect — were fine. The ref keeps the handler current with the
+   * effect keyed on `open` alone, so it runs once per open, not per keystroke.
+   */
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  /**
    * ⚠️ LOCK THE PAGE BEHIND THE OVERLAY.
    *
    * The overlay is `fixed inset-0 overflow-y-auto`, so it covers the viewport
@@ -227,7 +246,7 @@ export function CreateOverlay({
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab" || !panelRef.current) return;
@@ -251,7 +270,9 @@ export function CreateOverlay({
       document.removeEventListener("keydown", onKey);
       restore?.focus();
     };
-  }, [open, onClose]);
+    // ⚠️ `open` ONLY. Adding `onClose` re-runs this on every keystroke (it's a
+    // fresh inline function each render) and steals focus — see the ref above.
+  }, [open]);
 
   if (!open || typeof document === "undefined") return null;
 
