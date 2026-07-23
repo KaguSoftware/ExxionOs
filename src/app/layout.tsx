@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Space_Grotesk, Vazirmatn } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import { cookies } from "next/headers";
 
 import { ToastProvider } from "@/components/ui/toast";
@@ -21,15 +22,15 @@ const inter = Inter({
 /**
  * The PERSIAN body face. The Latin stack has no Arabic-script glyphs, so
  * without this, Farsi fell through to the OS default (Tahoma on Windows) —
- * heavy, blocky, and dated. Vazirmatn is a neat modern Persian sans; loading
- * it here (not just naming it in the CSS stack) is what makes the browser
- * actually reach for it. Regular + medium only — the UI never needs bolder,
- * and the app leans on weight sparingly.
+ * heavy, blocky, and dated. Rubik's variable font ships Arabic glyphs and is a
+ * neat, even-weight sans; loading it here (not just naming it in the CSS
+ * stack) is what makes the browser actually reach for it. The single variable
+ * TTF covers the whole 300–900 weight axis.
  */
-const vazirmatn = Vazirmatn({
+const rubik = localFont({
+  src: "./fonts/Rubik.ttf",
   variable: "--font-vazir",
-  subsets: ["arabic"],
-  weight: ["400", "500", "700"],
+  weight: "300 900",
   display: "swap",
 });
 
@@ -99,7 +100,7 @@ export default async function RootLayout({
       // `data-theme` absent = follow the OS (globals.css makes dark the
       // :root default and light an explicit override).
       data-theme={theme}
-      className={`${inter.variable} ${vazirmatn.variable} ${spaceGrotesk.variable} h-full`}
+      className={`${inter.variable} ${rubik.variable} ${spaceGrotesk.variable} h-full`}
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
