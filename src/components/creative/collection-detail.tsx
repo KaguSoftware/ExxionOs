@@ -33,6 +33,7 @@ export function CollectionDetail({
   products,
   issues,
   machineRateMinor,
+  laborRateMinor,
   images,
   files = [],
   supplies,
@@ -43,6 +44,7 @@ export function CollectionDetail({
   products: Product[];
   issues: Issue[];
   machineRateMinor: number;
+  laborRateMinor: number;
   images: (StoredImage & { product_id: string })[];
   /** Source/design files (.mb/.ma/.stl) per product. */
   files?: ProductFile[];
@@ -108,6 +110,7 @@ export function CollectionDetail({
                 products={products}
                 supplies={supplies}
                 machineRateMinor={machineRateMinor}
+                laborRateMinor={laborRateMinor}
                 images={images}
                 files={files}
                 collectionId={collection.id}
@@ -150,6 +153,7 @@ export function CollectionDetail({
                 products={products}
                 supplies={supplies}
                 machineRateMinor={machineRateMinor}
+                laborRateMinor={laborRateMinor}
                 soldLines={soldLines}
               />
             ),

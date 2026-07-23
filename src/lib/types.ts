@@ -202,6 +202,18 @@ export type AppSettings = {
   id: number;
   /** Integer kuruş per hour of machine time. */
   machine_hour_rate_minor: number;
+  /** Integer kuruş per hour of human time (post-processing, painting) — 0024. */
+  labor_hour_rate_minor: number;
+  /** ⚠️ Nullable: null = no target set, NOT a target of ₺0. See 0024. */
+  monthly_target_minor: number | null;
+  // Business identity, printed on quotes/invoices. All nullable — an unset
+  // system just shows a "fill these in" hint rather than a blank header.
+  business_name: string | null;
+  business_address: string | null;
+  business_phone: string | null;
+  business_email: string | null;
+  business_instagram: string | null;
+  invoice_footer: string | null;
   updated_at: string;
 };
 
@@ -250,9 +262,14 @@ export type Product = {
    */
   measured_grams: string | number | null;
   print_hours: string | number | null;
+  /** Human time per unit, in hours (post-processing/painting). Null = uncosted
+   *  for labour. Postgres numeric → arrives as a string. See 0024. */
+  labor_hours: string | number | null;
   price_minor: number | null;
   notes: string | null;
   links: string[];
+  /** ⚠️ Null = not yet posted to Instagram. Drives the content pipeline (0024). */
+  posted_on: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -13,7 +13,7 @@ import { MoneyInput, NumberInput } from "@/components/ui/number-input";
 import { archiveSupply, restockSupply } from "@/lib/actions/equipment";
 import { downloadCsv } from "@/lib/csv";
 import { suppliesToCsv } from "@/lib/entity-export";
-import { isLowStock } from "@/lib/equipment";
+import { inventoryValue, isLowStock } from "@/lib/equipment";
 import { useI18n } from "@/lib/i18n/client";
 import { toMajor } from "@/lib/money";
 import type { Supply } from "@/lib/types";
@@ -59,9 +59,27 @@ export function SuppliesPanel({ supplies: initial }: { supplies: Supply[] }) {
   // am I about to run out of", not "what do I own".
   const groups = groupByCategory(supplies, t("equipment.uncategorised"));
 
+  // Value of stock on hand — printing materials priced by kg; the rest reported
+  // as uncosted rather than valued at a fabricated price. See inventoryValue().
+  const stockValue = inventoryValue(supplies);
+
   return (
     <>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted">
+          {t("equipment.inventoryValue")}{" "}
+          <span className="tnum font-medium text-ink">
+            {formatMinor(stockValue.valuedMinor)}
+          </span>
+          {stockValue.uncostedCount > 0 && (
+            <span className="text-faint">
+              {" · "}
+              {t("equipment.inventoryUncosted", {
+                count: stockValue.uncostedCount,
+              })}
+            </span>
+          )}
+        </p>
         <Button
           size="sm"
           onClick={() => downloadCsv(suppliesToCsv(supplies), "supplies")}

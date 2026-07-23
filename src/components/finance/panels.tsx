@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { FileBarChart, Plus } from "lucide-react";
 import Link from "next/link";
 
 import { CategoriesPanel } from "@/components/finance/categories-panel";
@@ -37,15 +37,26 @@ export function FinancePanels({
           id: "ledger",
           label: t("finance.transactions"),
           action: (
-            <Link href="/finance/new">
-              <Button
-                size="sm"
-                variant="primary"
-                icon={<Plus aria-hidden className="size-3.5" />}
-              >
-                {t("finance.newTransaction")}
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <a href="/finance/report" target="_blank" rel="noopener">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={<FileBarChart aria-hidden className="size-3.5" />}
+                >
+                  {t("report.open")}
+                </Button>
+              </a>
+              <Link href="/finance/new">
+                <Button
+                  size="sm"
+                  variant="primary"
+                  icon={<Plus aria-hidden className="size-3.5" />}
+                >
+                  {t("finance.newTransaction")}
+                </Button>
+              </Link>
+            </div>
           ),
           content: (
             <LedgerPanel

@@ -115,11 +115,11 @@ export default async function ClientPage({
         "client.supplies",
         supabase.from("supplies").select("*")
       ),
-      selectOrThrow<{ machine_hour_rate_minor: number }>(
+      selectOrThrow<{ machine_hour_rate_minor: number; labor_hour_rate_minor: number }>(
         "client.settings",
         supabase
           .from("app_settings")
-          .select("machine_hour_rate_minor")
+          .select("machine_hour_rate_minor, labor_hour_rate_minor")
           .eq("id", 1)
           .maybeSingle()
       ),
@@ -142,7 +142,8 @@ export default async function ClientPage({
     lineRows.map((l) => ({ product_id: l.product_id, quantity: l.quantity })),
     products,
     supplies,
-    settings.data?.machine_hour_rate_minor ?? 0
+    settings.data?.machine_hour_rate_minor ?? 0,
+    settings.data?.labor_hour_rate_minor ?? 0
   );
 
   return (

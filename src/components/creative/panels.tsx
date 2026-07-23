@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 
 import { CollectionsPanel } from "@/components/creative/collections-panel";
@@ -19,8 +20,19 @@ import type {
   PrintRun,
   Product,
   ProductStockMovement,
+  Supply,
   Vocabulary,
 } from "@/lib/types";
+
+// ⚠️ Insights pulls in recharts, the heaviest dependency in the app. The tab is
+// rarely the one a visitor opens, so this keeps recharts out of /creative's
+// first-load chunk and fetches it only when the tab is selected. The skeleton
+// fills the gap; TabbedPanels renders only the active tab, so the import never
+// fires until then.
+const ScrapInsights = dynamic(
+  () => import("@/components/creative/scrap-insights").then((m) => m.ScrapInsights),
+  { loading: () => <div className="skeleton h-64 w-full rounded-xl" /> }
+);
 
 export function CreativePanels({
   collections,
@@ -30,6 +42,7 @@ export function CreativePanels({
   productTypes = [],
   stockMovements = [],
   printRuns = [],
+  supplies = [],
 }: {
   collections: Collection[];
   ideas: Idea[];
@@ -41,6 +54,8 @@ export function CreativePanels({
   stockMovements?: ProductStockMovement[];
   /** Print runs, shown when a stock row is expanded. */
   printRuns?: PrintRun[];
+  /** Supply per-kg prices — the Insights tab values wasted filament with them. */
+  supplies?: Pick<Supply, "id" | "cost_per_kg_minor">[];
 }) {
   const { t } = useI18n();
 
@@ -137,6 +152,17 @@ export function CreativePanels({
               collections={collections}
               movements={stockMovements}
               printRuns={printRuns}
+            />
+          ),
+        },
+        {
+          id: "insights",
+          label: t("creative.insightsTab"),
+          content: (
+            <ScrapInsights
+              printRuns={printRuns}
+              products={products}
+              supplies={supplies}
             />
           ),
         },

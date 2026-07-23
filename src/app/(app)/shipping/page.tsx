@@ -25,7 +25,7 @@ export default async function ShippingPage() {
   await getSessionContext();
   const supabase = await createClient();
 
-  const [orders, clients, lines, payments, stageEvents, revenue] =
+  const [orders, clients, lines, payments, stageEvents, revenue, products] =
     await Promise.all([
       rowsOrThrow<Order>(
         "shipping.orders",
@@ -70,7 +70,19 @@ export default async function ShippingPage() {
           .select("occurred_on, direction, amount_minor")
           .eq("source_type", "order")
       ),
+      // Print-hours estimate per product, for the Queue tab. In the same wave.
+      rowsOrThrow<{ id: string; print_hours: string | number | null }>(
+        "shipping.productHours",
+        supabase.from("products").select("id, print_hours")
+      ),
     ]);
+
+  // product id → print hours (numeric arrives as a string; null when unset).
+  // A plain array, not a Map — Maps don't cross the server→client prop boundary.
+  const productHours: [string, number | null][] = products.map((p) => {
+    const n = p.print_hours == null ? null : Number(p.print_hours);
+    return [p.id, n != null && Number.isFinite(n) && n > 0 ? n : null];
+  });
 
   return (
     <>
@@ -85,6 +97,7 @@ export default async function ShippingPage() {
           payments={payments}
           stageEvents={stageEvents}
           revenue={revenue}
+          productHours={productHours}
           /**
            * ⚠️ The DATE, not a millisecond clock. Cycle time is reported in
            * whole days, so day resolution is all it needs — and a date keeps

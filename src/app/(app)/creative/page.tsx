@@ -12,6 +12,7 @@ import type {
   PrintRun,
   Product,
   ProductStockMovement,
+  Supply,
   Vocabulary,
 } from "@/lib/types";
 
@@ -36,6 +37,7 @@ export default async function CreativePage() {
     productTypes,
     stockMovements,
     printRuns,
+    supplies,
   ] = await Promise.all([
       rowsOrThrow<Collection>(
         "creative.collections",
@@ -95,6 +97,12 @@ export default async function CreativePage() {
           .select("*")
           .order("printed_on", { ascending: false })
       ),
+      // For the Insights tab: valuing wasted filament needs each supply's
+      // per-kg price. Only the two columns scrap costing reads.
+      rowsOrThrow<Pick<Supply, "id" | "cost_per_kg_minor">>(
+        "creative.supplies",
+        supabase.from("supplies").select("id, cost_per_kg_minor")
+      ),
     ]);
 
   return (
@@ -122,6 +130,7 @@ export default async function CreativePage() {
           productTypes={productTypes}
           stockMovements={stockMovements}
           printRuns={printRuns}
+          supplies={supplies}
         />
       </Suspense>
     </>

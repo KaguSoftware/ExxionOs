@@ -6,7 +6,69 @@
 
 ## 👋 START HERE — resuming in a brand-new chat
 
-### 🟢 LATEST — 2026-07-23 (second session), Links everywhere + notes visible + polish round
+### 🟢 LATEST — 2026-07-23 (third session), The 10-feature wave (quoting · costing · ops · reporting)
+
+**NOT committed as of writing this entry — being committed + pushed now.** `tsc` · `lint` · `build`
+(34 routes) · `contrast` all green (4 pre-existing seed-script lint warnings only).
+
+**⚠️ NEW MIGRATION `0024_business_costing.sql` — WRITTEN, NOT APPLIED** (joins the 0018–0023 queue;
+`npx supabase db push`). All additive:
+- `app_settings` gains **business identity** (`business_name/address/phone/email/instagram`,
+  `invoice_footer`), `labor_hour_rate_minor` (default 0), `monthly_target_minor` (nullable).
+- `products` gains `labor_hours numeric` and `posted_on date`.
+Until applied: saving business settings / labour hours / "mark posted", and reading the new columns,
+error loudly by design.
+
+**Ten features, all shipped:**
+1. **Quote / Invoice** — new **`(print)` route group** (auth-gated, no app shell): `PrintShell`
+   (`components/print/print-shell.tsx`, `window.print()`, committed-light black-on-white).
+   `/shipping/orders/[id]/invoice?kind=quote|invoice` (`components/print/invoice.tsx`); button on
+   order-detail. A quote hides payments; an invoice shows deposit + balance (`paidMinor`/
+   `outstandingMinor`).
+2. **Pricing calculator** — new nav entry **`/tools/pricing`** (`nav.pricing`, Calculator icon);
+   `components/tools/pricing-calculator.tsx` reuses `productCost`; target-margin → suggested price
+   (`cost / (1 − margin)`).
+3. **Print queue** — new **Shipping "Queue" tab**; `printQueue()` in `lib/shipping.ts` (est. print
+   hours per open order, sorted by promised date, overdue flag). Deliberately reports hours only, no
+   capacity guess.
+4. **Scrap analytics** — new **Creative "Insights" tab** (deferred recharts); `scrapStats()` in new
+   `lib/print-analytics.ts`. `failed`=waste (grams × supply cost, null-not-0 uncosted), `test`
+   reported separately, `good`=baseline.
+5. **Today inbox** — `NeedsYou` was ALREADY the ranked/itemized/deep-linked inbox the plan wanted
+   (money/blocked/time/soft tones), so it was **left as-is** — no duplication, no churn.
+6. **Monthly report** — `/finance/report?month=YYYY-MM` (print route); `components/print/monthly-
+   report.tsx`: totals vs last month, category breakdown, top products by margin, top clients by
+   **received money** (`revenueByClient`, transactions — never order totals). Button on Finance.
+7. **Inventory value** — `inventoryValue()` in `lib/equipment.ts` (kg × cost_per_kg; the rest
+   reported as `uncostedCount`, since `last_price_minor` is a BATCH total). Shown on the Supplies
+   tab header.
+8. **Labour cost** — `CostBreakdown` gained `laborMinor`; **`productCost()` now takes a 4th arg
+   `laborHourRateMinor`** and reads `product.labor_hours`. Threaded through every caller (clientPnl,
+   sampleCostMinor, givenAwayMinor, product-form preview, products-panel, collection-pnl) + their
+   pages. Labour-hours field on the product form; rate in Settings → Costing. One change, so client
+   P&L / sample cost / collection P&L all inherit it.
+9. **Monthly target** — `monthly_target_minor` on app_settings; `components/dashboard/monthly-
+   target.tsx` bar of month **received** (`monthTotals.inMinor`, transactions-in) vs target; null →
+   "set a target" prompt (ratio null-not-0).
+10. **Instagram content pipeline** — new **Marketing "Content" tab**
+    (`components/marketing/content-pipeline.tsx`): products WITH photos, not-posted vs posted,
+    signed thumbnails, one-click "mark posted" (`setProductPosted` in `actions/creative.ts`,
+    optimistic + undo). No-photo products shown only as a count.
+
+**New Settings panel**: `components/settings/business-form.tsx` (identity + monthly target);
+`updateBusinessSettings` + `updateCostingRates` in `actions/settings.ts` (the latter replaces
+`updateMachineRate`'s single-rate save with machine+labour).
+
+**Shared helpers added**: `costingRates(settingsRow)` in `costing.ts` (reads both rate columns).
+**i18n**: new `invoice.*`, `report.*`, `tools.*` namespaces + additions under `settings/creative/
+marketing/equipment/shipping/dashboard/nav` — all in en.ts AND fa.ts (parity green).
+
+**Not driven in a browser** — worth Parsa (after `db push`): open an order's Invoice/Quote and print;
+set a labour rate + labour hours and watch a product's cost rise; open `/tools/pricing`; check the
+Supplies inventory-value line, the dashboard target bar, the Creative Insights + Marketing Content
+tabs, and the Shipping Queue.
+
+### 🟢 EARLIER — 2026-07-23 (second session), Links everywhere + notes visible + polish round
 
 **NOT committed yet** — working tree has this session's changes on top of the previous session's
 uncommitted work. `tsc` · `lint` · `build` (32 routes) · `npm run contrast` all green.

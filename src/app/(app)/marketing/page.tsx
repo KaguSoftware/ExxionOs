@@ -57,6 +57,7 @@ export default async function MarketingPage() {
     clients,
     taggedOrders,
     orderRevenueRows,
+    productImages,
   ] = await Promise.all([
       rowsOrThrow<Campaign>(
         "marketing.campaigns",
@@ -107,11 +108,11 @@ export default async function MarketingPage() {
         "marketing.supplies",
         supabase.from("supplies").select("*").order("name")
       ),
-      selectOrThrow<{ machine_hour_rate_minor: number }>(
+      selectOrThrow<{ machine_hour_rate_minor: number; labor_hour_rate_minor: number }>(
         "marketing.settings",
         supabase
           .from("app_settings")
-          .select("machine_hour_rate_minor")
+          .select("machine_hour_rate_minor, labor_hour_rate_minor")
           .eq("id", 1)
           .maybeSingle()
       ),
@@ -140,6 +141,16 @@ export default async function MarketingPage() {
           .select("source_id, amount_minor, direction")
           .eq("source_type", "order")
       ),
+      // Product photos for the Content pipeline — one thumb per product. Ordered
+      // so the first row per product is its lowest sort_order (its cover-ish).
+      rowsOrThrow<{ product_id: string; path: string }>(
+        "marketing.productImages",
+        supabase
+          .from("product_images")
+          .select("product_id, path")
+          .order("product_id")
+          .order("sort_order")
+      ),
     ]);
 
   // Money received per order — refunds subtract, exactly as revenueByClient.
@@ -156,9 +167,16 @@ export default async function MarketingPage() {
     collectionName: collectionName(p),
   }));
 
+  // product_id → collection name, for the content pipeline card subtitles.
+  const collectionNames: Record<string, string> = Object.fromEntries(
+    productRows.map((p) => [p.id, collectionName(p)])
+  );
+
   return (
     <>
-      <LiveRefresh tables={["campaigns", "campaign_costs", "samples", "events"]} />
+      <LiveRefresh
+        tables={["campaigns", "campaign_costs", "samples", "events", "products"]}
+      />
       <Suspense>
         <MarketingPanels
           campaigns={campaigns}
@@ -170,9 +188,12 @@ export default async function MarketingPage() {
           productOptions={productOptions}
           supplies={supplies}
           machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
+          laborRateMinor={settings.data?.labor_hour_rate_minor ?? 0}
           clients={clients}
           taggedOrders={taggedOrders}
           orderRevenue={orderRevenue}
+          productImages={productImages}
+          collectionNames={collectionNames}
           /**
            * ⚠️ Stamped once on the server. The schedule splits upcoming from
            * past against this date, and `react-hooks/purity` is an error here

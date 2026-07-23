@@ -1,4 +1,5 @@
 import { AppearanceForm } from "@/components/settings/appearance-form";
+import { BusinessForm } from "@/components/settings/business-form";
 import { CostingForm } from "@/components/settings/costing-form";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { PageHeader } from "@/components/ui/panel";
@@ -24,8 +25,10 @@ export default async function SettingsPage() {
         <div className="flex flex-col gap-4">
           <ProfileForm profile={ctx.profile} email={ctx.email} />
           <AppearanceForm profile={ctx.profile} />
+          <BusinessForm settings={settings.data} />
           <CostingForm
             machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
+            laborRateMinor={settings.data?.labor_hour_rate_minor ?? 0}
           />
         </div>
       </div>

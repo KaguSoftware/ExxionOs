@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import { TabbedPanels } from "@/components/shell/tabbed-panels";
 import { OrderBoard } from "@/components/shipping/order-board";
 import { OrderList } from "@/components/shipping/order-list";
+import { OrderQueue } from "@/components/shipping/order-queue";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/client";
 
@@ -44,6 +45,7 @@ export function ShippingPanels({
   payments,
   stageEvents,
   revenue,
+  productHours,
   today,
 }: {
   orders: Order[];
@@ -52,6 +54,8 @@ export function ShippingPanels({
   payments: OrderPayment[];
   stageEvents: OrderStageEvent[];
   revenue: RevenueRow[];
+  /** [productId, printHours|null] pairs — a Map can't cross the RSC boundary. */
+  productHours: [string, number | null][];
   /**
    * ⚠️ Passed from the server, never computed during render — see the note at
    * the call site in `(app)/shipping/page.tsx`.
@@ -84,6 +88,17 @@ export function ShippingPanels({
   const clientsById = useMemo(
     () => new Map(clients.map((c) => [c.id, c])),
     [clients]
+  );
+
+  const productHoursMap = useMemo(
+    () => new Map(productHours),
+    [productHours]
+  );
+
+  // The Queue badge counts orders still in the pipeline (not delivered/cancelled).
+  const inQueue = useMemo(
+    () => orders.filter((o) => o.stage !== "delivered" && o.stage !== "cancelled").length,
+    [orders]
   );
 
   /**
@@ -144,6 +159,21 @@ export function ShippingPanels({
               clientsById={clientsById}
               linesByOrder={linesByOrder}
               paymentsByOrder={paymentsByOrder}
+              today={today}
+            />
+          ),
+        },
+        {
+          id: "queue",
+          label: t("shipping.tabQueue"),
+          count: inQueue,
+          action: newOrderAction,
+          content: (
+            <OrderQueue
+              orders={orders}
+              clientsById={clientsById}
+              linesByOrder={linesByOrder}
+              productHours={productHoursMap}
               today={today}
             />
           ),

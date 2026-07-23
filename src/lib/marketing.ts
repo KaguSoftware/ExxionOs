@@ -107,13 +107,14 @@ export function sampleCostMinor(
   sample: Pick<Sample, "product_id" | "quantity">,
   products: Product[],
   supplies: Supply[],
-  machineHourRateMinor: number
+  machineHourRateMinor: number,
+  laborHourRateMinor: number
 ): number | null {
   if (!sample.product_id) return null;
   const product = products.find((p) => p.id === sample.product_id);
   if (!product) return null; // Deleted from Creative — the row survives, the cost can't.
 
-  const cost = productCost(product, supplies, machineHourRateMinor);
+  const cost = productCost(product, supplies, machineHourRateMinor, laborHourRateMinor);
   if (!cost) return null;
 
   return cost.totalMinor * Math.max(1, sample.quantity);
@@ -136,14 +137,21 @@ export function givenAwayMinor(
   samples: Sample[],
   products: Product[],
   supplies: Supply[],
-  machineHourRateMinor: number
+  machineHourRateMinor: number,
+  laborHourRateMinor: number
 ): GivenAway {
   let totalMinor = 0;
   let costedCount = 0;
   let uncostedCount = 0;
 
   for (const sample of samples) {
-    const minor = sampleCostMinor(sample, products, supplies, machineHourRateMinor);
+    const minor = sampleCostMinor(
+      sample,
+      products,
+      supplies,
+      machineHourRateMinor,
+      laborHourRateMinor
+    );
     if (minor == null) uncostedCount++;
     else {
       totalMinor += minor;

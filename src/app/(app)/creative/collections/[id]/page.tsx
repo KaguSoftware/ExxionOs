@@ -138,6 +138,7 @@ export default async function CollectionPage({
           products={products}
           issues={issues}
           machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
+          laborRateMinor={settings.data?.labor_hour_rate_minor ?? 0}
           images={images}
           files={files}
           supplies={supplies}

@@ -1,5 +1,6 @@
 import {
   Boxes,
+  Calculator,
   LayoutDashboard,
   Megaphone,
   Package,
@@ -46,4 +47,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/clients", labelKey: "nav.clients", icon: Users, ready: true },
   // Phase 7 — shipped. All seven sections are live.
   { href: "/marketing", labelKey: "nav.marketing", icon: Megaphone, ready: true },
+  // A cross-cutting tool, not a section — the pricing calculator.
+  { href: "/tools/pricing", labelKey: "nav.pricing", icon: Calculator, ready: true },
 ];

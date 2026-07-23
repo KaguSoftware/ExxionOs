@@ -254,6 +254,8 @@ export type ProductInput = {
    */
   measuredGrams: number | null;
   printHours: number | null;
+  /** Hand-finishing time per unit; priced at the labour rate in Settings. */
+  laborHours: number | null;
   /** Decimal lira as typed; converted to kuruş here and nowhere else. */
   price: number | null;
   notes: string | null;
@@ -269,6 +271,7 @@ function productRow(input: ProductInput) {
     grams: input.grams,
     measured_grams: input.measuredGrams,
     print_hours: input.printHours,
+    labor_hours: input.laborHours,
     // ⚠️ The ONE conversion point for this table. Null stays null — an unpriced
     // product must not become ₺0,00, which reads as "free".
     price_minor: input.price == null ? null : Math.abs(toMinor(input.price)),
@@ -317,6 +320,27 @@ export async function deleteProduct(
   const { error } = await supabase.from("products").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   refreshCreative(collectionId);
+  return { ok: true, data: undefined };
+}
+
+/**
+ * Mark a product posted to Instagram (or clear it). Drives the Marketing content
+ * pipeline — `posted_on` is a plain date, today when posting, null when undoing.
+ */
+export async function setProductPosted(
+  id: string,
+  posted: boolean
+): Promise<ActionResult> {
+  await getSessionContext();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("products")
+    .update({ posted_on: posted ? todayInIstanbul() : null })
+    .eq("id", id);
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/marketing");
   return { ok: true, data: undefined };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -200,6 +200,19 @@ export function OrderDetail({
             placeholder={t("shipping.stage")}
             className="w-44"
           />
+          <a
+            href={`/shipping/orders/${order.id}/invoice`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<FileText aria-hidden className="size-3.5" />}
+            >
+              {t("invoice.document")}
+            </Button>
+          </a>
           <Button
             size="sm"
             onClick={() => setEditing(true)}

@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { CampaignList } from "@/components/marketing/campaign-list";
+import {
+  ContentPipeline,
+  type ContentImage,
+} from "@/components/marketing/content-pipeline";
 import { MarketingInsights, type MarketingSpendRow } from "@/components/marketing/insights";
 import { SampleList, type SampleProductOption } from "@/components/marketing/sample-list";
 import { MarketingSchedule } from "@/components/marketing/schedule";
@@ -32,9 +36,12 @@ export function MarketingPanels({
   productOptions,
   supplies,
   machineRateMinor,
+  laborRateMinor,
   clients,
   taggedOrders,
   orderRevenue,
+  productImages,
+  collectionNames,
   today,
 }: {
   campaigns: Campaign[];
@@ -47,9 +54,14 @@ export function MarketingPanels({
   productOptions: SampleProductOption[];
   supplies: Supply[];
   machineRateMinor: number;
+  laborRateMinor: number;
   clients: Client[];
   taggedOrders: { id: string; campaign_id: string | null }[];
   orderRevenue: { order_id: string; amount_minor: number }[];
+  /** One row per product image (first per product is the thumb) — content tab. */
+  productImages: ContentImage[];
+  /** product_id → collection name, for content-card subtitles. */
+  collectionNames: Record<string, string>;
   /** Stamped on the server — see the call site in `(app)/marketing/page.tsx`. */
   today: string;
 }) {
@@ -108,9 +120,21 @@ export function MarketingPanels({
               productOptions={productOptions}
               supplies={supplies}
               machineRateMinor={machineRateMinor}
+              laborRateMinor={laborRateMinor}
               clients={clients}
               campaigns={campaigns}
               today={today}
+            />
+          ),
+        },
+        {
+          id: "content",
+          label: t("marketing.tabContent"),
+          content: (
+            <ContentPipeline
+              products={products}
+              images={productImages}
+              collectionNames={collectionNames}
             />
           ),
         },
@@ -125,6 +149,7 @@ export function MarketingPanels({
               products={products}
               supplies={supplies}
               machineRateMinor={machineRateMinor}
+              laborRateMinor={laborRateMinor}
               clients={clients}
               taggedOrders={taggedOrders}
               orderRevenue={orderRevenue}

@@ -4,11 +4,12 @@ import { Activity, type ActivityItem } from "@/components/dashboard/activity";
 import { AllClear, DashboardGreeting } from "@/components/dashboard/greeting";
 import { MoneyPulse } from "@/components/dashboard/money-pulse";
 import { MonthSummary } from "@/components/dashboard/month-summary";
+import { MonthlyTarget } from "@/components/dashboard/monthly-target";
 import { NeedsYou } from "@/components/dashboard/needs-you";
 import { Reminders } from "@/components/dashboard/reminders";
 import { LiveRefresh } from "@/components/shell/live-refresh";
 import { materialiseAutoReminders } from "@/lib/data/auto-reminders";
-import { countOrThrow, rowsOrThrow } from "@/lib/data/query";
+import { countOrThrow, rowsOrThrow, selectOrThrow } from "@/lib/data/query";
 import { getSessionContext } from "@/lib/data/session";
 import { getT } from "@/lib/i18n/server";
 import { goneQuiet, type ClientOrderRow } from "@/lib/clients";
@@ -82,6 +83,7 @@ export default async function DashboardPage() {
     stageEvents,
     clientEvents,
     stockMovements,
+    targetSettings,
   ] = await Promise.all([
     rowsOrThrow<Reminder>(
       "dashboard.reminders",
@@ -237,6 +239,16 @@ export default async function DashboardPage() {
     rowsOrThrow<Pick<ProductStockMovement, "product_id" | "delta">>(
       "dashboard.stockMovements",
       supabase.from("product_stock_movements").select("product_id, delta")
+    ),
+    // The monthly revenue target (nullable) — drives the progress card below.
+    // Inside the wave; one column.
+    selectOrThrow<{ monthly_target_minor: number | null }>(
+      "dashboard.target",
+      supabase
+        .from("app_settings")
+        .select("monthly_target_minor")
+        .eq("id", 1)
+        .maybeSingle()
     ),
   ]);
 
@@ -450,6 +462,12 @@ export default async function DashboardPage() {
           filter params from `use-finance-filters.ts` — a made-up param would
           silently land on an unfiltered view. */}
       <MonthSummary totals={monthTotals} monthStart={monthStart} today={today} />
+      {/* ⚠️ received = money that ARRIVED this month (transactions in), never
+          order totals. `monthTotals.inMinor` is exactly that. */}
+      <MonthlyTarget
+        receivedMinor={monthTotals.inMinor}
+        targetMinor={targetSettings.data?.monthly_target_minor ?? null}
+      />
       <MoneyPulse
         openOrderValueMinor={openOrderValueMinor}
         outstandingMinor={outstandingTotalMinor}

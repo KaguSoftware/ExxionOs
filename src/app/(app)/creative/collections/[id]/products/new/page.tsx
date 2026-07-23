@@ -40,6 +40,7 @@ export default async function NewProductPage({
         collectionId={id}
         supplies={supplies}
         machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
+        laborRateMinor={settings.data?.labor_hour_rate_minor ?? 0}
         productTypes={productTypes}
       />
     </CreatePage>

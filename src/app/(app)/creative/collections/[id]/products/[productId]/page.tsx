@@ -70,6 +70,7 @@ export default async function EditProductPage({
         collectionId={id}
         supplies={supplies}
         machineRateMinor={settings.data?.machine_hour_rate_minor ?? 0}
+        laborRateMinor={settings.data?.labor_hour_rate_minor ?? 0}
         existing={product}
         images={images}
         productTypes={productTypes}

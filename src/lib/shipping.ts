@@ -215,3 +215,88 @@ export function lostRate(orders: Pick<Order, "stage">[]): number | null {
   if (finished === 0) return null;
   return cancelled / finished;
 }
+
+// --- print queue -----------------------------------------------------------
+
+export type QueueRow = {
+  orderId: string;
+  code: string | null;
+  title: string;
+  stage: OrderStage;
+  clientName: string | null;
+  promisedOn: string | null;
+  /** Estimated print hours across this order's lines, or null if none of its
+   *  products carry a print-hours estimate (so we don't imply "0 hours"). */
+  estHours: number | null;
+  /** How many of its lines couldn't be estimated (deleted/uncosted product). */
+  uncostedLines: number;
+  /** Past its promised date and not yet terminal. */
+  overdue: boolean;
+};
+
+/**
+ * What still has to be printed, and by when.
+ *
+ * ⚠️ DELIBERATELY MODEST. It estimates HOURS OF PRINTING per open order and
+ * sorts by the promised date — it does NOT claim "you will/won't make it".
+ * Capacity across N printers running in parallel, with failures and human
+ * time, is genuinely unknowable from this data; a green/red "on track" light
+ * would be a confident guess, which is worse than an honest hours figure.
+ *
+ * `estHours` sums `print_hours × quantity` over the order's lines, using the
+ * passed product-hours map. Lines whose product is gone or has no estimate are
+ * counted in `uncostedLines` rather than silently treated as zero.
+ */
+export function printQueue(
+  orders: Pick<Order, "id" | "code" | "title" | "stage" | "client_id" | "promised_on">[],
+  linesByOrder: Map<string, Pick<OrderLine, "product_id" | "quantity">[]>,
+  productHours: Map<string, number | null>,
+  clientName: (clientId: string | null) => string | null,
+  today: string
+): QueueRow[] {
+  const rows: QueueRow[] = [];
+
+  for (const order of orders) {
+    // Only orders still in the pipeline — delivered/cancelled are done.
+    if (isTerminal(order.stage)) continue;
+
+    const lines = linesByOrder.get(order.id) ?? [];
+    let estHours = 0;
+    let counted = 0;
+    let uncostedLines = 0;
+
+    for (const line of lines) {
+      const hours = line.product_id ? productHours.get(line.product_id) : null;
+      if (hours == null) {
+        uncostedLines++;
+        continue;
+      }
+      estHours += hours * Math.max(1, line.quantity);
+      counted++;
+    }
+
+    rows.push({
+      orderId: order.id,
+      code: order.code,
+      title: order.title,
+      stage: order.stage,
+      clientName: clientName(order.client_id),
+      promisedOn: order.promised_on,
+      estHours: counted > 0 ? Math.round(estHours * 10) / 10 : null,
+      uncostedLines,
+      overdue: !!order.promised_on && order.promised_on < today,
+    });
+  }
+
+  // Soonest promised first; orders with no promised date sink to the bottom
+  // (they're not late, just undated). Ties fall back to code for stability.
+  return rows.sort((a, b) => {
+    if (a.promisedOn && b.promisedOn) {
+      return a.promisedOn.localeCompare(b.promisedOn) ||
+        (a.code ?? "").localeCompare(b.code ?? "");
+    }
+    if (a.promisedOn) return -1;
+    if (b.promisedOn) return 1;
+    return (a.code ?? "").localeCompare(b.code ?? "");
+  });
+}

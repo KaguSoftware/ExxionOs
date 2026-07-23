@@ -39,11 +39,13 @@ export function CollectionPnl({
   products,
   supplies,
   machineRateMinor,
+  laborRateMinor,
   soldLines,
 }: {
   products: Product[];
   supplies: Supply[];
   machineRateMinor: number;
+  laborRateMinor: number;
   soldLines: SoldLine[];
 }) {
   const { t } = useI18n();
@@ -68,7 +70,7 @@ export function CollectionPnl({
     revenueMinor += lineRevenue;
     unitsSold += line.quantity;
 
-    const cost = productCost(product, supplies, machineRateMinor);
+    const cost = productCost(product, supplies, machineRateMinor, laborRateMinor);
     const lineCost = cost ? cost.totalMinor * line.quantity : null;
     if (lineCost == null) uncostedUnits += line.quantity;
     else costMinor += lineCost;

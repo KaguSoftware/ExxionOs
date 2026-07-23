@@ -51,6 +51,7 @@ export function MarketingInsights({
   products,
   supplies,
   machineRateMinor,
+  laborRateMinor,
   clients,
   taggedOrders,
   orderRevenue,
@@ -68,6 +69,7 @@ export function MarketingInsights({
   products: Product[];
   supplies: Supply[];
   machineRateMinor: number;
+  laborRateMinor: number;
   clients: Client[];
   /** Orders carrying a campaign tag (or null) — feeds real ROI (0019). */
   taggedOrders: { id: string; campaign_id: string | null }[];
@@ -131,8 +133,8 @@ export function MarketingInsights({
   }, [campaigns, taggedOrders, receivedByOrder, spendByCampaign]);
 
   const given = useMemo(
-    () => givenAwayMinor(samples, products, supplies, machineRateMinor),
-    [samples, products, supplies, machineRateMinor]
+    () => givenAwayMinor(samples, products, supplies, machineRateMinor, laborRateMinor),
+    [samples, products, supplies, machineRateMinor, laborRateMinor]
   );
 
   const { months, bySource } = useMemo(

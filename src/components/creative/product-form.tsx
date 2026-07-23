@@ -28,6 +28,7 @@ export function ProductForm({
   collectionId,
   supplies,
   machineRateMinor,
+  laborRateMinor,
   existing,
   images = [],
   productTypes = [],
@@ -35,6 +36,7 @@ export function ProductForm({
   collectionId: string;
   supplies: Supply[];
   machineRateMinor: number;
+  laborRateMinor: number;
   existing?: Product;
   images?: StoredImage[];
   productTypes?: Vocabulary[];
@@ -49,6 +51,7 @@ export function ProductForm({
   const gramsId = useId();
   const measuredId = useId();
   const hoursId = useId();
+  const laborHoursId = useId();
   const priceId = useId();
   const notesId = useId();
 
@@ -70,6 +73,9 @@ export function ProductForm({
     toNumber(existing?.measured_grams)
   );
   const [hours, setHours] = useState<number | null>(toNumber(existing?.print_hours));
+  const [laborHours, setLaborHours] = useState<number | null>(
+    toNumber(existing?.labor_hours)
+  );
   const [price, setPrice] = useState<number | null>(
     existing?.price_minor == null ? null : toMajor(existing.price_minor)
   );
@@ -80,9 +86,16 @@ export function ProductForm({
   // Live cost preview using the SAME function the list uses — so what you see
   // while typing is exactly what the card will show.
   const preview = productCost(
-    { grams, measured_grams: measuredGrams, print_hours: hours, supply_id: supplyId },
+    {
+      grams,
+      measured_grams: measuredGrams,
+      print_hours: hours,
+      labor_hours: laborHours,
+      supply_id: supplyId,
+    },
     supplies,
-    machineRateMinor
+    machineRateMinor,
+    laborRateMinor
   );
   const previewMargin = productMargin(
     { price_minor: price == null ? null : Math.round(price * 100) },
@@ -109,6 +122,7 @@ export function ProductForm({
       grams,
       measuredGrams,
       printHours: hours,
+      laborHours,
       price,
       notes: notes || null,
       links,
@@ -220,6 +234,20 @@ export function ProductForm({
               step={0.5}
             />
           </Field>
+          <Field
+            id={laborHoursId}
+            label={t("creative.laborHours")}
+            hint={t("creative.laborHoursHint")}
+            optional={t("common.optional")}
+          >
+            <NumberInput
+              id={laborHoursId}
+              value={laborHours}
+              onChange={setLaborHours}
+              min={0}
+              step={0.5}
+            />
+          </Field>
           <Field id={priceId} label={t("creative.price")} optional={t("common.optional")}>
             <MoneyInput id={priceId} value={price} onChange={setPrice} min={0} />
           </Field>
@@ -264,6 +292,12 @@ export function ProductForm({
                 material: formatMinor(preview.materialMinor),
                 machine: formatMinor(preview.machineMinor),
               })}
+              {preview.laborMinor > 0 && (
+                <span>
+                  {" · "}
+                  {t("creative.laborCost")}: {formatMinor(preview.laborMinor)}
+                </span>
+              )}
             </p>
           )}
           {previewMargin != null && (

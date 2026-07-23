@@ -40,6 +40,7 @@ export function SampleList({
   productOptions,
   supplies,
   machineRateMinor,
+  laborRateMinor,
   clients,
   campaigns,
   today,
@@ -50,6 +51,7 @@ export function SampleList({
   productOptions: SampleProductOption[];
   supplies: Supply[];
   machineRateMinor: number;
+  laborRateMinor: number;
   clients: Client[];
   campaigns: Campaign[];
   today: string;
@@ -78,8 +80,8 @@ export function SampleList({
   );
 
   const given = useMemo(
-    () => givenAwayMinor(samples, products, supplies, machineRateMinor),
-    [samples, products, supplies, machineRateMinor]
+    () => givenAwayMinor(samples, products, supplies, machineRateMinor, laborRateMinor),
+    [samples, products, supplies, machineRateMinor, laborRateMinor]
   );
 
   const rows = useMemo(
@@ -158,7 +160,7 @@ export function SampleList({
       ) : (
         <ul className="rounded-xl border border-line">
           {rows.map((sample) => {
-            const cost = sampleCostMinor(sample, products, supplies, machineRateMinor);
+            const cost = sampleCostMinor(sample, products, supplies, machineRateMinor, laborRateMinor);
             const client = sample.client_id ? clientsById.get(sample.client_id) : null;
             const campaign = sample.campaign_id
               ? campaignsById.get(sample.campaign_id)

@@ -23,6 +23,7 @@ export function ProductsPanel({
   products,
   supplies = [],
   machineRateMinor,
+  laborRateMinor,
   images,
   files = [],
   collectionId,
@@ -32,6 +33,7 @@ export function ProductsPanel({
   /** Prices the products AND names the stock a print run draws from. */
   supplies?: Supply[];
   machineRateMinor: number;
+  laborRateMinor: number;
   images: (StoredImage & { product_id: string })[];
   /** Source/design files (.mb/.ma/.stl) per product. */
   files?: ProductFile[];
@@ -67,7 +69,7 @@ export function ProductsPanel({
         // ⚠️ COMPUTED HERE, EVERY RENDER — never read from a column. Re-pricing
         // a supply updates every one of these with no writes and no
         // migration. See lib/costing.ts.
-        const cost = productCost(product, supplies, machineRateMinor);
+        const cost = productCost(product, supplies, machineRateMinor, laborRateMinor);
         const margin = productMargin(product, cost);
         const marginPct = productMarginPct(product, cost);
         const supply = supplies.find((s) => s.id === product.supply_id);

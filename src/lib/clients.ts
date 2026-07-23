@@ -343,7 +343,8 @@ export function clientPnl(
   lines: ClientPnlLine[],
   products: Product[],
   supplies: Supply[],
-  machineHourRateMinor: number
+  machineHourRateMinor: number,
+  laborHourRateMinor: number
 ): ClientPnl {
   const byId = new Map(products.map((p) => [p.id, p]));
   let costMinor = 0;
@@ -353,7 +354,7 @@ export function clientPnl(
     const qty = Math.max(1, line.quantity);
     const product = line.product_id ? byId.get(line.product_id) : undefined;
     const cost = product
-      ? productCost(product, supplies, machineHourRateMinor)
+      ? productCost(product, supplies, machineHourRateMinor, laborHourRateMinor)
       : null;
     if (!cost) uncostedUnits += qty;
     else costMinor += cost.totalMinor * qty;

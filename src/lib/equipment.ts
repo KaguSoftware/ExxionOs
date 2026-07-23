@@ -38,6 +38,46 @@ export function suggestedReorder(
   return Math.max(0, Math.ceil(target - quantity));
 }
 
+export type InventoryValue = {
+  /** Kuruş of stock we can actually price. */
+  valuedMinor: number;
+  /** Supplies in stock we CAN'T price (no per-kg price) — reported, not faked. */
+  uncostedCount: number;
+};
+
+/**
+ * The value of stock on hand.
+ *
+ * ⚠️ HONEST, not complete. A printing material (kg, with a `cost_per_kg_minor`)
+ * is valued at `quantity_kg × cost_per_kg` — sound. Anything else has no
+ * reliable per-unit price: `last_price_minor` is the BATCH total of the last
+ * restock, not a unit price, so multiplying it by current stock would invent a
+ * number. Those supplies are counted in `uncostedCount` rather than valued at
+ * ₺0 — the same null-not-zero honesty as `productCost`/`givenAwayMinor`. Only
+ * supplies actually in stock (quantity > 0) count toward the uncosted tally.
+ */
+export function inventoryValue(
+  supplies: Pick<Supply, "quantity" | "cost_per_kg_minor">[]
+): InventoryValue {
+  let valuedMinor = 0;
+  let uncostedCount = 0;
+
+  for (const supply of supplies) {
+    const quantity = Number(supply.quantity);
+    if (!Number.isFinite(quantity) || quantity <= 0) continue;
+
+    if (supply.cost_per_kg_minor != null) {
+      // Printing material: quantity is in kg (the unit is locked to kg for
+      // these), so quantity × per-kg price is the value directly.
+      valuedMinor += Math.round(quantity * supply.cost_per_kg_minor);
+    } else {
+      uncostedCount++;
+    }
+  }
+
+  return { valuedMinor, uncostedCount };
+}
+
 /**
  * The Finance categories whose supplies are PRINTING MATERIALS — weighed in
  * grams and costed per kg, deducted per print run.

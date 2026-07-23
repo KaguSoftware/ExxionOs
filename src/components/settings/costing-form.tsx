@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MoneyInput } from "@/components/ui/number-input";
 import { Panel } from "@/components/ui/panel";
-import { updateMachineRate } from "@/lib/actions/creative";
+import { updateCostingRates } from "@/lib/actions/settings";
 import { useI18n } from "@/lib/i18n/client";
 import { toMajor } from "@/lib/money";
 import { useAction } from "@/lib/use-action";
@@ -18,38 +18,62 @@ import { useAction } from "@/lib/use-action";
  * is deliberately just the machine rate; changing it re-costs every product,
  * which is why the action revalidates the Creative pages too.
  */
-export function CostingForm({ machineRateMinor }: { machineRateMinor: number }) {
+export function CostingForm({
+  machineRateMinor,
+  laborRateMinor,
+}: {
+  machineRateMinor: number;
+  laborRateMinor: number;
+}) {
   const { t } = useI18n();
   const { run, pending } = useAction();
 
-  const [rate, setRate] = useState<number | null>(toMajor(machineRateMinor));
-  const rateDirty = (rate ?? 0) !== toMajor(machineRateMinor);
+  const [machineRate, setMachineRate] = useState<number | null>(
+    toMajor(machineRateMinor)
+  );
+  const [laborRate, setLaborRate] = useState<number | null>(
+    toMajor(laborRateMinor)
+  );
+  const dirty =
+    (machineRate ?? 0) !== toMajor(machineRateMinor) ||
+    (laborRate ?? 0) !== toMajor(laborRateMinor);
 
-  const saveRate = () => {
-    void run(() => updateMachineRate(rate ?? 0), {
-      successMessage: t("creative.saved"),
-      errorMessage: t("creative.saveFailed"),
-    });
+  const save = () => {
+    void run(
+      () =>
+        updateCostingRates({
+          machineRate: machineRate ?? 0,
+          laborRate: laborRate ?? 0,
+        }),
+      {
+        successMessage: t("creative.saved"),
+        errorMessage: t("creative.saveFailed"),
+      }
+    );
   };
 
   return (
     <Panel title={t("creative.costing")} description={t("creative.costingSubtitle")}>
-      <div className="flex flex-wrap items-end gap-2">
-        <div className="min-w-40 flex-1">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
           <label className="mb-1.5 block text-xs font-medium text-muted">
             {t("creative.machineHourRate")}
           </label>
-          <MoneyInput value={rate} onChange={setRate} min={0} />
+          <MoneyInput value={machineRate} onChange={setMachineRate} min={0} />
           <p className="mt-1 text-xs text-faint">
             {t("creative.machineHourRateHint")}
           </p>
         </div>
-        <Button
-          variant="primary"
-          onClick={saveRate}
-          loading={pending}
-          disabled={!rateDirty}
-        >
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-muted">
+            {t("settings.laborRate")}
+          </label>
+          <MoneyInput value={laborRate} onChange={setLaborRate} min={0} />
+          <p className="mt-1 text-xs text-faint">{t("settings.laborRateHint")}</p>
+        </div>
+      </div>
+      <div className="mt-4 flex justify-end">
+        <Button variant="primary" onClick={save} loading={pending} disabled={!dirty}>
           {t("common.save")}
         </Button>
       </div>
