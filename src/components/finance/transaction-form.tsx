@@ -229,7 +229,6 @@ export function TransactionForm({
             : t("finance.deleteBody")
         }
         confirmLabel={t("common.delete")}
-        loading={pending}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={remove}
       />

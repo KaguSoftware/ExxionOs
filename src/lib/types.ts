@@ -40,12 +40,14 @@ export type Reminder = {
 export type VocabularyKind =
   | "product_type"
   | "client_tag"
-  | "supply_item";
+  | "supply_item"
+  | "machine_kind";
 
 export const VOCABULARY_KINDS: VocabularyKind[] = [
   "product_type",
   "client_tag",
   "supply_item",
+  "machine_kind",
 ];
 
 export type Vocabulary = {
@@ -209,6 +211,7 @@ export type Collection = {
   description: string | null;
   status: CollectionStatus;
   cover_path: string | null;
+  links: string[];
   started_on: string | null;
   created_by: string | null;
   created_at: string;
@@ -249,6 +252,7 @@ export type Product = {
   print_hours: string | number | null;
   price_minor: number | null;
   notes: string | null;
+  links: string[];
   created_at: string;
   updated_at: string;
 };
@@ -341,6 +345,7 @@ export type Machine = {
    */
   next_service_on: string | null;
   notes: string | null;
+  links: string[];
   created_at: string;
   updated_at: string;
 };
@@ -391,6 +396,7 @@ export type Supply = {
    */
   cost_per_kg_minor: number | null;
   notes: string | null;
+  links: string[];
   archived_at: string | null;
   created_at: string;
   updated_at: string;
@@ -494,6 +500,7 @@ export type Client = {
   source: ClientSource | null;
   /** Free-form. Analytics reads `source`/`kind`; tags are for FINDING people. */
   tags: string[];
+  links: string[];
   birthday: string | null;
   address: string | null;
   postal_code: string | null;
@@ -573,6 +580,7 @@ export type Order = {
   stage: OrderStage;
   title: string;
   notes: string | null;
+  links: string[];
   total_minor: number;
   promised_on: string | null;
   carrier: string | null;
@@ -670,6 +678,7 @@ export type Campaign = {
   starts_on: string | null;
   ends_on: string | null;
   notes: string | null;
+  links: string[];
   /** ⚠️ Campaigns ARCHIVE, never delete — costs and samples point at them. */
   archived_at: string | null;
   created_by: string | null;

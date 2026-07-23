@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { syncTransaction } from "@/lib/actions/finance-link";
 import { getSessionContext } from "@/lib/data/session";
+import { normaliseLinks } from "@/lib/links";
 import { toMinor } from "@/lib/money";
 import { outstandingMinor } from "@/lib/shipping";
 import { appendMovement } from "@/lib/stock-write";
@@ -72,6 +73,7 @@ export type OrderInput = {
   trackingNumber: string | null;
   shippingCost: number | null;
   lines: OrderLineInput[];
+  links: string[];
 };
 
 function orderRow(input: OrderInput, totalMinor: number) {
@@ -81,6 +83,7 @@ function orderRow(input: OrderInput, totalMinor: number) {
     campaign_id: input.campaignId,
     title: input.title.trim().slice(0, 200) || "Untitled order",
     notes: input.notes?.trim().slice(0, 4000) || null,
+    links: normaliseLinks(input.links),
     total_minor: totalMinor,
     promised_on: input.promisedOn,
     carrier: input.carrier?.trim().slice(0, 80) || null,

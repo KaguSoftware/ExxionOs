@@ -61,7 +61,7 @@ export function Reminders({
       onSuccess: (created) => setItems((list) => [created, ...list]),
       // No success toast: the row appearing IS the feedback. A toast for
       // something already visible is noise.
-      errorMessage: undefined,
+      errorMessage: t("settings.saveFailed"),
     });
     setAdding(false);
   };
@@ -71,6 +71,7 @@ export function Reminders({
     void run(() => toggleReminder(reminder.id, true), {
       optimistic: () => setItems((list) => list.filter((r) => r.id !== reminder.id)),
       rollback: () => setItems(previous),
+      errorMessage: t("settings.saveFailed"),
     });
   };
 
@@ -79,6 +80,7 @@ export function Reminders({
     void run(() => deleteReminder(reminder.id), {
       optimistic: () => setItems((list) => list.filter((r) => r.id !== reminder.id)),
       rollback: () => setItems(previous),
+      errorMessage: t("settings.saveFailed"),
     });
   };
 

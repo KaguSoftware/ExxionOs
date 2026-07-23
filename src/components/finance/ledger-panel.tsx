@@ -114,6 +114,7 @@ export function LedgerPanel({
           rows={visible}
           categories={categories}
           emptyIsFiltered={transactions.length > 0}
+          onClearFilters={reset}
         />
       </div>
     </div>

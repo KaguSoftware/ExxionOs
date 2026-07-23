@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { effectiveGrams } from "@/lib/costing";
 import { getSessionContext } from "@/lib/data/session";
+import { normaliseLinks } from "@/lib/links";
 import { toMinor } from "@/lib/money";
 import { appendMovement } from "@/lib/stock-write";
 import { createClient } from "@/lib/supabase/server";
@@ -44,6 +45,7 @@ export async function createCollection(input: {
   description: string | null;
   status: CollectionStatus;
   startedOn: string | null;
+  links: string[];
 }): Promise<ActionResult<Collection>> {
   const ctx = await getSessionContext();
   const supabase = await createClient();
@@ -55,6 +57,7 @@ export async function createCollection(input: {
       description: input.description?.trim().slice(0, 4000) || null,
       status: pick(input.status, COLLECTION_STATUSES, "planned"),
       started_on: input.startedOn,
+      links: normaliseLinks(input.links),
       created_by: ctx.userId,
     })
     .select()
@@ -72,6 +75,7 @@ export async function updateCollection(
     description: string | null;
     status: CollectionStatus;
     startedOn: string | null;
+    links: string[];
   }
 ): Promise<ActionResult> {
   await getSessionContext();
@@ -84,6 +88,7 @@ export async function updateCollection(
       description: input.description?.trim().slice(0, 4000) || null,
       status: pick(input.status, COLLECTION_STATUSES, "planned"),
       started_on: input.startedOn,
+      links: normaliseLinks(input.links),
     })
     .eq("id", id);
 
@@ -252,6 +257,7 @@ export type ProductInput = {
   /** Decimal lira as typed; converted to kuruş here and nowhere else. */
   price: number | null;
   notes: string | null;
+  links: string[];
 };
 
 function productRow(input: ProductInput) {
@@ -267,6 +273,7 @@ function productRow(input: ProductInput) {
     // product must not become ₺0,00, which reads as "free".
     price_minor: input.price == null ? null : Math.abs(toMinor(input.price)),
     notes: input.notes?.trim().slice(0, 4000) || null,
+    links: normaliseLinks(input.links),
   };
 }
 

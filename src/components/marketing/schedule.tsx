@@ -228,15 +228,15 @@ export function MarketingSchedule({
         body={t("marketing.deleteEventBody")}
         confirmLabel={t("common.delete")}
         onCancel={() => setDeleting(null)}
-        onConfirm={() => {
-          const event = deleting;
-          setDeleting(null);
-          if (!event) return;
-          void run(() => deleteEvent(event.id), {
-            successMessage: t("marketing.eventDeleted"),
-            onSuccess: () => router.refresh(),
-          });
-        }}
+        onConfirm={() =>
+          deleting
+            ? run(() => deleteEvent(deleting.id), {
+                successMessage: t("marketing.eventDeleted"),
+                errorMessage: t("marketing.saveFailed"),
+                onSuccess: () => router.refresh(),
+              })
+            : undefined
+        }
       />
     </>
   );

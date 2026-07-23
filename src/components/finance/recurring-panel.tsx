@@ -23,7 +23,7 @@ export function RecurringPanel({
   categories: Category[];
 }) {
   const { t, locale } = useI18n();
-  const { run, pending } = useAction();
+  const { run } = useAction();
 
   const [items, setItems] = useState(initial);
   const [editing, setEditing] = useState<RecurringItem | null>(null);
@@ -171,7 +171,6 @@ export function RecurringPanel({
         // read as "this will erase the last six months of rent".
         body={t("finance.deleteRecurringBody")}
         confirmLabel={t("common.delete")}
-        loading={pending}
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => confirmDelete && remove(confirmDelete)}
       />

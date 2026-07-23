@@ -10,6 +10,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Field } from "@/components/ui/field";
 import { TextArea, TextInput } from "@/components/ui/input";
+import { LinksEditor } from "@/components/ui/links-editor";
 import { MoneyInput, NumberInput } from "@/components/ui/number-input";
 import { createOrder, updateOrder, type OrderLineInput } from "@/lib/actions/shipping";
 import { useI18n } from "@/lib/i18n/client";
@@ -68,6 +69,7 @@ export function OrderForm({
     order?.shipping_cost_minor != null ? toMajor(order.shipping_cost_minor) : null
   );
   const [notes, setNotes] = useState(order?.notes ?? "");
+  const [links, setLinks] = useState<string[]>(order?.links ?? []);
 
   const [lines, setLines] = useState<DraftLine[]>(() =>
     (existingLines ?? []).map((l) => ({
@@ -135,6 +137,7 @@ export function OrderForm({
       campaignId: campaignId || null,
       title,
       notes: notes.trim() || null,
+      links,
       promisedOn,
       carrier: carrier.trim() || null,
       trackingNumber: tracking.trim() || null,
@@ -438,6 +441,8 @@ export function OrderForm({
             rows={3}
           />
         </Field>
+
+        <LinksEditor value={links} onChange={setLinks} />
       </div>
     </CreateForm>
   );

@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { TextInput } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/number-input";
+import { LinksList } from "@/components/ui/links-list";
 import { Panel } from "@/components/ui/panel";
 import {
   addCampaignCost,
@@ -113,6 +114,7 @@ export function CampaignDetail({
               onClick={() =>
                 void run(() => unarchiveCampaign(campaign.id), {
                   successMessage: t("marketing.campaignRestored"),
+                  errorMessage: t("marketing.saveFailed"),
                   onSuccess: () => router.refresh(),
                 })
               }
@@ -214,6 +216,12 @@ export function CampaignDetail({
         </Panel>
       )}
 
+      {campaign.links.length > 0 && (
+        <Panel title={t("common.links")} className="mt-4">
+          <LinksList links={campaign.links} />
+        </Panel>
+      )}
+
       {/* ⚠️ Each cost writes ONE real Finance expense via syncTransaction(). */}
       <CreateOverlay
         open={addingCost}
@@ -263,15 +271,15 @@ export function CampaignDetail({
         body={t("marketing.deleteCostBody")}
         confirmLabel={t("common.delete")}
         onCancel={() => setDeletingCost(null)}
-        onConfirm={() => {
-          const cost = deletingCost;
-          setDeletingCost(null);
-          if (!cost) return;
-          void run(() => deleteCampaignCost(cost.id), {
-            successMessage: t("marketing.costDeleted"),
-            onSuccess: () => router.refresh(),
-          });
-        }}
+        onConfirm={() =>
+          deletingCost
+            ? run(() => deleteCampaignCost(deletingCost.id), {
+                successMessage: t("marketing.costDeleted"),
+                errorMessage: t("marketing.saveFailed"),
+                onSuccess: () => router.refresh(),
+              })
+            : undefined
+        }
       />
 
       <ConfirmDialog
@@ -281,13 +289,13 @@ export function CampaignDetail({
         body={t("marketing.archiveConfirm")}
         confirmLabel={t("marketing.archiveCampaign")}
         onCancel={() => setArchiving(false)}
-        onConfirm={() => {
-          setArchiving(false);
-          void run(() => archiveCampaign(campaign.id), {
+        onConfirm={() =>
+          run(() => archiveCampaign(campaign.id), {
             successMessage: t("marketing.campaignArchived"),
+            errorMessage: t("marketing.saveFailed"),
             onSuccess: () => router.refresh(),
-          });
-        }}
+          })
+        }
       />
     </div>
   );

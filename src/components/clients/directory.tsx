@@ -185,7 +185,23 @@ export function ClientDirectory({
           inside the bordered list with its own radius, instead of a full-bleed
           edge-to-edge bar. */}
       {rows.length === 0 ? (
-        <EmptyState title={t("clients.noMatches")} />
+        // ⚠️ A filtered-to-nothing state must offer the way OUT of the filter.
+        <EmptyState
+          title={t("clients.noMatches")}
+          action={
+            <Button
+              size="sm"
+              onClick={() => {
+                setQuery("");
+                setKind("");
+                setSource("");
+                setTag("");
+              }}
+            >
+              {t("common.clearFilters")}
+            </Button>
+          }
+        />
       ) : (
         <ul className="list-inset flex flex-col rounded-xl border border-line">
           {rows.map(({ client, stats }) => (

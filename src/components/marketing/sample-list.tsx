@@ -323,15 +323,15 @@ export function SampleList({
         body={t("marketing.deleteSampleBody")}
         confirmLabel={t("common.delete")}
         onCancel={() => setDeleting(null)}
-        onConfirm={() => {
-          const sample = deleting;
-          setDeleting(null);
-          if (!sample) return;
-          void run(() => deleteSample(sample.id), {
-            successMessage: t("marketing.sampleDeleted"),
-            onSuccess: () => router.refresh(),
-          });
-        }}
+        onConfirm={() =>
+          deleting
+            ? run(() => deleteSample(deleting.id), {
+                successMessage: t("marketing.sampleDeleted"),
+                errorMessage: t("marketing.saveFailed"),
+                onSuccess: () => router.refresh(),
+              })
+            : undefined
+        }
       />
     </>
   );

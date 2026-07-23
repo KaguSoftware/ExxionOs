@@ -10,8 +10,10 @@ import { EventTimeline } from "@/components/clients/event-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { CopyButton } from "@/components/ui/copy-button";
 import { CreateOverlay } from "@/components/ui/create";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LinksList } from "@/components/ui/links-list";
 import { Panel } from "@/components/ui/panel";
 import { archiveClient, unarchiveClient } from "@/lib/actions/clients";
 import {
@@ -106,6 +108,7 @@ export function ClientDetail({
               onClick={() =>
                 void run(() => unarchiveClient(client.id), {
                   successMessage: t("clients.unarchived"),
+                  errorMessage: t("clients.saveFailed"),
                   onSuccess: () => router.refresh(),
                 })
               }
@@ -145,11 +148,28 @@ export function ClientDetail({
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title={t("clients.profile")}>
           <dl className="flex flex-col gap-2 text-sm">
-            <Row label={t("clients.email")} value={client.email} />
-            <Row label={t("clients.phone")} value={client.phone} />
+            <Row
+              label={t("clients.email")}
+              value={client.email}
+              href={client.email ? `mailto:${client.email}` : undefined}
+              copy
+            />
+            <Row
+              label={t("clients.phone")}
+              value={client.phone}
+              href={client.phone ? `tel:${client.phone.replace(/\s+/g, "")}` : undefined}
+              copy
+            />
             <Row
               label={t("clients.instagram")}
               value={client.instagram ? `@${client.instagram}` : null}
+              href={
+                client.instagram
+                  ? `https://instagram.com/${client.instagram}`
+                  : undefined
+              }
+              external
+              copy
             />
             <Row label={t("clients.birthday")} value={
               client.birthday ? formatDate(client.birthday, locale) : null
@@ -166,6 +186,12 @@ export function ClientDetail({
               {client.tags.map((tag) => (
                 <Badge key={tag}>{tag}</Badge>
               ))}
+            </div>
+          )}
+
+          {client.links.length > 0 && (
+            <div className="mt-3 border-t border-line pt-3">
+              <LinksList links={client.links} />
             </div>
           )}
         </Panel>
@@ -253,6 +279,7 @@ export function ClientDetail({
         onConfirm={() =>
           void run(() => archiveClient(client.id), {
             successMessage: t("clients.archived_"),
+            errorMessage: t("clients.saveFailed"),
             // Close on success so the confirm button's spinner is actually
             // visible while the archive + refresh is in flight. The useAction
             // ref guard already prevents a second fire.
@@ -294,12 +321,42 @@ function Stat({
   );
 }
 
-function Row({ label, value }: { label: string; value: string | null }) {
+function Row({
+  label,
+  value,
+  href,
+  external,
+  copy,
+}: {
+  label: string;
+  value: string | null;
+  /** Renders the value as a link (tel:, mailto:, https://…). */
+  href?: string;
+  /** Opens in a new tab (external sites, not tel:/mailto:). */
+  external?: boolean;
+  /** Adds a copy-to-clipboard button beside the value. */
+  copy?: boolean;
+}) {
   if (!value) return null;
   return (
     <div className="flex items-baseline justify-between gap-3">
       <dt className="shrink-0 text-xs text-muted">{label}</dt>
-      <dd className="min-w-0 text-end text-ink break-words">{value}</dd>
+      <dd className="flex min-w-0 items-center justify-end gap-1 text-end text-ink break-words">
+        {href ? (
+          <a
+            href={href}
+            {...(external
+              ? { target: "_blank", rel: "noopener noreferrer" }
+              : {})}
+            className="min-w-0 break-words text-brand-text hover:underline"
+          >
+            {value}
+          </a>
+        ) : (
+          <span className="min-w-0 break-words">{value}</span>
+        )}
+        {copy && <CopyButton text={value} />}
+      </dd>
     </div>
   );
 }

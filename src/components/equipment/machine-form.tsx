@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ComboCreate } from "@/components/ui/combo-create";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CreateForm } from "@/components/ui/create";
@@ -12,16 +13,26 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Field } from "@/components/ui/field";
 import { TextArea, TextInput } from "@/components/ui/input";
+import { LinksEditor } from "@/components/ui/links-editor";
 import { MoneyInput } from "@/components/ui/number-input";
 import { createMachine, deleteMachine, updateMachine } from "@/lib/actions/equipment";
+import { createVocabulary } from "@/lib/actions/vocabulary";
 import { STATUS_KEY } from "@/lib/equipment";
 import { useI18n } from "@/lib/i18n/client";
 import { toMajor } from "@/lib/money";
-import type { Machine, MachineStatus } from "@/lib/types";
+import type { Machine, MachineStatus, Vocabulary } from "@/lib/types";
 import { MACHINE_STATUSES } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
+import { vocabOptions } from "@/lib/vocab";
 
-export function MachineForm({ existing }: { existing?: Machine }) {
+export function MachineForm({
+  existing,
+  kinds = [],
+}: {
+  existing?: Machine;
+  /** The `machine_kind` vocabulary, for the Type picker. */
+  kinds?: Vocabulary[];
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const { run, pending } = useAction();
@@ -38,7 +49,7 @@ export function MachineForm({ existing }: { existing?: Machine }) {
   const notesId = useId();
 
   const [name, setName] = useState(existing?.name ?? "");
-  const [kind, setKind] = useState(existing?.kind ?? "");
+  const [kind, setKind] = useState<string | null>(existing?.kind ?? null);
   const [model, setModel] = useState(existing?.model ?? "");
   const [serial, setSerial] = useState(existing?.serial ?? "");
   const [status, setStatus] = useState<MachineStatus>(
@@ -57,6 +68,7 @@ export function MachineForm({ existing }: { existing?: Machine }) {
     existing?.next_service_on ?? null
   );
   const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [links, setLinks] = useState<string[]>(existing?.links ?? []);
   // Pre-ticked only if this machine ALREADY has a linked purchase expense —
   // otherwise off, because most machines were bought (and expensed) before
   // they were entered here.
@@ -64,6 +76,13 @@ export function MachineForm({ existing }: { existing?: Machine }) {
     !!existing?.purchase_transaction_id
   );
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const [kindRows, setKindRows] = useState(kinds);
+  const kindOptions = vocabOptions(
+    kindRows,
+    "machine_kind",
+    existing?.kind ? [existing.kind] : []
+  ).map((v) => ({ value: v.label, label: v.label }));
 
   const emptyFields = name.trim() ? [] : [t("equipment.machineName")];
 
@@ -80,6 +99,7 @@ export function MachineForm({ existing }: { existing?: Machine }) {
       logPurchaseExpense: logPurchase,
       nextServiceOn,
       notes: notes || null,
+      links,
     };
 
     const result = await run<unknown>(
@@ -135,11 +155,22 @@ export function MachineForm({ existing }: { existing?: Machine }) {
             />
           </Field>
           <Field id={kindId} label={t("equipment.machineKind")} optional={t("common.optional")}>
-            <TextInput
+            <ComboCreate
               id={kindId}
               value={kind}
-              onChange={(e) => setKind(e.target.value)}
+              onChange={setKind}
+              options={kindOptions}
+              label={t("equipment.machineKind")}
               placeholder={t("equipment.machineKindPlaceholder")}
+              onCreate={async (label) => {
+                const result = await createVocabulary({ kind: "machine_kind", label });
+                if (!result.ok) return null;
+                setKindRows((rows) => [
+                  ...rows.filter((r) => r.id !== result.data.id),
+                  result.data,
+                ]);
+                return result.data.label;
+              }}
             />
           </Field>
         </div>
@@ -218,7 +249,7 @@ export function MachineForm({ existing }: { existing?: Machine }) {
           />
         )}
 
-        <Field id={notesId} label={t("creative.ideaBody")} optional={t("common.optional")}>
+        <Field id={notesId} label={t("common.notes")} optional={t("common.optional")}>
           <TextArea
             id={notesId}
             value={notes}
@@ -226,6 +257,8 @@ export function MachineForm({ existing }: { existing?: Machine }) {
             rows={3}
           />
         </Field>
+
+        <LinksEditor value={links} onChange={setLinks} />
       </CreateForm>
 
       {existing && (
@@ -248,7 +281,6 @@ export function MachineForm({ existing }: { existing?: Machine }) {
         // not quietly rewrite what the shop spent last year.
         body={t("equipment.deleteMachineBody")}
         confirmLabel={t("common.delete")}
-        loading={pending}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={remove}
       />

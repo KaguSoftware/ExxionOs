@@ -8,6 +8,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Field } from "@/components/ui/field";
 import { TextArea, TextInput } from "@/components/ui/input";
+import { LinksEditor } from "@/components/ui/links-editor";
 import { MoneyInput } from "@/components/ui/number-input";
 import { createCampaign, updateCampaign } from "@/lib/actions/marketing";
 import { useI18n } from "@/lib/i18n/client";
@@ -37,6 +38,7 @@ export function CampaignForm({ campaign }: { campaign?: Campaign }) {
   const [startsOn, setStartsOn] = useState<string | null>(campaign?.starts_on ?? null);
   const [endsOn, setEndsOn] = useState<string | null>(campaign?.ends_on ?? null);
   const [notes, setNotes] = useState(campaign?.notes ?? "");
+  const [links, setLinks] = useState<string[]>(campaign?.links ?? []);
 
   // ⚠️ Not a validator — `CreateForm` asks once, then proceeds.
   const emptyFields = name.trim() ? [] : [t("marketing.campaignName")];
@@ -51,6 +53,7 @@ export function CampaignForm({ campaign }: { campaign?: Campaign }) {
       startsOn,
       endsOn,
       notes: notes || null,
+      links,
     };
 
     if (campaign) {
@@ -160,6 +163,8 @@ export function CampaignForm({ campaign }: { campaign?: Campaign }) {
           rows={4}
         />
       </Field>
+
+      <LinksEditor value={links} onChange={setLinks} />
     </CreateForm>
   );
 }

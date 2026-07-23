@@ -8,6 +8,7 @@ import { CreateForm } from "@/components/ui/create";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Field } from "@/components/ui/field";
 import { TextArea, TextInput } from "@/components/ui/input";
+import { LinksEditor } from "@/components/ui/links-editor";
 import { MoneyInput, NumberInput } from "@/components/ui/number-input";
 import { createSupply, updateSupply } from "@/lib/actions/equipment";
 import { createVocabulary } from "@/lib/actions/vocabulary";
@@ -57,6 +58,7 @@ export function SupplyForm({
     existing?.low_threshold == null ? null : Number(existing.low_threshold)
   );
   const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [links, setLinks] = useState<string[]>(existing?.links ?? []);
 
   // ⚠️ THE PRINTING SIGNAL IS THE CATEGORY. Filament/Resin → weighed in grams,
   // costed per kg, deducted per print. Any other category → counted, no cost.
@@ -90,6 +92,7 @@ export function SupplyForm({
       // Only a printing material carries a per-kg cost.
       costPerKg: isPrinting ? costPerKg : null,
       notes: notes || null,
+      links,
     };
 
     const result = await run<unknown>(
@@ -106,7 +109,9 @@ export function SupplyForm({
     );
 
     if (result.ok) {
-      router.push("/equipment?tab=supplies");
+      router.push(
+        existing ? `/equipment/supplies/${existing.id}` : "/equipment?tab=supplies"
+      );
       router.refresh();
     }
   };
@@ -228,7 +233,7 @@ export function SupplyForm({
         </Field>
       </div>
 
-      <Field id={notesId} label={t("creative.ideaBody")} optional={t("common.optional")}>
+      <Field id={notesId} label={t("common.notes")} optional={t("common.optional")}>
         <TextArea
           id={notesId}
           value={notes}
@@ -236,6 +241,8 @@ export function SupplyForm({
           rows={3}
         />
       </Field>
+
+      <LinksEditor value={links} onChange={setLinks} />
     </CreateForm>
   );
 }

@@ -324,7 +324,6 @@ export function CategoriesPanel({ categories }: { categories: Category[] }) {
         title={t("finance.deleteCategory", { name: confirming?.name ?? "" })}
         body={t("finance.deleteCategoryBody")}
         confirmLabel={t("common.delete")}
-        loading={pending}
         onCancel={() => setConfirming(null)}
         onConfirm={confirmDelete}
       />

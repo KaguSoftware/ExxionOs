@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { categoryIdByName, syncTransaction } from "@/lib/actions/finance-link";
 import { getSessionContext } from "@/lib/data/session";
+import { normaliseLinks } from "@/lib/links";
 import { toMinor } from "@/lib/money";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -60,6 +61,7 @@ export type MachineInput = {
   /** When the machine is next due for service; drives an auto-reminder (0017). */
   nextServiceOn: string | null;
   notes: string | null;
+  links: string[];
 };
 
 function machineRow(input: MachineInput) {
@@ -75,6 +77,7 @@ function machineRow(input: MachineInput) {
       input.purchasePrice == null ? null : Math.abs(toMinor(input.purchasePrice)),
     next_service_on: input.nextServiceOn,
     notes: input.notes?.trim().slice(0, 4000) || null,
+    links: normaliseLinks(input.links),
   };
 }
 
@@ -347,6 +350,7 @@ export type SupplyInput = {
   /** Kuruş per kg, or null for a supply that isn't a printing material. */
   costPerKg: number | null;
   notes: string | null;
+  links: string[];
 };
 
 export async function createSupply(
@@ -370,6 +374,7 @@ export async function createSupply(
       cost_per_kg_minor:
         input.costPerKg == null ? null : Math.abs(toMinor(input.costPerKg)),
       notes: input.notes?.trim().slice(0, 2000) || null,
+      links: normaliseLinks(input.links),
     })
     .select()
     .single<Supply>();
@@ -404,6 +409,7 @@ export async function updateSupply(
       cost_per_kg_minor:
         input.costPerKg == null ? null : Math.abs(toMinor(input.costPerKg)),
       notes: input.notes?.trim().slice(0, 2000) || null,
+      links: normaliseLinks(input.links),
     })
     .eq("id", id);
 

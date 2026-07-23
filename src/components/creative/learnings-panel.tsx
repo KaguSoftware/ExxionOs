@@ -48,7 +48,7 @@ export function LearningsPanel({
   collectionId?: string;
 }) {
   const { t, locale } = useI18n();
-  const { run, pending } = useAction();
+  const { run } = useAction();
 
   const [issues, setIssues] = useState(initial);
   const [query, setQuery] = useState("");
@@ -208,7 +208,6 @@ export function LearningsPanel({
         title={t("creative.deleteIssue")}
         body={t("creative.deleteIssueBody")}
         confirmLabel={t("common.delete")}
-        loading={pending}
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => confirmDelete && remove(confirmDelete)}
       />

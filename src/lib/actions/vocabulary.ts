@@ -20,7 +20,7 @@ function pick<T extends string>(value: unknown, allowed: T[], fallback: T): T {
 function refresh(kind: VocabularyKind) {
   if (kind === "product_type") {
     revalidatePath("/creative", "layout");
-  } else if (kind === "supply_item") {
+  } else if (kind === "supply_item" || kind === "machine_kind") {
     revalidatePath("/equipment", "layout");
   } else {
     revalidatePath("/clients", "layout");
@@ -138,11 +138,20 @@ export async function renameVocabulary(
     }
   }
 
-  if (current.kind === "product_type" || current.kind === "supply_item") {
-    // Both store the label verbatim in a single text column, so the rename is
-    // one update. (product_type → products.kind, supply_item → supplies.item.)
-    const table = current.kind === "product_type" ? "products" : "supplies";
-    const column = current.kind === "product_type" ? "kind" : "item";
+  if (
+    current.kind === "product_type" ||
+    current.kind === "supply_item" ||
+    current.kind === "machine_kind"
+  ) {
+    // Each stores the label verbatim in a single text column, so the rename is
+    // one update. (product_type → products.kind, supply_item → supplies.item,
+    // machine_kind → machines.kind.)
+    const { table, column } =
+      current.kind === "product_type"
+        ? { table: "products", column: "kind" }
+        : current.kind === "supply_item"
+          ? { table: "supplies", column: "item" }
+          : { table: "machines", column: "kind" };
     const { error } = await supabase
       .from(table)
       .update({ [column]: label })
@@ -256,10 +265,15 @@ export async function countVocabularyUsage(
             .from("supplies")
             .select("id", { count: "exact", head: true })
             .eq("item", current.label)
-        : await supabase
-            .from("clients")
-            .select("id", { count: "exact", head: true })
-            .contains("tags", [current.label]);
+        : current.kind === "machine_kind"
+          ? await supabase
+              .from("machines")
+              .select("id", { count: "exact", head: true })
+              .eq("kind", current.label)
+          : await supabase
+              .from("clients")
+              .select("id", { count: "exact", head: true })
+              .contains("tags", [current.label]);
 
   if (error) return { ok: false, error: error.message };
   return { ok: true, data: count ?? 0 };

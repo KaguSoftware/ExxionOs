@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState, useTransition } from "react";
 
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n/client";
 import type { ActionResult } from "@/lib/types";
 
 /**
@@ -37,6 +38,7 @@ type RunOptions<T> = {
  */
 export function useAction() {
   const toast = useToast();
+  const t = useT();
   const [pending, startTransition] = useTransition();
   const [running, setRunning] = useState(false);
   /**
@@ -93,7 +95,9 @@ export function useAction() {
         rollback?.();
         const message =
           errorMessage ??
-          (error instanceof Error ? error.message : "Something went wrong.");
+          (error instanceof Error
+            ? error.message
+            : t("common.somethingWentWrong"));
         toast.error(message);
         return { ok: false, error: message };
       } finally {
@@ -101,7 +105,7 @@ export function useAction() {
         setRunning(false);
       }
     },
-    [toast]
+    [toast, t]
   );
 
   return { run, pending: pending || running };

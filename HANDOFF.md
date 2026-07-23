@@ -6,7 +6,56 @@
 
 ## 👋 START HERE — resuming in a brand-new chat
 
-### 🟢 LATEST — 2026-07-23, Focus-steal typing bug (system-wide) + measured filament per print
+### 🟢 LATEST — 2026-07-23 (second session), Links everywhere + notes visible + polish round
+
+**NOT committed yet** — working tree has this session's changes on top of the previous session's
+uncommitted work. `tsc` · `lint` · `build` (32 routes) · `npm run contrast` all green.
+
+**⚠️ NEW MIGRATION `0023_links.sql` — WRITTEN, NOT APPLIED** (joins the 0018–0021 queue; Parsa
+must `npx supabase db push`). Adds `links text[] not null default '{}'` to **machines, supplies,
+products, orders, clients, campaigns, collections**. Until applied, SAVING any of those forms
+errors (the insert/update sends `links`) — loud, by design.
+
+**A. Links feature (Parsa: "add a link section… opens in a new tab… multiple links… everywhere").**
+- `normaliseLinks()`/`linkLabel()` in **`src/lib/links.ts`** (not in an action file — "use server"
+  modules only export async fns): trim, cap 500 chars/20 links, prepend `https://` when no scheme,
+  dedupe.
+- **`ui/links-editor.tsx`** (fieldset of URL rows, add/remove, styled to match Field) in all seven
+  forms; **`ui/links-list.tsx`** (new-tab anchors, `rel="noopener noreferrer"`, hostname+path label,
+  `dir="ltr"` — URLs stay Latin in Farsi, `text-brand-text` never `text-brand`) in every detail view.
+- Wired through every input type + row builder in actions/{equipment,creative,shipping,clients,
+  marketing}. All tables `select("*")`, so no query edits.
+
+**B. Notes now VISIBLE without opening edit** (the complaint that started the session):
+machine-detail gained notes+links panels (it showed NEITHER before). Machine/supply/product forms'
+notes label fixed from the wrong `creative.ideaBody` to new `common.notes`.
+
+**C. Supplies got a real DETAIL PAGE** — `/equipment/supplies/[id]` is now read-only
+(`equipment/supply-detail.tsx`: stock + low badge, threshold, cost/kg or last price, notes, links,
+restock history from `supply_restocks`, restock button reusing `RestockForm`); the edit form moved
+to **`/equipment/supplies/[id]/edit`**. Supply names in the list link to it; ⌘K search already
+pointed at the detail URL. SupplyForm redirects back to the detail on save-of-existing.
+
+**D. Polish backlog cleared (from the audit list below):**
+- **ConfirmDialog async migration FINISHED** — all ~13 remaining callers converted (return the
+  `run()` promise) or, where the delete is optimistic (ideas/learnings/machine-detail/categories/
+  recurring), the dead `loading={pending}` was dropped and instant-close kept deliberately.
+  image-strip needed nothing (no loading prop existed).
+- **Filtered-empty dead ends** now offer "Clear filters": clients directory, maintenance panel,
+  finance transaction-list (new `onClearFilters` prop wired to the ledger's `reset`).
+- **Farsi error toasts**: every `run()` missing `errorMessage` got the section's `saveFailed`;
+  `use-action.ts`'s hardcoded English fallback is now `t("common.somethingWentWrong")`.
+
+**E. Contact QoL:** client email/phone/instagram are now `mailto:`/`tel:`/instagram.com links with
+copy buttons (new **`ui/copy-button.tsx`**, clipboard + check-flash); order codes copyable in
+order-detail. New i18n keys (en+fa): `common.{links,addLink,notes,copy,copied}`,
+`equipment.{restockHistory,noRestocks,noRestocksHint,lastPrice}`.
+
+**Not driven in a browser** — worth Parsa opening a machine (notes finally visible), a supply row
+(new detail page), and adding `example.com` as a link (should save as https://example.com and open
+in a new tab).
+
+### 🟢 EARLIER — 2026-07-23, Focus-steal typing bug (system-wide) + measured filament per print
 
 **NOT committed yet** — working tree has the changes below. `tsc` · `lint` · `build` all green
 (4 pre-existing lint warnings, all in `scripts/seed-data.mjs`, untouched).
@@ -255,6 +304,11 @@ No schema/migration changes — this was purely the app layer.
    income green, `viewport`/`themeColor`, focus ring legible on saturated fills, `--scrim` token.
 
 **⚠️ NOT YET DONE — the audit surfaced more than got fixed. Pick up here:**
+- ✅ **DONE 2026-07-23 (second session)**: the ConfirmDialog migration, the filtered-empty dead
+  ends, and the missing-errorMessage/use-action fallback items below are all fixed — see LATEST.
+  Still open from this list: the consistency backlog (Stat/IconButton/chip primitives, 📷 emoji,
+  product-delete cascade wording), server actions' ~20 hardcoded English error literals, and the
+  deeper a11y items (DatePicker arrow keys, Field's dead `data-described-by`).
 - **Finish the ConfirmDialog migration**: ~13 callers still fire-and-close, so their delete
   spinner is invisible. Convert each to return the `run(...)` promise from `onConfirm` and drop
   the manual `loading`/synchronous close: `creative/{ideas-panel,learnings-panel,stock-panel,

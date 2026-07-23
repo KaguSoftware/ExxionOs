@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { FilterChip } from "@/components/creative/collections-panel";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useI18n } from "@/lib/i18n/client";
 import type { Machine, MaintenanceKind, MaintenanceLog } from "@/lib/types";
@@ -79,7 +80,21 @@ export function MaintenancePanel({
       </div>
 
       {visible.length === 0 ? (
-        <EmptyState title={t("common.noResults")} />
+        // ⚠️ A filtered-to-nothing state must offer the way OUT of the filter.
+        <EmptyState
+          title={t("common.noResults")}
+          action={
+            <Button
+              size="sm"
+              onClick={() => {
+                setKind(null);
+                setMachineId(null);
+              }}
+            >
+              {t("common.clearFilters")}
+            </Button>
+          }
+        />
       ) : (
         <ul className="rounded-xl border border-line">
           {visible.map((log) => {

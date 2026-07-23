@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { syncTransaction } from "@/lib/actions/finance-link";
 import { getSessionContext } from "@/lib/data/session";
+import { normaliseLinks } from "@/lib/links";
 import { toMinor } from "@/lib/money";
 import { appendMovement } from "@/lib/stock-write";
 import { createClient } from "@/lib/supabase/server";
@@ -59,6 +60,7 @@ export type CampaignInput = {
   startsOn: string | null;
   endsOn: string | null;
   notes: string | null;
+  links: string[];
 };
 
 function campaignRow(input: CampaignInput) {
@@ -72,6 +74,7 @@ function campaignRow(input: CampaignInput) {
     starts_on: input.startsOn,
     ends_on: input.endsOn,
     notes: input.notes?.trim().slice(0, 4000) || null,
+    links: normaliseLinks(input.links),
   };
 }
 

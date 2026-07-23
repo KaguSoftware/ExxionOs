@@ -29,7 +29,7 @@ const STATUS_KEY: Record<IdeaStatus, string> = {
 export function IdeasPanel({ ideas: initial }: { ideas: Idea[] }) {
   const { t, locale } = useI18n();
   const router = useRouter();
-  const { run, pending } = useAction();
+  const { run } = useAction();
 
   const [ideas, setIdeas] = useState(initial);
   const [filter, setFilter] = useState<IdeaStatus | null>(null);
@@ -256,7 +256,6 @@ export function IdeasPanel({ ideas: initial }: { ideas: Idea[] }) {
         title={t("creative.deleteIdea")}
         body={t("common.deleteWarning")}
         confirmLabel={t("common.delete")}
-        loading={pending}
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => confirmDelete && remove(confirmDelete)}
       />

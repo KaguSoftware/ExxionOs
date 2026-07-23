@@ -8,6 +8,7 @@ import { LearningsPanel } from "@/components/creative/learnings-panel";
 import { ProductsPanel } from "@/components/creative/products-panel";
 import { TabbedPanels } from "@/components/shell/tabbed-panels";
 import { Button } from "@/components/ui/button";
+import { LinksList } from "@/components/ui/links-list";
 import { useI18n } from "@/lib/i18n/client";
 import type {
   Collection,
@@ -66,6 +67,12 @@ export function CollectionDetail({
           <ArrowLeft aria-hidden className="size-4 rtl:rotate-180" />
           {t("creative.collections")}
         </Link>
+
+        {collection.links.length > 0 && (
+          <div className="mt-3">
+            <LinksList links={collection.links} />
+          </div>
+        )}
       </div>
 
       <TabbedPanels

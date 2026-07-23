@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dropdown } from "@/components/ui/dropdown";
 import { EmptyState } from "@/components/ui/empty-state";
+import { CopyButton } from "@/components/ui/copy-button";
+import { LinksList } from "@/components/ui/links-list";
 import { Panel } from "@/components/ui/panel";
 import { deleteOrder, deletePayment, setOrderStage } from "@/lib/actions/shipping";
 import { useI18n } from "@/lib/i18n/client";
@@ -166,8 +168,14 @@ export function OrderDetail({
 
       <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">
-            {order.code ? `${order.code} · ` : ""}
+          <h1 className="flex flex-wrap items-center gap-1.5 text-2xl font-semibold tracking-tight text-ink">
+            {order.code && (
+              <span className="inline-flex items-center gap-1">
+                {order.code}
+                <CopyButton text={order.code} />
+                <span aria-hidden>·</span>
+              </span>
+            )}
             {order.title}
           </h1>
           <p className="mt-1 text-sm text-muted">
@@ -337,6 +345,12 @@ export function OrderDetail({
       {order.notes && (
         <Panel title={t("shipping.notes")} className="mt-4">
           <p className="text-sm whitespace-pre-wrap text-muted">{order.notes}</p>
+        </Panel>
+      )}
+
+      {order.links.length > 0 && (
+        <Panel title={t("common.links")} className="mt-4">
+          <LinksList links={order.links} />
         </Panel>
       )}
 

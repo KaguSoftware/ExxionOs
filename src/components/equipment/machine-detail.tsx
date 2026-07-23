@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LinksList } from "@/components/ui/links-list";
 import { PageHeader, Panel } from "@/components/ui/panel";
 import { deleteMaintenance } from "@/lib/actions/equipment";
 import { STATUS_KEY, STATUS_TONE } from "@/lib/equipment";
@@ -30,7 +31,7 @@ export function MachineDetail({
   reminders: Reminder[];
 }) {
   const { t, locale } = useI18n();
-  const { run, pending } = useAction();
+  const { run } = useAction();
 
   const [logs, setLogs] = useState(initial);
   const [composing, setComposing] = useState(false);
@@ -107,6 +108,18 @@ export function MachineDetail({
           </span>
         </Stat>
       </div>
+
+      {machine.notes && (
+        <Panel title={t("common.notes")} className="mb-4">
+          <p className="text-sm whitespace-pre-wrap text-muted">{machine.notes}</p>
+        </Panel>
+      )}
+
+      {machine.links.length > 0 && (
+        <Panel title={t("common.links")} className="mb-4">
+          <LinksList links={machine.links} />
+        </Panel>
+      )}
 
       {reminders.length > 0 && (
         <Panel title={t("dashboard.reminders")} className="mb-4">
@@ -198,7 +211,6 @@ export function MachineDetail({
         // a typo would quietly change last month's spend.
         body={t("equipment.deleteMaintenanceBody")}
         confirmLabel={t("common.delete")}
-        loading={pending}
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => confirmDelete && remove(confirmDelete)}
       />

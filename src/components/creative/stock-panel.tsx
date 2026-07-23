@@ -204,7 +204,7 @@ export function StockPanel({
  */
 function PrintHistory({ runs, locale }: { runs: PrintRun[]; locale: Locale }) {
   const { t } = useI18n();
-  const { run: perform, pending } = useAction();
+  const { run: perform } = useAction();
   const router = useRouter();
 
   const [confirming, setConfirming] = useState<PrintRun | null>(null);
@@ -218,8 +218,7 @@ function PrintHistory({ runs, locale }: { runs: PrintRun[]; locale: Locale }) {
   }
 
   const remove = (target: PrintRun) => {
-    setConfirming(null);
-    void perform(() => deletePrintRun(target.id), {
+    return perform(() => deletePrintRun(target.id), {
       successMessage: t("creative.runRemoved"),
       errorMessage: t("creative.saveFailed"),
       // Not optimistic: this both restores filament and removes units, and
@@ -279,9 +278,8 @@ function PrintHistory({ runs, locale }: { runs: PrintRun[]; locale: Locale }) {
         // one alone would be a half-truth about a number people rely on.
         body={t("creative.deleteRunBody")}
         confirmLabel={t("common.delete")}
-        loading={pending}
         onCancel={() => setConfirming(null)}
-        onConfirm={() => confirming && remove(confirming)}
+        onConfirm={() => (confirming ? remove(confirming) : undefined)}
       />
     </div>
   );

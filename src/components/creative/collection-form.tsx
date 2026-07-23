@@ -11,6 +11,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Field } from "@/components/ui/field";
 import { TextArea, TextInput } from "@/components/ui/input";
+import { LinksEditor } from "@/components/ui/links-editor";
 import {
   createCollection,
   deleteCollection,
@@ -44,12 +45,19 @@ export function CollectionForm({ existing }: { existing?: Collection }) {
   const [startedOn, setStartedOn] = useState<string | null>(
     existing?.started_on ?? null
   );
+  const [links, setLinks] = useState<string[]>(existing?.links ?? []);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const emptyFields = name.trim() ? [] : [t("creative.collectionName")];
 
   const submit = async () => {
-    const input = { name, description: description || null, status, startedOn };
+    const input = {
+      name,
+      description: description || null,
+      status,
+      startedOn,
+      links,
+    };
     const result = await run<unknown>(
       () =>
         existing
@@ -138,6 +146,8 @@ export function CollectionForm({ existing }: { existing?: Collection }) {
             <DatePicker id={startId} value={startedOn} onChange={setStartedOn} />
           </Field>
         </div>
+
+        <LinksEditor value={links} onChange={setLinks} />
       </CreateForm>
 
       {existing && (
@@ -160,7 +170,6 @@ export function CollectionForm({ existing }: { existing?: Collection }) {
         // deliberate (knowledge outlives the project) and nobody would guess it.
         body={t("creative.deleteCollectionBody")}
         confirmLabel={t("common.delete")}
-        loading={pending}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={remove}
       />

@@ -9,6 +9,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Field } from "@/components/ui/field";
 import { TextArea, TextInput } from "@/components/ui/input";
+import { LinksEditor } from "@/components/ui/links-editor";
 import {
   createClientRecord,
   updateClientRecord,
@@ -57,6 +58,7 @@ export function ClientForm({
   const [postalCode, setPostalCode] = useState(client?.postal_code ?? "");
   const [country, setCountry] = useState(client?.country ?? "");
   const [notes, setNotes] = useState(client?.notes ?? "");
+  const [links, setLinks] = useState<string[]>(client?.links ?? []);
 
   /**
    * ⚠️ NOT a validator. `CreateForm` asks once and then proceeds — nothing
@@ -77,6 +79,7 @@ export function ClientForm({
       source: source || null,
       // Already a list; the action still lowercases, trims and de-duplicates.
       tags,
+      links,
       birthday,
       address: address || null,
       postalCode: postalCode || null,
@@ -236,6 +239,8 @@ export function ClientForm({
       <Field id={`${ids}-notes`} label={t("clients.notes")}>
         <TextArea id={`${ids}-notes`} value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} />
       </Field>
+
+      <LinksEditor value={links} onChange={setLinks} />
     </CreateForm>
   );
 }

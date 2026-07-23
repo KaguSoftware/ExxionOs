@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getSessionContext } from "@/lib/data/session";
+import { normaliseLinks } from "@/lib/links";
 import { createClient } from "@/lib/supabase/server";
 import type {
   ActionResult,
@@ -68,6 +69,7 @@ export type ClientInput = {
   kind: ClientKind;
   source: ClientSource | null;
   tags: string[];
+  links: string[];
   birthday: string | null;
   address: string | null;
   postalCode: string | null;
@@ -92,6 +94,7 @@ function clientRow(input: ClientInput) {
     // panel reports them as different buckets.
     source: pickOrNull(input.source, CLIENT_SOURCES),
     tags: normaliseTags(input.tags),
+    links: normaliseLinks(input.links),
     birthday: input.birthday || null,
     address: input.address?.trim().slice(0, 500) || null,
     postal_code: input.postalCode?.trim().slice(0, 30) || null,

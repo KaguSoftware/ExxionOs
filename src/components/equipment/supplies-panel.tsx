@@ -84,7 +84,13 @@ export function SuppliesPanel({ supplies: initial }: { supplies: Supply[] }) {
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="truncate text-sm text-ink" title={supply.name}>{supply.name}</span>
+                        <Link
+                          href={`/equipment/supplies/${supply.id}`}
+                          className="truncate text-sm text-ink hover:underline"
+                          title={supply.name}
+                        >
+                          {supply.name}
+                        </Link>
                         {/* Word + tone, never colour alone. */}
                         {low && <Badge tone="warning">{t("equipment.lowStock")}</Badge>}
                       </div>
@@ -114,7 +120,7 @@ export function SuppliesPanel({ supplies: initial }: { supplies: Supply[] }) {
                         {t("equipment.restock")}
                       </Button>
                       <Link
-                        href={`/equipment/supplies/${supply.id}`}
+                        href={`/equipment/supplies/${supply.id}/edit`}
                         aria-label={t("common.edit")}
                         className="rounded p-1.5 text-faint transition-colors hover:bg-raised hover:text-ink"
                       >

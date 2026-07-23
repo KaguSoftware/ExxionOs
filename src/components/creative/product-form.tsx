@@ -12,6 +12,7 @@ import { CreateForm } from "@/components/ui/create";
 import { Dropdown } from "@/components/ui/dropdown";
 import { Field } from "@/components/ui/field";
 import { TextArea, TextInput } from "@/components/ui/input";
+import { LinksEditor } from "@/components/ui/links-editor";
 import { MoneyInput, NumberInput } from "@/components/ui/number-input";
 import { createProduct, deleteProduct, updateProduct } from "@/lib/actions/creative";
 import { createVocabulary } from "@/lib/actions/vocabulary";
@@ -73,6 +74,7 @@ export function ProductForm({
     existing?.price_minor == null ? null : toMajor(existing.price_minor)
   );
   const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [links, setLinks] = useState<string[]>(existing?.links ?? []);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Live cost preview using the SAME function the list uses — so what you see
@@ -109,6 +111,7 @@ export function ProductForm({
       printHours: hours,
       price,
       notes: notes || null,
+      links,
     };
 
     const result = await run<unknown>(
@@ -279,7 +282,7 @@ export function ProductForm({
           )}
         </div>
 
-        <Field id={notesId} label={t("creative.ideaBody")} optional={t("common.optional")}>
+        <Field id={notesId} label={t("common.notes")} optional={t("common.optional")}>
           <TextArea
             id={notesId}
             value={notes}
@@ -287,6 +290,8 @@ export function ProductForm({
             rows={3}
           />
         </Field>
+
+        <LinksEditor value={links} onChange={setLinks} />
 
         {/* Photos need a real row to attach to, so they only appear on edit —
             a staged-upload path would be a lot of machinery for one field. */}
@@ -313,7 +318,6 @@ export function ProductForm({
         title={t("creative.deleteProduct")}
         body={t("common.deleteWarning")}
         confirmLabel={t("common.delete")}
-        loading={pending}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={remove}
       />

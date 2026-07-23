@@ -25,11 +25,14 @@ export function TransactionList({
   rows,
   categories,
   emptyIsFiltered,
+  onClearFilters,
 }: {
   rows: Transaction[];
   categories: Category[];
   /** True when rows exist but the filters hide them — a different message. */
   emptyIsFiltered: boolean;
+  /** Resets the parent's filters — the way OUT of a filtered-to-nothing state. */
+  onClearFilters?: () => void;
 }) {
   const { t, locale } = useI18n();
 
@@ -56,6 +59,13 @@ export function TransactionList({
             emptyIsFiltered
               ? t("finance.noMatchesHint")
               : t("finance.noTransactionsHint")
+          }
+          action={
+            emptyIsFiltered && onClearFilters ? (
+              <Button size="sm" onClick={onClearFilters}>
+                {t("common.clearFilters")}
+              </Button>
+            ) : undefined
           }
         />
       </Panel>
