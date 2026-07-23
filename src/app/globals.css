@@ -352,10 +352,10 @@
 @layer base {
   html {
     /* Inter carries Latin; it has no Arabic-script glyphs, so Persian text
-       falls through to Rubik (bundled via next/font/local, --font-vazir) — a
-       neat even-weight sans with Arabic glyphs, instead of the OS default
-       (Tahoma), which was heavy and blocky. The remaining names are
-       last-resort fallbacks if Rubik fails to load. */
+       falls through to Vazirmatn (bundled via next/font/local, --font-vazir) —
+       a purpose-built Persian sans, instead of the OS default (Tahoma), which
+       was heavy and blocky. The remaining names are last-resort fallbacks if
+       Vazirmatn fails to load. */
     --font-sans-stack: var(--font-inter), var(--font-vazir), ui-sans-serif,
       system-ui, -apple-system, "Segoe UI", Roboto, "Vazirmatn",
       "Segoe UI Historic", "Iranian Sans", Tahoma, sans-serif;

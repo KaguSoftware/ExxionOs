@@ -22,15 +22,15 @@ const inter = Inter({
 /**
  * The PERSIAN body face. The Latin stack has no Arabic-script glyphs, so
  * without this, Farsi fell through to the OS default (Tahoma on Windows) —
- * heavy, blocky, and dated. Rubik's variable font ships Arabic glyphs and is a
- * neat, even-weight sans; loading it here (not just naming it in the CSS
- * stack) is what makes the browser actually reach for it. The single variable
- * TTF covers the whole 300–900 weight axis.
+ * heavy, blocky, and dated. Vazirmatn is a purpose-built Persian sans (correct
+ * گ/ک/ی forms and Persian digits, unlike a generic Arabic-capable Latin face);
+ * bundled locally so it never depends on a font CDN. The single variable TTF
+ * covers the whole 100–900 weight axis.
  */
-const rubik = localFont({
-  src: "./fonts/Rubik.ttf",
+const vazirmatn = localFont({
+  src: "./fonts/Vazirmatn.ttf",
   variable: "--font-vazir",
-  weight: "300 900",
+  weight: "100 900",
   display: "swap",
 });
 
@@ -100,7 +100,7 @@ export default async function RootLayout({
       // `data-theme` absent = follow the OS (globals.css makes dark the
       // :root default and light an explicit override).
       data-theme={theme}
-      className={`${inter.variable} ${rubik.variable} ${spaceGrotesk.variable} h-full`}
+      className={`${inter.variable} ${vazirmatn.variable} ${spaceGrotesk.variable} h-full`}
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
