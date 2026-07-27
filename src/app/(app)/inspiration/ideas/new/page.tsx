@@ -6,12 +6,13 @@ import { createClient } from "@/lib/supabase/server";
 import type { Board, Vocabulary } from "@/lib/types";
 
 /**
- * The TEXT / URL capture surface.
+ * The full composer: pictures, a link, or just words.
  *
- * ⚠️ No photo field here — pictures arrive by drop, paste or URL, and each of
- * those creates the pin first and attaches second. Uploading against an id that
- * may never be created is how a bucket fills with orphans. Photos are managed
- * on the pin's own page.
+ * ⚠️ Pictures are STAGED IN MEMORY and uploaded in the submit, once the row
+ * has a real id — see `image-picker.tsx`. That keeps the standing rule (never
+ * write to the bucket against an id that might not exist) without the version
+ * of this page that shipped first, which described dropping a picture here and
+ * then offered no way to do it.
  *
  * `?board=` pre-selects the board you came from, so "New pin" on a board page
  * doesn't make you pick it again.
@@ -43,7 +44,7 @@ export default async function NewPinPage({
   return (
     <CreatePage
       titleKey="inspiration.newPin"
-      descriptionKey="inspiration.noPinsHint"
+      descriptionKey="inspiration.newPinHint"
     >
       <PinComposer
         boards={boards}

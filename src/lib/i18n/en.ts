@@ -450,6 +450,11 @@ export const en = {
     // someone tells you they exist; "choose files" is the affordance people
     // look for, so it leads.
     addPinsHint: "Click to choose images — or drop them anywhere, or press Ctrl+V",
+    photos: "Pictures",
+    addPhotos: "Add pictures",
+    addPhotosHint: "Click to choose, or drop pictures here. They upload when you create the pin.",
+    newPinHint:
+      "Add pictures, save a link, or just write it down. Anything that made you think “we could make that”.",
     capture: "Save from a link",
     captureHint:
       "Paste a product page, an article, anything. We'll pull its picture if the site allows it.",

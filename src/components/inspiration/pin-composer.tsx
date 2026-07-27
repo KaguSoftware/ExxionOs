@@ -3,6 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
+import {
+  ImagePicker,
+  type StagedImage,
+} from "@/components/inspiration/image-picker";
 import { UrlCapture } from "@/components/inspiration/url-capture";
 import { MultiComboCreate } from "@/components/ui/combo-create";
 import { CreateForm } from "@/components/ui/create";
@@ -10,11 +14,14 @@ import { Dropdown } from "@/components/ui/dropdown";
 import { Field } from "@/components/ui/field";
 import { TextArea, TextInput } from "@/components/ui/input";
 import { LinksEditor } from "@/components/ui/links-editor";
+import { useToast } from "@/components/ui/toast";
+import { attachImage } from "@/lib/actions/creative";
 import { createPin, updatePin } from "@/lib/actions/inspiration";
 import { createVocabulary } from "@/lib/actions/vocabulary";
 import { useI18n } from "@/lib/i18n/client";
 import { liveBoards } from "@/lib/inspiration";
 import type { Board, Idea, Vocabulary } from "@/lib/types";
+import { uploadImageToCreative } from "@/lib/upload";
 import { useAction } from "@/lib/use-action";
 import { vocabOptions } from "@/lib/vocab";
 
@@ -44,6 +51,7 @@ export function PinComposer({
   onDone?: () => void;
 }) {
   const { t } = useI18n();
+  const toast = useToast();
   const router = useRouter();
   const { run, pending } = useAction();
   const ids = useId();
@@ -56,6 +64,9 @@ export function PinComposer({
   const [tags, setTags] = useState<string[]>(existing?.tags ?? []);
   const [links, setLinks] = useState<string[]>(existing?.links ?? []);
   const [tagWords, setTagWords] = useState(tagVocabulary);
+  const [staged, setStaged] = useState<StagedImage[]>([]);
+  /** Uploads run AFTER the action returns, so the button needs its own flag. */
+  const [uploading, setUploading] = useState(false);
 
   const tagOptions = vocabOptions(tagWords, "idea_tag", existing?.tags ?? []).map(
     (v) => ({ value: v.label, label: v.label })
@@ -67,8 +78,12 @@ export function PinComposer({
   ];
 
   // A pin may legitimately be nothing but a picture, so an empty title is not
-  // worth asking about — unlike a collection, where a blank name is unusable.
-  const emptyFields = title.trim() || body.trim() ? [] : [t("inspiration.pinTitle")];
+  // worth asking about once one is attached — unlike a collection, where a
+  // blank name is unusable.
+  const emptyFields =
+    title.trim() || body.trim() || staged.length > 0
+      ? []
+      : [t("inspiration.pinTitle")];
 
   const submit = async () => {
     const input = {
@@ -86,24 +101,56 @@ export function PinComposer({
         errorMessage: t("inspiration.saveFailed"),
       }
     );
+    if (!result.ok) return;
 
-    if (result.ok) {
-      if (onDone) onDone();
-      else router.push("/inspiration");
-      router.refresh();
+    // ⚠️ UPLOADS HAPPEN HERE, NOT WHEN THE FILE WAS CHOSEN. The row now has a
+    // real id, so nothing can end up in the bucket pointing at a pin that was
+    // never created — a cancelled form uploads nothing at all.
+    const pinId = result.data.id;
+    if (staged.length > 0) {
+      setUploading(true);
+      try {
+        for (const item of staged) {
+          const upload = await uploadImageToCreative(item.file, "idea", pinId);
+          if (!upload.ok) {
+            toast.error(`${item.file.name}: ${t("inspiration.uploadFailed")}`);
+            continue;
+          }
+          const attached = await attachImage({
+            parent: "idea",
+            parentId: pinId,
+            path: upload.image.path,
+            width: upload.image.width,
+            height: upload.image.height,
+          });
+          if (!attached.ok) toast.error(attached.error);
+        }
+      } finally {
+        setUploading(false);
+      }
     }
+
+    if (onDone) onDone();
+    // Land on the pin itself, not the wall — with pictures attached, the thing
+    // you just made is what you want to look at.
+    else router.push(`/inspiration/pins/${pinId}`);
+    router.refresh();
   };
 
   return (
     <CreateForm
       onSubmit={submit}
       emptyFields={emptyFields}
-      pending={pending}
+      pending={pending || uploading}
       submitLabel={existing ? t("common.save") : undefined}
       // Only in overlay/edit mode; on the create page CreateForm's default
       // (router.back) is the right cancel.
       onCancel={onDone}
     >
+      {/* Pictures lead — this is a board, and the page's own description
+          promises you can add one here. */}
+      <ImagePicker value={staged} onChange={setStaged} />
+
       {/* Only on create: the fastest path in is a link, so it leads. Editing an
           existing pin has nothing to capture — its source is already set. */}
       {!existing && (
