@@ -6,7 +6,101 @@
 
 ## 👋 START HERE — resuming in a brand-new chat
 
-### 🟢 LATEST — 2026-07-23 (third session), The 10-feature wave (quoting · costing · ops · reporting)
+### 🟢 LATEST — 2026-07-27, INSPIRATION — our own Pinterest, fused with Ideas
+
+**Committed + pushed. ✅ Migration `0025_inspiration.sql` APPLIED to prod and schema-verified
+(12/12 checks).** `tsc` · `lint` · `build` (**40 routes**, was 34) · `contrast` · `overlays` all
+green (4 pre-existing seed-script lint warnings only). ⚠️ **0018–0024 turned out to be already
+applied** — the queue the older entries below warn about is CLEARED. Only 0025 was pending.
+
+**Parsa: *"we want our own pintrest in the system. along with ideas and everything. basically have
+all the ideas and this pintrest thing in one place."*** Four decisions agreed before building:
+
+**⚠️⚠️ DECISION 1 — A PIN AND AN IDEA ARE ONE RECORD.** There is no `pins` table. `ideas` grew
+`board_id`, `tags text[]`, `links text[]`, `source_url`, plus a new `idea_images` table. The masonry
+and the text list are **two LENSES over the same rows** — the same discipline as `issues`→Learnings
+(0004) and `events`→Marketing schedule (0009). Two tables would mean the same thought entered twice
+and neither list ever complete.
+
+**⚠️⚠️ DECISION 2 — IDEAS LEFT CREATIVE.** New top-level nav entry **`/inspiration`** (Lightbulb,
+positioned between Dashboard and Creative — capture precedes production). **`/creative` no longer has
+an Ideas tab and no longer queries `ideas` at all.** Creative is now Collections · Learnings · Stock ·
+Insights · Types. `promoteIdea` ("Make it") stays as the bridge into production and is the one action
+that revalidates BOTH sections. `/creative/ideas/new` is now a `redirect()` so old bookmarks live.
+
+**⚠️ `board_id` IS `SET NULL`, NEVER CASCADE.** Deleting a board keeps its pins — they fall back to
+"Unsorted". ✅ **Proven against prod.** This is the OPPOSITE of what Pinterest does, so the confirm
+dialog says it out loud (`inspiration.deleteBoardBody`).
+
+**⚠️ `idea_images` STORES `width`/`height`, and that is load-bearing.** It is the one deliberate
+difference from `product_images`. A masonry of unknown-ratio pictures reflows violently while forty
+signed thumbnails resolve at forty different moments; the stored size lets each card reserve its exact
+box via `style={{aspectRatio}}` before its URL arrives. **Nullable — a failed decode must never block
+the attach** (the card falls back to 4:5). ✅ `> 0` CHECK and null-allowed both proven on prod.
+
+**⚠️ THE MASONRY IS CSS MULTI-COLUMN, NOT GRID.** `columns-2 sm:columns-3 lg:columns-4 xl:columns-5`
++ `mb-3 break-inside-avoid` per card. Grid masonry needs each tile's height in row units up front —
+impossible for text pins, link-only pins and failed decodes — so it would need a `ResizeObserver` pass
+re-run on every filter change and breakpoint. Columns needs none, **fills in the INLINE direction so
+Farsi flows right-to-left for free**, and every class used is direction-neutral. Accepted cost:
+column-major reading order (right for browsing, wrong for lists — which is exactly why the **List**
+lens stays a flat `flex-col`). ⚠️ Do NOT add `overflow-hidden` to that `<ul>`; it kills column
+balancing.
+
+**FOUR CAPTURE METHODS, all four built:**
+1. **Paste a URL** → `captureFromUrl` in `lib/actions/inspiration.ts` fetches the page, parses
+   `og:image`/`og:title` (`lib/og.ts`, dependency-free), downloads the picture into the `creative`
+   bucket, and sniffs its dimensions from the raw bytes (PNG IHDR / JPEG SOF walk / WebP VP8·VP8L·VP8X).
+2. **Drag-and-drop** (multi-file, sequential with a "3 of 7" counter) — also handles
+   `text/uri-list`, i.e. dragging an image **from another browser tab**.
+3. **Ctrl+V** an image or a URL.
+4. **Plain text pin**, no picture.
+
+**⚠️ `captureFromUrl` WILL BE LINK-ONLY ON INSTAGRAM, EVERY TIME** (its login wall serves no usable
+`og:image`), and intermittently on Pinterest (datacentre-IP blocking). **Every failure after the row
+is created still returns a pin** (`imageAttached: false`) rendered with the source hostname as a chip,
+and the UI SAYS SO (`inspiration.linkOnly` + a hint pointing at Ctrl+V). This is the design, not a
+bug — a user who isn't told concludes the feature is broken.
+
+**⚠️ SSRF GUARD — `lib/url-guard.ts` (`server-only`).** The server fetches a URL a human typed, so:
+http(s) only, no credentials, ports 80/443/8080/8443, no `localhost`/`*.local`/`*.internal`/dotless
+hosts, and `dns.lookup(all:true)` rejecting if **any** address is private (incl. `169.254.169.254`,
+the cloud metadata IP, and IPv4-mapped IPv6 unwrapped and re-checked). **Redirects are followed BY
+HAND (`redirect:"manual"`, ≤3 hops, re-guarded each time)** — `follow` would let a public URL 302
+straight into the metadata service. Bodies are read through a byte budget (512KB HTML / 5MB image)
+via `getReader()`, never `.text()`. **Accepted, documented, NOT fixed: DNS-rebinding TOCTOU** — needs
+an undici connect hook; the only person pasting URLs is Parsa.
+
+**New files** — `lib/{og,url-guard,upload,inspiration}.ts`, `lib/actions/inspiration.ts`,
+`components/inspiration/{panels,pin-masonry,pin-card,pin-detail,pin-composer,url-capture,
+capture-dropzone,boards-panel,board-form,board-detail,pins-list}.tsx`, six routes under
+`app/(app)/inspiration/`.
+
+**⚠️ `lib/upload.ts` IS NOW THE ONE UPLOAD CONTRACT.** The 5MB / png-jpeg-webp / `${parent}/${id}/
+${uuid}.${ext}` rules were inline in `image-strip.tsx`; the dropzone needed the same ones and two
+copies drift. `ImageStrip` now calls it and its `parent` widened to `"product" | "issue" | "idea"`,
+as did `attachImage`/`detachImage` (which stay in `creative.ts` but branch their revalidate).
+
+**⚠️ The focus-steal trap was avoided STRUCTURALLY in `capture-dropzone.tsx`**: drag handlers are JSX
+props (no deps array exists), and the one paste effect has **empty deps forever** reading through a
+`pasteRef` synced in its own effect — the exact `CreateOverlay` pattern. It also **bails when focus is
+in an input/textarea/contenteditable**, so Ctrl+V into the title field pastes text instead of minting
+pins.
+
+**Also**: `vocabularies.kind` gained `idea_tag`; `rewriteClientTag` generalised to `rewriteArrayTag`
+(serves `clients.tags` AND `ideas.tags`); ⌘K search gained `idea` + `board` (pins match on BODY as
+well as title); `wipe-data.mjs` lists `idea_images` → `ideas` → **`boards` last** (SET NULL would
+silently strand pins, not error). `print-run-button.tsx`'s notes field was still borrowing the old
+`creative.ideaBody` label — fixed to `common.notes`.
+
+**NOT DRIVEN IN A BROWSER** (no session cookie in the harness). Worth Parsa doing: create a board and
+drag three differently-shaped photos on (columns must not jump); Ctrl+V a screenshot, then click into
+the title field and Ctrl+V again (must paste TEXT, not pin); paste a normal product URL vs an
+Instagram URL (photo vs honest link-only toast); rename a tag in the Tags tab and watch it propagate;
+"Make it" → lands in Creative; switch to Farsi (masonry fills right-to-left, URLs stay Latin/LTR);
+delete a board that has pins and confirm they survive.
+
+### 🟢 EARLIER — 2026-07-23 (third session), The 10-feature wave (quoting · costing · ops · reporting)
 
 **NOT committed as of writing this entry — being committed + pushed now.** `tsc` · `lint` · `build`
 (34 routes) · `contrast` all green (4 pre-existing seed-script lint warnings only).
@@ -1198,20 +1292,29 @@ that contract must exist before anything can honour it.
 ## Deliberately partial — grows later (scope ledger)
 | Area | What shipped now | Intended full shape | Grows in |
 |---|---|---|---|
-| All seven sections | ✅ **Every one is `ready: true`.** Nothing renders as "soon" any more | — | Done |
+| **Inspiration — board membership** | ✅ **Shipped (2026-07-27, migration 0025 APPLIED).** ONE board per pin, `set null` | Many-to-many | Not planned — tags carry the cross-cutting case |
+| **Inspiration — pin ordering** | Newest-first, full stop. `sort_order` orders images WITHIN a pin only | Drag-to-reorder pins on a board | Later — needs a JS layout engine inside CSS columns |
+| **Inspiration — URL capture** | og:image/og:title fetch with an SSRF guard, byte budgets, manual redirects; **link-only fallback when a site refuses**, stated in the UI | Headless-browser or paid unfurl for Instagram/Pinterest | Not planned — Ctrl+V is the working path and it's honest about it |
+| **Inspiration — SSRF** | Scheme/port/host/DNS-range guard, re-run on every redirect hop | undici `connect` hook closing the DNS-rebinding TOCTOU | If this ever takes input from outside the company |
+| **Inspiration — image size** | 5 MB cap, no client-side compression | Downscale before upload | Later — costs storage only |
+| **Inspiration — board covers** | Manual "use as cover" on a pin; otherwise a 2×2 mosaic of the board's newest pins | Auto-picked cover | If asked |
+| **Inspiration — bulk ops** | One pin at a time | Multi-select tag / move / delete | If asked |
+| **Inspiration — link-only pins** | Source hostname as a chip | Favicon, `og:video`, PDF previews | If asked |
+| **Inspiration — List lens** | The old ideas panel + tag chips + board links, layout otherwise unchanged | Reshaped against real usage | After Parsa has used the board |
+| All seven sections | ✅ **Every one is `ready: true`.** Nothing renders as "soon" any more. **Inspiration is an eighth** (2026-07-27) | — | Done |
 | Campaigns | ✅ **Shipped (Phase 7).** Budget vs actual, itemised costs each writing one Finance expense, archive | Per-campaign ROI — needs `orders.campaign_id` and the discipline of tagging orders. Deliberately NOT guessed at | If asked |
 | Samples | ✅ **Shipped (Phase 7).** Costed from the product at read time, never expensed. Optional links to client and campaign | Opt-in "also log a print run" so a sample printed for the occasion deducts filament in one step | Later |
 | Marketing schedule | ✅ **Shipped (Phase 7)** as a LENS over `events` — filming, networking, campaign moments | A calendar view rather than two lists | Later |
-| Materials / Supplies | ✅ **MERGED + RESHAPED (2026-07-22, migrations 0014 + 0015).** One `supplies` row carries stock (grams/pieces, low-stock, restocks) AND the per-kg cost. Type is a **searchable/creatable category** (`supply_type` vocabulary); a **"printing material" checkbox** (signal = non-null cost) splits filament (grams+cost) from packaging (pieces). List grouped by type. `materials` table dropped | — | Done (pending 0014+0015 push) |
+| Materials / Supplies | ✅ **MERGED + RESHAPED (2026-07-22, migrations 0014 + 0015).** One `supplies` row carries stock (grams/pieces, low-stock, restocks) AND the per-kg cost. Type is a **searchable/creatable category** (`supply_type` vocabulary); a **"printing material" checkbox** (signal = non-null cost) splits filament (grams+cost) from packaging (pieces). List grouped by type. `materials` table dropped | — | Done |
 | Product photos | Upload/remove on the product EDIT form + **✅ a lightbox** (2026-07-22, `components/creative/lightbox.tsx`) | Staged upload on create + reordering (staged-create deliberately NOT built — storage-contract risk) | If asked |
 | Product design files | ✅ **Shipped (2026-07-22, migration 0020).** `.mb`/`.ma`/`.stl` per product, beside Print-run; browser→bucket upload, download at click | Versioning / preview | If asked |
-| Filament per print | ✅ **Shipped (2026-07-23, migration 0021 — PENDING PUSH).** `products.measured_grams` (supports included) captured on FIRST print via the print-run overlay, then overrides the estimate for stock deduction AND cost everywhere (`effectiveGrams()`); editable on the product form | Per-run weight history / averaging across runs (chose single measured value, not per-run) — and "warn if a later run's weight drifts far from measured" | If asked |
+| Filament per print | ✅ **Shipped (2026-07-23, migration 0021 — APPLIED).** `products.measured_grams` (supports included) captured on FIRST print via the print-run overlay, then overrides the estimate for stock deduction AND cost everywhere (`effectiveGrams()`); editable on the product form | Per-run weight history / averaging across runs (chose single measured value, not per-run) — and "warn if a later run's weight drifts far from measured" | If asked |
 | Per-collection P&L | ✅ **Shipped (Phase 5).** Revenue from order lines meeting computed cost | Time series, per-product margin trends | Later |
 | Clients | ✅ **Shipped (Phase 6).** Directory (search · kind/source/tag filters · archive) + Insights (top clients, repeat rate, new vs returning, source breakdown, gone quiet) + per-client detail with order history and event timeline | Per-client P&L against computed cost; birthday reminders auto-created via the `reminders` back-link; CSV export | Later |
 | Events | ✅ **Table shipped (Phase 6)**, client lens only. Marketing kinds already pass the CHECK | The Marketing lens — filming days, networking, campaigns — over the SAME rows | Phase 7 |
 | Client tags | Free-form, lowercased, capped at 25. Filterable in the directory | A managed vocabulary if the free-form list gets messy | If asked |
 | Carrier / tracking | Plain text fields, by decision | No carrier API integration is planned | Not planned |
-| Order codes | ✅ **Auto `EX-###` (2026-07-22, migration 0018 — PENDING PUSH).** Sequence + `next_order_code()` RPC pre-fills the new-order form, still editable | — | Done (pending 0018) |
+| Order codes | ✅ **Auto `EX-###` (2026-07-22, migration 0018 — APPLIED).** Sequence + `next_order_code()` RPC pre-fills the new-order form, still editable | — | Done |
 | Finance charts | 12-month in/out bars · category breakdown · net line | Budgets, per-collection P&L, forecasting — deliberately deferred until there's real data to budget against | Later |
 | Receipts | One file per transaction (5 MB, image/PDF), private bucket, signed at click | Multiple attachments; OCR of totals | Later |
 | Transaction window | The page loads ~13 months (cap 2000 rows) so filtering is instant client-side; ✅ **client-side "show more" render cap (2026-07-22)** so a long ledger doesn't paint every row | Server-side query when the 2000 cap bites (~3 years away) | When the cap bites |
@@ -1220,7 +1323,7 @@ that contract must exist before anything can honour it.
 | Reminders | Personal, optional due date, optional `source_type`/`source_id` back-link | Equipment maintenance auto-creates them via the back-link | Phase 4 |
 | Realtime | `useRealtimeRefresh` + `<LiveRefresh>` built and mounted on the dashboard | In-place patching where a full refresh feels heavy | Later |
 | Search (⌘K) | ✅ **Shipped (2026-07-22).** Palette over clients/orders/products/collections/supplies/campaigns; fans out one action while typing; portalled to body | Fuzzy ranking, recent items | If asked |
-| Campaign ROI | ✅ **Shipped (2026-07-22, migration 0019 — PENDING PUSH).** `orders.campaign_id` (human-tagged); revenue from `transactions`, untagged-order count shown | — | Done (pending 0019) |
+| Campaign ROI | ✅ **Shipped (2026-07-22, migration 0019 — APPLIED).** `orders.campaign_id` (human-tagged); revenue from `transactions`, untagged-order count shown | — | Done |
 | Notifications | None | In-app only if asked; **Telegram/email explicitly out of scope** | If asked |
 | Mobile | Full-screen menu, responsive shell; reasoned from code + build | **Not driven on a real phone yet** | Needs a live pass |
 | Storage | None; `SignedFileLink` exists ready for it | Private buckets for product photos, equipment docs, order photos | Phase 3+ |

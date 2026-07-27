@@ -2,7 +2,9 @@
 
 import {
   Boxes,
+  LayoutGrid,
   Layers,
+  Lightbulb,
   Megaphone,
   Package,
   PackageOpen,
@@ -29,6 +31,8 @@ const ICONS: Record<SearchResultType, ReactNode> = {
   collection: <Layers aria-hidden className="size-4" />,
   supply: <Boxes aria-hidden className="size-4" />,
   campaign: <Megaphone aria-hidden className="size-4" />,
+  idea: <Lightbulb aria-hidden className="size-4" />,
+  board: <LayoutGrid aria-hidden className="size-4" />,
 };
 
 const TYPE_KEY: Record<SearchResultType, string> = {
@@ -38,6 +42,8 @@ const TYPE_KEY: Record<SearchResultType, string> = {
   collection: "search.typeCollection",
   supply: "search.typeSupply",
   campaign: "search.typeCampaign",
+  idea: "search.typeIdea",
+  board: "search.typeBoard",
 };
 
 /**

@@ -41,13 +41,15 @@ export type VocabularyKind =
   | "product_type"
   | "client_tag"
   | "supply_item"
-  | "machine_kind";
+  | "machine_kind"
+  | "idea_tag";
 
 export const VOCABULARY_KINDS: VocabularyKind[] = [
   "product_type",
   "client_tag",
   "supply_item",
   "machine_kind",
+  "idea_tag",
 ];
 
 export type Vocabulary = {
@@ -230,6 +232,33 @@ export type Collection = {
   updated_at: string;
 };
 
+/**
+ * A board — the folder of the Inspiration masonry. See 0025.
+ *
+ * ⚠️ Archived, never deleted, like `categories` and `vocabularies`: an archived
+ * board stops being offered in the picker but keeps naming the pins in it.
+ */
+export type Board = {
+  id: string;
+  name: string;
+  description: string | null;
+  /** A path in the `creative` bucket, chosen from one of the board's own pins. */
+  cover_path: string | null;
+  archived_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * An idea — which is also a PIN. There is deliberately no separate `pins`
+ * table: the Inspiration masonry and the text list are two lenses over these
+ * same rows (see 0025). A pin is an idea whose content is mainly a picture; a
+ * text-only idea has no `idea_images` and renders as a text card.
+ *
+ * ⚠️ `title` is `not null` but MAY BE EMPTY — a dropped photo with no caption
+ * is a legitimate pin. Render the card without a title rather than inventing one.
+ */
 export type Idea = {
   id: string;
   title: string;
@@ -237,6 +266,17 @@ export type Idea = {
   status: IdeaStatus;
   /** Set when promoted, so a collection can point back at the idea it began as. */
   collection_id: string | null;
+  /** `set null` — deleting a board never deletes the pins filed under it. */
+  board_id: string | null;
+  /** Label-not-FK, exactly like `clients.tags`. See the `idea_tag` vocabulary. */
+  tags: string[];
+  links: string[];
+  /**
+   * ⚠️ PROVENANCE, not a reference. Written once by the URL capture, never
+   * hand-edited — where the picture came from. `links` is the user's own list.
+   * This is what "open the original" uses on a link-only pin.
+   */
+  source_url: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -300,6 +340,22 @@ export type StoredImage = {
   id: string;
   path: string;
   sort_order: number;
+};
+
+/**
+ * A pin's picture. `StoredImage` plus the ONE thing the masonry cannot work
+ * without.
+ *
+ * ⚠️ `width`/`height` are the intrinsic pixel size, decoded at upload. They let
+ * a card reserve its exact box via `style={{ aspectRatio }}` BEFORE the signed
+ * URL resolves — without them a wall of unknown-ratio pictures reflows every
+ * time one of forty thumbnails lands. Nullable on purpose: a failed decode must
+ * never block the attach, and the card falls back to 4:5.
+ */
+export type IdeaImage = StoredImage & {
+  idea_id: string;
+  width: number | null;
+  height: number | null;
 };
 
 /**

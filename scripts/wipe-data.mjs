@@ -76,13 +76,19 @@ const CONTENT = [
   "maintenance_logs",
   "supplies",
   "machines",
-  // Creative (phase 3)
+  // Creative (phase 3) + Inspiration (0025)
   "issue_images",
   "product_images",
   "product_files",
+  "idea_images",
   "issues",
   "products",
   "ideas",
+  // ⚠️ `boards` AFTER `ideas`, even though it looks like a parent. `board_id`
+  // is `on delete set null`, so deleting boards first would silently strand
+  // every pin instead of erroring — exactly the surprise this ordered list
+  // exists to prevent.
+  "boards",
   "collections",
   // Finance (phase 2) — LAST, because equipment/creative rows point at it.
   "transactions",

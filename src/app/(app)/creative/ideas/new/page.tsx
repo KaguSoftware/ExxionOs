@@ -1,13 +1,13 @@
-import { IdeaForm } from "@/components/creative/idea-form";
-import { CreatePage } from "@/components/ui/create";
-import { getSessionContext } from "@/lib/data/session";
+import { redirect } from "next/navigation";
 
-export default async function NewIdeaPage() {
-  await getSessionContext();
-
-  return (
-    <CreatePage titleKey="creative.newIdea" descriptionKey="creative.noIdeasHint">
-      <IdeaForm />
-    </CreatePage>
-  );
+/**
+ * Ideas moved to /inspiration (0025) — they are pins now.
+ *
+ * This route stays as a redirect rather than being deleted: it was linked from
+ * the Creative tab for months, so bookmarks and muscle memory both point here.
+ * A 404 would read as "the feature was removed", which is the opposite of what
+ * happened.
+ */
+export default function LegacyNewIdeaPage() {
+  redirect("/inspiration/ideas/new");
 }

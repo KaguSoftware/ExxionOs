@@ -20,7 +20,9 @@ export type SearchResultType =
   | "product"
   | "collection"
   | "supply"
-  | "campaign";
+  | "campaign"
+  | "idea"
+  | "board";
 
 export type SearchResult = {
   type: SearchResultType;
@@ -45,7 +47,7 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
   // silently widen the match.
   const like = `%${q.replace(/[%_]/g, (m) => `\\${m}`)}%`;
 
-  const [clients, orders, products, collections, supplies, campaigns] =
+  const [clients, orders, products, collections, supplies, campaigns, pins, boards] =
     await Promise.all([
       supabase
         .from("clients")
@@ -76,6 +78,19 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
         .limit(PER_TYPE),
       supabase
         .from("campaigns")
+        .select("id, name")
+        .is("archived_at", null)
+        .ilike("name", like)
+        .limit(PER_TYPE),
+      // Pins match on their NOTES as well as their title — a picture saved
+      // with no caption is often findable only by what you wrote about it.
+      supabase
+        .from("ideas")
+        .select("id, title, body, board_id")
+        .or(`title.ilike.${like},body.ilike.${like}`)
+        .limit(PER_TYPE),
+      supabase
+        .from("boards")
         .select("id, name")
         .is("archived_at", null)
         .ilike("name", like)
@@ -147,6 +162,27 @@ export async function globalSearch(query: string): Promise<SearchResult[]> {
       title: (c as { name: string }).name,
       subtitle: null,
       href: `/marketing/campaigns/${c.id}`,
+    });
+  }
+  for (const p of pins.data ?? []) {
+    const row = p as { id: string; title: string; body: string | null };
+    results.push({
+      type: "idea",
+      id: row.id,
+      // A pin may legitimately have no title; falling back to the first line
+      // of the notes beats a blank row in a results list.
+      title: row.title || (row.body?.slice(0, 60) ?? ""),
+      subtitle: row.title ? (row.body?.slice(0, 60) ?? null) : null,
+      href: `/inspiration/pins/${row.id}`,
+    });
+  }
+  for (const b of boards.data ?? []) {
+    results.push({
+      type: "board",
+      id: b.id,
+      title: (b as { name: string }).name,
+      subtitle: null,
+      href: `/inspiration/boards/${b.id}`,
     });
   }
 

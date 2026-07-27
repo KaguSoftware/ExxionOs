@@ -22,6 +22,8 @@ function refresh(kind: VocabularyKind) {
     revalidatePath("/creative", "layout");
   } else if (kind === "supply_item" || kind === "machine_kind") {
     revalidatePath("/equipment", "layout");
+  } else if (kind === "idea_tag") {
+    revalidatePath("/inspiration", "layout");
   } else {
     revalidatePath("/clients", "layout");
   }
@@ -159,7 +161,19 @@ export async function renameVocabulary(
 
     if (error) return { ok: false, error: error.message };
   } else {
-    const propagated = await rewriteClientTag(supabase, current.label, label);
+    // The two ARRAY-column kinds. `clients.tags` and `ideas.tags` are both
+    // text[] holding labels verbatim, so both take the read-map-write path.
+    const { table, column } =
+      current.kind === "idea_tag"
+        ? { table: "ideas", column: "tags" }
+        : { table: "clients", column: "tags" };
+    const propagated = await rewriteArrayTag(
+      supabase,
+      table,
+      column,
+      current.label,
+      label
+    );
     if (!propagated.ok) return propagated;
   }
 
@@ -177,33 +191,37 @@ export async function renameVocabulary(
 }
 
 /**
- * Swap one tag for another across every client that carries it.
+ * Swap one tag for another across every row of a `text[]` column that holds it.
  *
- * `tags` is a `text[]`, so there is no single-statement update that rewrites
- * one element — read the affected rows, map them in JS, write them back. The
- * GIN index (0009) makes the `contains` lookup cheap, and at two users the
- * affected set is small.
+ * Serves both `clients.tags` (client_tag, 0009) and `ideas.tags` (idea_tag,
+ * 0025). There is no single-statement update that rewrites ONE element of an
+ * array, so: read the affected rows, map them in JS, write them back. Both
+ * columns have a GIN index, making the `contains` lookup cheap, and at two
+ * users the affected set is small.
  */
-async function rewriteClientTag(
+async function rewriteArrayTag(
   supabase: Awaited<ReturnType<typeof createClient>>,
+  table: string,
+  column: string,
   from: string,
   to: string
 ): Promise<ActionResult> {
   const { data: rows, error } = await supabase
-    .from("clients")
-    .select("id, tags")
-    .contains("tags", [from]);
+    .from(table)
+    .select(`id, ${column}`)
+    .contains(column, [from]);
 
   if (error) return { ok: false, error: error.message };
 
-  for (const row of rows ?? []) {
-    // Dedupe: if the client already had the destination tag, renaming must
+  for (const row of (rows ?? []) as unknown as Record<string, unknown>[]) {
+    const tags = (row[column] as string[]) ?? [];
+    // Dedupe: if the row already carried the destination tag, renaming must
     // not leave it listed twice.
-    const next = [...new Set(row.tags.map((t: string) => (t === from ? to : t)))];
+    const next = [...new Set(tags.map((t) => (t === from ? to : t)))];
     const { error: writeError } = await supabase
-      .from("clients")
-      .update({ tags: next })
-      .eq("id", row.id);
+      .from(table)
+      .update({ [column]: next })
+      .eq("id", row.id as string);
 
     if (writeError) return { ok: false, error: writeError.message };
   }
@@ -270,10 +288,15 @@ export async function countVocabularyUsage(
               .from("machines")
               .select("id", { count: "exact", head: true })
               .eq("kind", current.label)
-          : await supabase
-              .from("clients")
-              .select("id", { count: "exact", head: true })
-              .contains("tags", [current.label]);
+          : current.kind === "idea_tag"
+            ? await supabase
+                .from("ideas")
+                .select("id", { count: "exact", head: true })
+                .contains("tags", [current.label])
+            : await supabase
+                .from("clients")
+                .select("id", { count: "exact", head: true })
+                .contains("tags", [current.label]);
 
   if (error) return { ok: false, error: error.message };
   return { ok: true, data: count ?? 0 };

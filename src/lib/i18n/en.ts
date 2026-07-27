@@ -16,6 +16,7 @@ export const en = {
 
   nav: {
     dashboard: "Dashboard",
+    inspiration: "Inspiration",
     finance: "Finance",
     creative: "Creative",
     equipment: "Equipment",
@@ -186,6 +187,8 @@ export const en = {
     typeCollection: "Collection",
     typeSupply: "Supply",
     typeCampaign: "Campaign",
+    typeIdea: "Pin",
+    typeBoard: "Board",
   },
 
   common: {
@@ -259,6 +262,9 @@ export const en = {
     clientTags: "Client tags",
     clientTagName: "Tag name",
     noClientTags: "No tags yet.",
+    ideaTags: "Pin tags",
+    ideaTagName: "Tag name",
+    noIdeaTags: "No tags yet.",
     manageHint:
       "Rename a word here and it updates everywhere it's used. Archived words stay on existing records but stop being offered.",
   },
@@ -386,9 +392,109 @@ export const en = {
     receiptWrongType: "Receipts must be an image or a PDF.",
   },
 
+  // The Inspiration board. A pin and an idea are ONE record (see 0025), so
+  // these strings cover both lenses — "pin" on the board, "idea" nowhere,
+  // because two words for one thing is how a section stops making sense.
+  inspiration: {
+    title: "Inspiration",
+    subtitle: "Everything we might make, and everything that made us think of it.",
+
+    pins: "Pins",
+    boards: "Boards",
+    list: "List",
+    tags: "Tags",
+
+    newPin: "New pin",
+    editPin: "Edit pin",
+    noPins: "Nothing pinned yet.",
+    noPinsHint:
+      "Drop a picture here, paste a link, or press Ctrl+V. Anything that made you think “we could make that”.",
+    noMatches: "Nothing matches those filters.",
+    clearFilters: "Clear filters",
+
+    pinTitle: "Title",
+    pinTitlePlaceholder: "What could we make?",
+    pinBody: "Notes",
+    pinBodyPlaceholder: "Why it caught your eye",
+    untitledPin: "Untitled pin",
+    pastedImage: "Pasted image",
+
+    board: "Board",
+    unsorted: "Unsorted",
+    allBoards: "All",
+    newBoard: "New board",
+    editBoard: "Edit board",
+    boardName: "Name",
+    boardNamePlaceholder: "Lamps, Client gifts, Textures…",
+    boardDescription: "Description",
+    noBoards: "No boards yet.",
+    noBoardsHint:
+      "A board is a folder for one kind of inspiration — lamps, textures, packaging you liked.",
+    pinCount: "{count} pins",
+    pinCountOne: "1 pin",
+    emptyBoard: "This board is empty.",
+    moveToBoard: "Move to board",
+    setAsCover: "Use as board cover",
+    coverSet: "Board cover updated.",
+    showArchivedBoards: "Show archived",
+    archiveBoard: "Archive",
+    unarchiveBoard: "Unarchive",
+    archivedBoard: "Archived",
+
+    addTag: "Add a tag",
+    allTags: "All tags",
+
+    // Capture
+    capture: "Save from a link",
+    captureHint:
+      "Paste a product page, an article, anything. We'll pull its picture if the site allows it.",
+    capturePlaceholder: "https://…",
+    fetchUrl: "Save",
+    fetching: "Fetching…",
+    captured: "Pinned.",
+    // ⚠️ SAID OUT LOUD, not buried in a doc. Instagram serves a login wall to
+    // every server fetch, so its pins are ALWAYS link-only. A user who isn't
+    // told this concludes the feature is broken.
+    linkOnly: "That site wouldn't hand over its picture — saved as a link.",
+    linkOnlyHint:
+      "Instagram and some shops block this. Screenshot it and press Ctrl+V instead.",
+    badUrl: "That doesn't look like a web address we can open.",
+    source: "Source",
+    openSource: "Open the original",
+
+    dropHere: "Drop to pin",
+    dropping: "Adding {done} of {total}…",
+    photoTooBig: "That image is over 5 MB.",
+    photoWrongType: "Images must be PNG, JPEG or WebP.",
+    uploadFailed: "Couldn't upload that image.",
+
+    // Status — the same four an idea has always had.
+    status: "Status",
+    statusNew: "New",
+    statusExploring: "Exploring",
+    statusDropped: "Dropped",
+    statusMade: "Made",
+    showDropped: "Show dropped",
+
+    makeIt: "Make it",
+    madeInto: "Became a collection",
+    openCollection: "Open the collection",
+    promoted: "Collection created from this pin.",
+
+    deletePin: "Delete this pin?",
+    deletePinBody: "Its pictures go with it. This can't be undone.",
+    deleteBoard: "Delete this board?",
+    // ⚠️ Says the opposite of what Pinterest does, so it has to be explicit.
+    deleteBoardBody:
+      "The pins in it survive — they just move to Unsorted. Only the board goes.",
+    saved: "Saved.",
+    saveFailed: "Couldn't save that.",
+    deleted: "Deleted.",
+  },
+
   creative: {
     title: "Creative",
-    subtitle: "Ideas, collections, and everything we've learned making them.",
+    subtitle: "Collections, products, and everything we've learned making them.",
 
     collections: "Collections",
     newCollection: "New collection",
@@ -451,23 +557,6 @@ export const en = {
     costUnknownHint: "Add a material, weight and print time to compute a cost.",
     costBreakdown: "{material} material + {machine} machine",
     deleteProduct: "Delete this product?",
-
-    ideas: "Ideas",
-    newIdea: "New idea",
-    editIdea: "Edit idea",
-    noIdeas: "No ideas yet.",
-    noIdeasHint: "Anything you might want to make. Keep it rough — that's the point.",
-    ideaTitle: "Idea",
-    ideaTitlePlaceholder: "What could we make?",
-    ideaBody: "Notes",
-    statusNew: "New",
-    statusExploring: "Exploring",
-    statusDropped: "Dropped",
-    statusMade: "Made",
-    makeIt: "Make it",
-    madeInto: "Became a collection",
-    promoted: "Collection created from this idea.",
-    deleteIdea: "Delete this idea?",
 
     learnings: "Learnings",
     learningsSubtitle: "Every problem we've hit, and how we fixed it.",

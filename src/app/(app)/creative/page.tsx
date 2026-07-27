@@ -7,7 +7,6 @@ import { getSessionContext } from "@/lib/data/session";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Collection,
-  Idea,
   Issue,
   PrintRun,
   Product,
@@ -17,8 +16,13 @@ import type {
 } from "@/lib/types";
 
 /**
- * Creative hub — ONE page, three tabs (Collections · Ideas · Learnings),
- * switched in pure client state.
+ * Creative hub — ONE page, five tabs (Collections · Learnings · Stock ·
+ * Insights · Types), switched in pure client state.
+ *
+ * ⚠️ IDEAS ARE NOT HERE ANY MORE. They became pins and moved to /inspiration
+ * (0025), which now owns the `ideas` table outright. Do not add an `ideas`
+ * query back into this wave — the whole point of the move was that a visual
+ * board buried three tabs deep never gets opened.
  *
  * ⚠️ ONE WAVE. Everything below — including data for tabs that aren't visible
  * yet — sits in a SINGLE `Promise.all`. A round-trip costs ~305ms; a query
@@ -31,7 +35,6 @@ export default async function CreativePage() {
 
   const [
     collections,
-    ideas,
     issues,
     products,
     productTypes,
@@ -45,10 +48,6 @@ export default async function CreativePage() {
           .from("collections")
           .select("*")
           .order("created_at", { ascending: false })
-      ),
-      rowsOrThrow<Idea>(
-        "creative.ideas",
-        supabase.from("ideas").select("*").order("created_at", { ascending: false })
       ),
       // Learnings reads EVERY issue app-wide — that is the whole point of the
       // lens. The collection tab filters this same set client-side.
@@ -110,7 +109,6 @@ export default async function CreativePage() {
       <LiveRefresh
         tables={[
           "collections",
-          "ideas",
           "issues",
           "products",
           "vocabularies",
@@ -124,7 +122,6 @@ export default async function CreativePage() {
       <Suspense>
         <CreativePanels
           collections={collections}
-          ideas={ideas}
           issues={issues}
           products={products}
           productTypes={productTypes}

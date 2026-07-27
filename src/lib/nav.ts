@@ -2,6 +2,7 @@ import {
   Boxes,
   Calculator,
   LayoutDashboard,
+  Lightbulb,
   Megaphone,
   Package,
   Palette,
@@ -35,6 +36,10 @@ export type NavItem = {
  */
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", labelKey: "nav.dashboard", icon: LayoutDashboard, ready: true },
+  // The board — where an idea starts. Deliberately ABOVE Creative: capture
+  // precedes production, and it puts the two creative surfaces side by side.
+  // Ideas used to be a tab inside Creative; 0025 moved them here.
+  { href: "/inspiration", labelKey: "nav.inspiration", icon: Lightbulb, ready: true },
   // Phase 3 — shipped.
   { href: "/creative", labelKey: "nav.creative", icon: Palette, ready: true },
   // Phase 5 — shipped.

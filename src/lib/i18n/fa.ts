@@ -12,6 +12,7 @@ export const fa: Dictionary = {
 
   nav: {
     dashboard: "داشبورد",
+    inspiration: "الهام",
     finance: "مالی",
     creative: "خلاقیت",
     equipment: "تجهیزات",
@@ -174,6 +175,8 @@ export const fa: Dictionary = {
     typeCollection: "مجموعه",
     typeSupply: "لوازم",
     typeCampaign: "کمپین",
+    typeIdea: "پین",
+    typeBoard: "برد",
   },
 
   common: {
@@ -247,6 +250,9 @@ export const fa: Dictionary = {
     clientTags: "برچسب‌های مشتری",
     clientTagName: "نام برچسب",
     noClientTags: "هنوز برچسبی ثبت نشده.",
+    ideaTags: "برچسب‌های پین",
+    ideaTagName: "نام برچسب",
+    noIdeaTags: "هنوز برچسبی ثبت نشده.",
     manageHint:
       "تغییر نام اینجا، همه‌جا اعمال می‌شود. کلمه‌های بایگانی‌شده روی رکوردهای قبلی می‌مانند ولی دیگر پیشنهاد نمی‌شوند.",
   },
@@ -372,9 +378,100 @@ export const fa: Dictionary = {
     receiptWrongType: "رسید باید تصویر یا PDF باشد.",
   },
 
+  inspiration: {
+    title: "الهام",
+    subtitle: "هر چه شاید بسازیم، و هر چه ما را به فکرش انداخته.",
+
+    pins: "پین‌ها",
+    boards: "بردها",
+    list: "فهرست",
+    tags: "برچسب‌ها",
+
+    newPin: "پین جدید",
+    editPin: "ویرایش پین",
+    noPins: "هنوز چیزی پین نشده.",
+    noPinsHint:
+      "یک عکس را اینجا رها کنید، لینکی را بچسبانید، یا Ctrl+V بزنید. هر چیزی که با دیدنش گفتید «این را می‌توانیم بسازیم».",
+    noMatches: "چیزی با این فیلترها پیدا نشد.",
+    clearFilters: "پاک کردن فیلترها",
+
+    pinTitle: "عنوان",
+    pinTitlePlaceholder: "چه چیزی می‌توانیم بسازیم؟",
+    pinBody: "یادداشت‌ها",
+    pinBodyPlaceholder: "چرا توجهتان را جلب کرد",
+    untitledPin: "پین بدون عنوان",
+    pastedImage: "تصویر چسبانده‌شده",
+
+    board: "برد",
+    unsorted: "دسته‌بندی‌نشده",
+    allBoards: "همه",
+    newBoard: "برد جدید",
+    editBoard: "ویرایش برد",
+    boardName: "نام",
+    boardNamePlaceholder: "چراغ‌ها، هدیهٔ مشتری، بافت‌ها…",
+    boardDescription: "توضیح",
+    noBoards: "هنوز بردی ساخته نشده.",
+    noBoardsHint:
+      "برد یعنی پوشه‌ای برای یک نوع الهام — چراغ‌ها، بافت‌ها، بسته‌بندی‌هایی که پسندیده‌اید.",
+    pinCount: "{count} پین",
+    pinCountOne: "۱ پین",
+    emptyBoard: "این برد خالی است.",
+    moveToBoard: "انتقال به برد",
+    setAsCover: "کاور برد شود",
+    coverSet: "کاور برد به‌روزرسانی شد.",
+    showArchivedBoards: "نمایش بایگانی‌شده‌ها",
+    archiveBoard: "بایگانی",
+    unarchiveBoard: "خروج از بایگانی",
+    archivedBoard: "بایگانی‌شده",
+
+    addTag: "افزودن برچسب",
+    allTags: "همهٔ برچسب‌ها",
+
+    capture: "ذخیره از یک لینک",
+    captureHint:
+      "صفحهٔ یک محصول، یک مقاله، هر چیزی را بچسبانید. اگر سایت اجازه بدهد تصویرش را می‌آوریم.",
+    capturePlaceholder: "https://…",
+    fetchUrl: "ذخیره",
+    fetching: "در حال دریافت…",
+    captured: "پین شد.",
+    linkOnly: "این سایت تصویرش را نداد — فقط به‌صورت لینک ذخیره شد.",
+    linkOnlyHint:
+      "اینستاگرام و بعضی فروشگاه‌ها این کار را مسدود می‌کنند. اسکرین‌شات بگیرید و Ctrl+V بزنید.",
+    badUrl: "این آدرس اینترنتی قابل باز کردن به نظر نمی‌رسد.",
+    source: "منبع",
+    openSource: "باز کردن اصل مطلب",
+
+    dropHere: "برای پین کردن رها کنید",
+    dropping: "افزودن {done} از {total}…",
+    photoTooBig: "این تصویر بیشتر از ۵ مگابایت است.",
+    photoWrongType: "تصویر باید PNG، JPEG یا WebP باشد.",
+    uploadFailed: "این تصویر آپلود نشد.",
+
+    status: "وضعیت",
+    statusNew: "جدید",
+    statusExploring: "در حال بررسی",
+    statusDropped: "کنار گذاشته شد",
+    statusMade: "ساخته شد",
+    showDropped: "نمایش کنارگذاشته‌شده‌ها",
+
+    makeIt: "بسازیمش",
+    madeInto: "به کالکشن تبدیل شد",
+    openCollection: "باز کردن کالکشن",
+    promoted: "کالکشن از این پین ساخته شد.",
+
+    deletePin: "این پین حذف شود؟",
+    deletePinBody: "تصویرهایش هم حذف می‌شوند. این کار برگشت‌پذیر نیست.",
+    deleteBoard: "این برد حذف شود؟",
+    deleteBoardBody:
+      "پین‌های داخلش می‌مانند — فقط به «دسته‌بندی‌نشده» منتقل می‌شوند. تنها خودِ برد حذف می‌شود.",
+    saved: "ذخیره شد.",
+    saveFailed: "ذخیره نشد.",
+    deleted: "حذف شد.",
+  },
+
   creative: {
     title: "خلاقیت",
-    subtitle: "ایده‌ها، کالکشن‌ها، و هر چه در ساختشان آموخته‌ایم.",
+    subtitle: "کالکشن‌ها، محصولات، و هر چه در ساختشان آموخته‌ایم.",
 
     collections: "کالکشن‌ها",
     newCollection: "کالکشن جدید",
@@ -436,23 +533,6 @@ export const fa: Dictionary = {
     costUnknownHint: "متریال، وزن و زمان چاپ را وارد کنید تا هزینه محاسبه شود.",
     costBreakdown: "{material} متریال + {machine} دستگاه",
     deleteProduct: "این محصول حذف شود؟",
-
-    ideas: "ایده‌ها",
-    newIdea: "ایدهٔ جدید",
-    editIdea: "ویرایش ایده",
-    noIdeas: "هنوز ایده‌ای ثبت نشده است.",
-    noIdeasHint: "هر چیزی که شاید بسازید. خام بودنش اشکالی ندارد — اتفاقاً هدف همین است.",
-    ideaTitle: "ایده",
-    ideaTitlePlaceholder: "چه چیزی می‌توانیم بسازیم؟",
-    ideaBody: "یادداشت‌ها",
-    statusNew: "جدید",
-    statusExploring: "در حال بررسی",
-    statusDropped: "کنار گذاشته شد",
-    statusMade: "ساخته شد",
-    makeIt: "بسازیمش",
-    madeInto: "به کالکشن تبدیل شد",
-    promoted: "کالکشن از این ایده ساخته شد.",
-    deleteIdea: "این ایده حذف شود؟",
 
     learnings: "آموخته‌ها",
     learningsSubtitle: "هر مشکلی که با آن روبه‌رو شده‌ایم و راه‌حلش.",

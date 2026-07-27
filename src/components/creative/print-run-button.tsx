@@ -221,7 +221,9 @@ export function PrintRunButton({
               />
             </Field>
 
-            <Field id={notesId} label={t("creative.ideaBody")} optional={t("common.optional")}>
+            {/* `common.notes`, not the old `creative.ideaBody` — this field was
+                borrowing an Ideas label, and Ideas has moved out of Creative. */}
+            <Field id={notesId} label={t("common.notes")} optional={t("common.optional")}>
               <TextInput
                 id={notesId}
                 value={notes}

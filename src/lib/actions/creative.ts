@@ -8,24 +8,18 @@ import { normaliseLinks } from "@/lib/links";
 import { toMinor } from "@/lib/money";
 import { appendMovement } from "@/lib/stock-write";
 import { createClient } from "@/lib/supabase/server";
+import type { ImageParent } from "@/lib/upload";
 import { todayInIstanbul } from "@/lib/utils";
 import type {
   ActionResult,
   Collection,
   CollectionStatus,
-  Idea,
-  IdeaStatus,
   Issue,
   PrintOutcome,
   Product,
   Severity,
 } from "@/lib/types";
-import {
-  COLLECTION_STATUSES,
-  IDEA_STATUSES,
-  PRINT_OUTCOMES,
-  SEVERITIES,
-} from "@/lib/types";
+import { COLLECTION_STATUSES, PRINT_OUTCOMES, SEVERITIES } from "@/lib/types";
 
 /** Never trust a client string to be one of a fixed set. */
 function pick<T extends string>(value: unknown, allowed: T[], fallback: T): T {
@@ -113,130 +107,12 @@ export async function deleteCollection(id: string): Promise<ActionResult> {
 }
 
 // --- ideas -----------------------------------------------------------------
-
-export async function createIdea(input: {
-  title: string;
-  body: string | null;
-}): Promise<ActionResult<Idea>> {
-  const ctx = await getSessionContext();
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("ideas")
-    .insert({
-      title: input.title.trim().slice(0, 200) || "Untitled idea",
-      body: input.body?.trim().slice(0, 4000) || null,
-      created_by: ctx.userId,
-    })
-    .select()
-    .single<Idea>();
-
-  if (error) return { ok: false, error: error.message };
-  refreshCreative();
-  return { ok: true, data };
-}
-
-/** Edit an idea's title and body. Status is changed separately (a one-click
- *  control on each row), so it is untouched here. */
-export async function updateIdea(
-  id: string,
-  input: { title: string; body: string | null }
-): Promise<ActionResult<Idea>> {
-  await getSessionContext();
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("ideas")
-    .update({
-      title: input.title.trim().slice(0, 200) || "Untitled idea",
-      body: input.body?.trim().slice(0, 4000) || null,
-    })
-    .eq("id", id)
-    .select()
-    .single<Idea>();
-
-  if (error) return { ok: false, error: error.message };
-  refreshCreative();
-  return { ok: true, data };
-}
-
-export async function updateIdeaStatus(
-  id: string,
-  status: IdeaStatus
-): Promise<ActionResult> {
-  await getSessionContext();
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("ideas")
-    .update({ status: pick(status, IDEA_STATUSES, "new") })
-    .eq("id", id);
-
-  if (error) return { ok: false, error: error.message };
-  refreshCreative();
-  return { ok: true, data: undefined };
-}
-
-export async function deleteIdea(id: string): Promise<ActionResult> {
-  await getSessionContext();
-  const supabase = await createClient();
-
-  const { error } = await supabase.from("ideas").delete().eq("id", id);
-  if (error) return { ok: false, error: error.message };
-  refreshCreative();
-  return { ok: true, data: undefined };
-}
-
-/**
- * "Make it" — turn an idea into a collection.
- *
- * The idea keeps its row and gains `collection_id`, so you can always see which
- * collections began as ideas. It is NOT deleted or moved: an idea and the
- * collection it became are two different records of two different moments.
- */
-export async function promoteIdea(
-  id: string
-): Promise<ActionResult<{ collectionId: string }>> {
-  const ctx = await getSessionContext();
-  const supabase = await createClient();
-
-  const { data: idea, error: readError } = await supabase
-    .from("ideas")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle<Idea>();
-
-  if (readError) return { ok: false, error: readError.message };
-  if (!idea) return { ok: false, error: "That idea no longer exists." };
-  if (idea.collection_id) {
-    // Already promoted — return the existing collection rather than minting a
-    // second one, so a double-click can't create duplicates.
-    return { ok: true, data: { collectionId: idea.collection_id } };
-  }
-
-  const { data: collection, error: createError } = await supabase
-    .from("collections")
-    .insert({
-      name: idea.title,
-      description: idea.body,
-      status: "planned",
-      created_by: ctx.userId,
-    })
-    .select()
-    .single<Collection>();
-
-  if (createError) return { ok: false, error: createError.message };
-
-  const { error: linkError } = await supabase
-    .from("ideas")
-    .update({ collection_id: collection.id, status: "made" })
-    .eq("id", id);
-
-  if (linkError) return { ok: false, error: linkError.message };
-
-  refreshCreative();
-  return { ok: true, data: { collectionId: collection.id } };
-}
+//
+// ⚠️ MOVED. Ideas are pins now, and they live in `lib/actions/inspiration.ts`
+// alongside boards and the URL capture (see 0025). Creative no longer reads or
+// writes the `ideas` table at all — adding a query back here would resurrect
+// the coupling that move existed to remove. `promoteIdea` went with them; it is
+// the one action that crosses back into this section, and it revalidates both.
 
 // --- products --------------------------------------------------------------
 
@@ -670,36 +546,67 @@ export async function updateMachineRate(rate: number): Promise<ActionResult> {
 
 // --- images ----------------------------------------------------------------
 
+/**
+ * Three parents, one table each: products, issues and — since 0025 — pins.
+ *
+ * ⚠️ Pin images live in a section this file does not own, so the revalidate
+ * branches. Everything else is identical, which is exactly why they share an
+ * action rather than getting a second copy in inspiration.ts.
+ */
+function imageTable(parent: ImageParent): { table: string; column: string } {
+  if (parent === "product") return { table: "product_images", column: "product_id" };
+  if (parent === "issue") return { table: "issue_images", column: "issue_id" };
+  return { table: "idea_images", column: "idea_id" };
+}
+
+function refreshImageParent(parent: ImageParent) {
+  if (parent === "idea") {
+    revalidatePath("/inspiration");
+    revalidatePath("/");
+  } else {
+    refreshCreative();
+  }
+}
+
 export async function attachImage(input: {
-  parent: "product" | "issue";
+  parent: ImageParent;
   parentId: string;
   path: string;
+  /** Intrinsic pixel size, decoded browser-side. Pins only — see 0025 for why
+   *  the masonry cannot lay out without them. Null is a supported answer. */
+  width?: number | null;
+  height?: number | null;
 }): Promise<ActionResult<{ id: string }>> {
   await getSessionContext();
   const supabase = await createClient();
 
-  const table = input.parent === "product" ? "product_images" : "issue_images";
-  const column = input.parent === "product" ? "product_id" : "issue_id";
+  const { table, column } = imageTable(input.parent);
+  // Only `idea_images` HAS these columns — sending them to product_images
+  // would be rejected by PostgREST.
+  const dimensions =
+    input.parent === "idea"
+      ? { width: input.width ?? null, height: input.height ?? null }
+      : {};
 
   const { data, error } = await supabase
     .from(table)
-    .insert({ [column]: input.parentId, path: input.path })
+    .insert({ [column]: input.parentId, path: input.path, ...dimensions })
     .select("id")
     .single<{ id: string }>();
 
   if (error) return { ok: false, error: error.message };
-  refreshCreative();
+  refreshImageParent(input.parent);
   return { ok: true, data };
 }
 
 export async function detachImage(
-  parent: "product" | "issue",
+  parent: ImageParent,
   id: string
 ): Promise<ActionResult> {
   await getSessionContext();
   const supabase = await createClient();
 
-  const table = parent === "product" ? "product_images" : "issue_images";
+  const { table } = imageTable(parent);
 
   const { data: row } = await supabase
     .from(table)
@@ -713,7 +620,7 @@ export async function detachImage(
   // Remove the file too, or the bucket accumulates orphans nobody can reach.
   if (row?.path) await supabase.storage.from("creative").remove([row.path]);
 
-  refreshCreative();
+  refreshImageParent(parent);
   return { ok: true, data: undefined };
 }
 

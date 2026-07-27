@@ -11,16 +11,19 @@ import { attachImage, detachImage } from "@/lib/actions/creative";
 import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import type { StoredImage } from "@/lib/types";
+import {
+  IMAGE_TYPES,
+  uploadImageToCreative,
+  type ImageParent,
+} from "@/lib/upload";
 import { cn } from "@/lib/utils";
 
-const MAX_BYTES = 5 * 1024 * 1024;
-const ALLOWED = ["image/png", "image/jpeg", "image/webp"];
 /** Thumbnails are signed once per mount; long enough for a browsing session. */
 const THUMB_TTL = 60 * 30;
 
 /**
- * Photos on a product or an issue. A warped print is far easier to show than
- * to describe.
+ * Photos on a product, an issue or a pin. A warped print is far easier to show
+ * than to describe.
  *
  * Uploads go BROWSER → BUCKET (RLS-gated); only the resulting path reaches the
  * server action. A file never round-trips through the Next server, which would
@@ -38,7 +41,7 @@ export function ImageStrip({
   images,
   onChange,
 }: {
-  parent: "product" | "issue";
+  parent: ImageParent;
   parentId: string;
   images: StoredImage[];
   onChange?: (images: StoredImage[]) => void;
@@ -97,33 +100,33 @@ export function ImageStrip({
   const upload = async (files: FileList) => {
     setUploading(true);
     try {
-      const supabase = createClient();
       for (const file of Array.from(files)) {
-        // Caps are ANNOUNCED, never silent — a file that vanishes without a
-        // word is the worst version of this.
-        if (file.size > MAX_BYTES) {
-          toast.error(t("creative.photoTooBig"));
-          continue;
-        }
-        if (!ALLOWED.includes(file.type)) {
-          toast.error(t("creative.photoWrongType"));
-          continue;
-        }
-
-        const ext = file.name.split(".").pop() ?? "png";
-        const path = `${parent}/${parentId}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage
-          .from("creative")
-          .upload(path, file, { upsert: false });
-
-        if (error) {
-          toast.error(error.message);
+        // ⚠️ ONE UPLOAD CONTRACT, shared with the Inspiration dropzone. The
+        // caps and the path shape live in `lib/upload.ts` so the two surfaces
+        // cannot drift into accepting different files.
+        const result = await uploadImageToCreative(file, parent, parentId);
+        if (!result.ok) {
+          // Caps are ANNOUNCED, never silent — a file that vanishes without a
+          // word is the worst version of this.
+          toast.error(
+            result.message ??
+              (result.reason === "tooBig"
+                ? t("creative.photoTooBig")
+                : t("creative.photoWrongType"))
+          );
           continue;
         }
 
-        const result = await attachImage({ parent, parentId, path });
-        if (result.ok) {
-          const next = [...items, { id: result.data.id, path, sort_order: 0 }];
+        const { path, width, height } = result.image;
+        const attached = await attachImage({
+          parent,
+          parentId,
+          path,
+          width,
+          height,
+        });
+        if (attached.ok) {
+          const next = [...items, { id: attached.data.id, path, sort_order: 0 }];
           setItems(next);
           onChange?.(next);
         }
@@ -254,7 +257,7 @@ export function ImageStrip({
           <input
             id={inputId}
             type="file"
-            accept={ALLOWED.join(",")}
+            accept={IMAGE_TYPES.join(",")}
             multiple
             className="sr-only"
             onChange={(e) => {
