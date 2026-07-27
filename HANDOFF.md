@@ -6,7 +6,132 @@
 
 ## 👋 START HERE — resuming in a brand-new chat
 
-### 🟢 LATEST — 2026-07-27, INSPIRATION — our own Pinterest, fused with Ideas
+### 🟢 LATEST — 2026-07-27 (second session), INSPIRATION UX REWORK — the wall stops navigating
+
+**Committed + pushed. No migration.** `tsc` · `lint` · `build` (**40 routes, unchanged**) ·
+`contrast` · `overlays` all green. Parsa, after using it: *"it feels very… counter-intuitive and
+weird most times."* Three independent audits converged on one diagnosis: **a records-management
+interaction model bolted onto a photo wall.**
+
+**⚠️⚠️ THE ROOT CAUSE, AND THE ONE FIX EVERYTHING ELSE FOLLOWS FROM.** Opening a pin was a route
+change, and the wall's filters, search, scroll position and signed thumbnails were all component
+state — so looking at ONE picture threw away everything about how you were browsing. The new
+`pin-quick-look.tsx` renders **inside the masonry**, so the wall never unmounts and all of that
+survives **by construction** rather than by anyone remembering to preserve it.
+
+**Four decisions agreed with Parsa:**
+1. **Clicking a pin opens a quick-look OVER the wall.** Escape returns you to the exact same wall.
+   The `/inspiration/pins/[id]` page stays for deep edit (`ImageStrip`), "Make it", "Use as cover",
+   ⌘K hits and every post-create redirect.
+2. **The List tab is GONE.** It rendered the same rows as the wall with the same header button, and
+   it was the only one of the two that could do anything — the section's headline surface was
+   read-only. Tabs are now **Pins · Boards · Tags**.
+3. **Status comes off the tile.** All four states stay in the data, settable in the quick-look and
+   pin page, still filterable — they just stop printing under every photograph.
+4. Full scope: structure, wall, capture, copy, and eight real bugs.
+
+**⚠️ THE TILE IS AN `<article>` WITH A STRETCHED ANCHOR, not one big `<Link>`.** The old shape
+structurally forbade any button inside it (nested interactive elements), which is why the wall had
+zero actions. The anchor is now an absolutely-positioned sibling at `z-10` with the action buttons
+at `z-20`. **It is still a real anchor on purpose** — a plain click is intercepted and opens the
+quick-look, but ctrl/cmd/middle-click still opens the pin page in a new tab.
+**Touch has no hover and that is CORRECT** — a tap opens the quick-look, which holds a strict
+superset. Do not "fix" it by pinning the pills open; that rebuilds the dossier tile.
+
+**⚠️ `[open]`, NOT `[openId]`, in the quick-look's focus effect.** Keying it on the pin id would
+re-run `panelRef.focus()` on every arrow press and yank focus out of a field mid-typing — the
+2026-07-23 focus-steal bug, reachable by a new route. All callbacks and the current index live in
+one `latestRef` synced by a dep-less effect.
+
+**New primitives:** **`components/ui/menu.tsx`** — the overflow menu this codebase never had.
+⚠️ `Dropdown` cannot serve: it is a value picker AND it does not portal (`absolute inset-x-0`,
+`--z-dropdown` 40), so it gets clipped by a tile's `overflow-hidden` and renders *underneath* the
+quick-look. `Menu` portals to `document.body`, positions `fixed` from the trigger's rect at
+`--z-modal` (70), and mirrors via inline `insetInlineStart/End`. Used in four places.
+Also `signed-image.tsx`, `pin-status.tsx`, `use-wall-filters.ts`.
+
+**Capture split in two.** `capture-dropzone.tsx` → **`capture-listeners.tsx`** (headless; window
+paste/drop, drag overlay, progress pill) + **`capture-bar.tsx`** (the visible file picker + URL
+field). ⚠️ **The listeners now mount OUTSIDE `TabbedPanels`** — only the active tab renders, so
+Ctrl+V silently died on Boards and Tags while the copy promised it unconditionally. The bar stopped
+being a full-width dashed band above the pictures: the dashed border said "drop inside me" while the
+real target is the window, and a `flex-1` label in front of a fixed-width sibling left ~1000px of
+apparent whitespace that was a **live file-dialog click target**.
+
+**Wall:** client-side **search** (title · body · tags · source hostname · board name; AND across
+tokens; `?q=`) · board chips now survive a one-board account (the old `> 1` gate hid **Unsorted**,
+the exact state a new user is in) · tag chips gained the "All" reset that wires the long-dead
+`allTags` · `THUMB_SIZE` 480 → 640 · **signing keyed on `[byIdea]` instead of `visible`**, so a chip
+click no longer fires a whole new wave of storage calls · filters mirrored to the URL with
+`replaceState`.
+
+**Headers:** board and pin pages finally get `animate-fade-rise px-4 py-6 md:px-8` **and an up-link**
+— they were the only two detail pages in the app with neither. Board header is **New pin + `Menu`**
+(was four flat controls including an unlabelled destructive trash). Pin header is **Edit (primary,
+unconditional) + `Menu`**, and **"Make it" moved into the Status panel** — it was the loudest control
+on the page while being the one action that leaves the section, and it reflowed the header when a
+pin got promoted.
+
+**⚠️ THE REDIRECT RULE** is now written at the top of `lib/actions/inspiration.ts` and every call
+site conforms: *land on the surface that owns what you changed.* Anything done from the wall or the
+quick-look **does not navigate at all**.
+
+**The eight bugs, all fixed:**
+1. **`pin-composer`'s inner `UrlCapture` was silent data loss** — it called `captureFromUrl` and
+   navigated to a *different* new pin, discarding the title, notes, tags, links and staged pictures
+   already typed. **Removed; `url-capture.tsx` deleted.** (The better shape — a `fetchOpenGraph`
+   action that RETURNS metadata without inserting so the button fills the fields — needs its own
+   server action and SSRF path. Noted in the composer's docstring, not built.)
+2. **Permanent skeleton**: `?? ""` on signing failure is falsy, so a failed thumbnail skeletoned
+   forever. Now `?? null` with a three-state card and a per-path retry.
+3. `setProgress` fired *after* the await → a single-file drop read **"Adding 0 of 1…"** throughout.
+4. **Raw Postgres strings reached users** at four sites → sentinel keys.
+5. **Ctrl+V-a-URL and drag-from-another-tab had ZERO feedback** for several seconds (`fetching` was
+   surfaced only on a Button that is simultaneously `disabled={!url.trim()}`) → the portalled status
+   pill, which also makes the global listeners honest on tabs with no bar.
+6. A successful drop produced **no toast** while URL capture did → `pinned`/`pinnedMany`.
+7. **Dead-end empty states**: the old `filtered` flag ignored the dropped toggle, so an all-dropped
+   board showed "Nothing matches those filters" with **no control at all** → two honest predicates
+   (`narrowed` → Clear filters; `onlyDroppedLeft` → Show dropped).
+8. **Archived boards had no controls**, so un-archiving was impossible from the Boards tab even
+   though the page fetches them precisely to offer it → `Menu` on board tiles, always visible when
+   archived.
+
+**Copy:** four nouns (pin/picture/photo/image) collapsed to **two** — a *pin* is the record, a
+*picture* is the file. `noPinsHint` rendered three times and the third (on the pin page) was **false**
+— that page has no drop or paste listener. Three dead keys finally wired: **`linkOnlyHint`** (the
+Instagram/screenshot advice, the most useful sentence in the namespace, previously rendered nowhere),
+`emptyBoard`, `allTags`. `fetchUrl` "Save" → "Fetch" (it collided with `common.save` on the same
+screen). `saveFailed` split into `saveFailed`/`deleteFailed`/`coverFailed` — "Couldn't save that"
+after pressing Delete was simply wrong. New `common.more`, `common.retry`.
+
+**⚠️ DELIBERATELY NOT DONE, and why:**
+- **`tabbed-panels.tsx` still uses `replaceState`**, so Back exits the section. It is shared with
+  five other sections; `router.push` would add a ~305ms round-trip per tab click for data already on
+  screen and a history entry per glance. The complaint was a *symptom* of navigating to go deeper —
+  the quick-look removes the navigation and the up-link is the correct affordance.
+- **Browser Back does not close the quick-look.** Escape/backdrop/X do; `?pin=` rides
+  `replaceState` for refresh and sharing. `pushState`+`popstate` interleaved with the App Router is
+  the classic works-in-dev-surprises-in-prod change. Add it as an isolated commit later.
+- **No intercepting routes** (`@modal/(.)pins/[id]`) — the textbook Next answer, gives real URLs and
+  Back-to-close free, but every open becomes a server round-trip and the wall's client state is no
+  longer guaranteed to survive. That defeats the entire point.
+- **No overlay-shell refactor.** `CreateOverlay`, `ConfirmDialog`, `Lightbox`, `GlobalSearch` and
+  now `PinQuickLook` each hand-roll portal + Escape + scroll-lock + focus. Five copies worth
+  collapsing — but not while fixing a photo wall.
+
+**NOT DRIVEN IN A BROWSER.** Worth Parsa doing, in order: (1) filter by board + tag + search, scroll
+halfway, open a pin → Escape must return the **same chips, same search, same scroll**; (2) arrow
+←/→ through five pins then type five characters into a field — **focus must not be lost after the
+first**; (3) move a pin to a board from the quick-look; (4) delete from a card's hover trash — the
+page must not navigate; (5) drop three files while on the **Boards** tab; (6) a four-picture pin
+shows `4` on the tile and a rail in the viewer, and Escape closes the Lightbox but **not** the
+quick-look; (7) Farsi — the wall fills right-to-left and ←/→ mean the visually correct direction.
+⚠️ **Highest-risk small detail: the board `Dropdown` inside the quick-look.** It does not portal and
+sits at z-40 under a z-60 surface; it is placed high in the panel so its list has room, but this is
+the thing most likely to look wrong.
+
+### 🟢 EARLIER — 2026-07-27, INSPIRATION — our own Pinterest, fused with Ideas
 
 **Committed + pushed. ✅ Migration `0025_inspiration.sql` APPLIED to prod and schema-verified
 (12/12 checks).** `tsc` · `lint` · `build` (**40 routes**, was 34) · `contrast` · `overlays` all
@@ -1292,6 +1417,9 @@ that contract must exist before anything can honour it.
 ## Deliberately partial — grows later (scope ledger)
 | Area | What shipped now | Intended full shape | Grows in |
 |---|---|---|---|
+| **Inspiration — Back / the quick-look** | ✅ Escape · backdrop · X close it; `?pin=` rides `replaceState` for refresh + sharing | Browser **Back** closes it too (`pushState` + `popstate`) | An isolated later commit — history hand-management next to the App Router is a works-in-dev risk |
+| **Inspiration — tab history** | `tabbed-panels.tsx` keeps `replaceState`, so Back exits the section | Reconsider only if Back is still reached for after living with the quick-look | Not planned — `router.push` costs ~305ms per tab click across six sections |
+| **Inspiration — overlay shell** | Five components hand-roll portal + Escape + scroll-lock + focus | One `useOverlayShell` | Separate pass — refactoring it here risks every dialog in the app |
 | **Inspiration — board membership** | ✅ **Shipped (2026-07-27, migration 0025 APPLIED).** ONE board per pin, `set null` | Many-to-many | Not planned — tags carry the cross-cutting case |
 | **Inspiration — pin ordering** | Newest-first, full stop. `sort_order` orders images WITHIN a pin only | Drag-to-reorder pins on a board | Later — needs a JS layout engine inside CSS columns |
 | **Inspiration — URL capture** | og:image/og:title fetch with an SSRF guard, byte budgets, manual redirects; **link-only fallback when a site refuses**, stated in the UI | Headless-browser or paid unfurl for Instagram/Pinterest | Not planned — Ctrl+V is the working path and it's honest about it |

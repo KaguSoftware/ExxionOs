@@ -19,6 +19,22 @@ import { IDEA_STATUSES } from "@/lib/types";
  * edit revalidating /creative and none of them revalidating /inspiration.
  * `promoteIdea` is the one action that touches both sections, and it lives here
  * because whoever owns the idea owns the promotion.
+ *
+ * ⚠️⚠️ THE REDIRECT RULE — LAND ON THE SURFACE THAT OWNS WHAT YOU CHANGED.
+ * This section once had ten destinations and no rule: deleting a pin from a
+ * list kept you there, deleting the same pin from its own page ejected you
+ * somewhere else, and creating a board dropped you inside an empty one with no
+ * way back. The rule, and every call site conforms to it:
+ *
+ *   - **Creating** → the new thing (`/inspiration/pins/[id]`, `/…/boards/[id]`).
+ *   - **Editing**  → back to that thing's own surface.
+ *   - **Deleting** → the CONTAINER it was in (a pin's board wall, else
+ *                    `/inspiration`; a board → `/inspiration?tab=boards`).
+ *   - **Promoting** → the collection. It crosses into Creative, and that is
+ *                    the one deliberate exception.
+ *   - **Anything done from the wall or the quick-look does NOT navigate at
+ *     all** — it patches the list optimistically. That is most of what used to
+ *     make this section feel like it forgot what you were doing.
  */
 
 /** Never trust a client string to be one of a fixed set. */

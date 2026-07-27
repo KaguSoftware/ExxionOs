@@ -7,7 +7,6 @@ import {
   ImagePicker,
   type StagedImage,
 } from "@/components/inspiration/image-picker";
-import { UrlCapture } from "@/components/inspiration/url-capture";
 import { MultiComboCreate } from "@/components/ui/combo-create";
 import { CreateForm } from "@/components/ui/create";
 import { Dropdown } from "@/components/ui/dropdown";
@@ -123,7 +122,9 @@ export function PinComposer({
             width: upload.image.width,
             height: upload.image.height,
           });
-          if (!attached.ok) toast.error(attached.error);
+          // A sentinel message, never the raw server string — a Postgres error
+          // in English is not something to show a Farsi user.
+          if (!attached.ok) toast.error(t("inspiration.saveFailed"));
         }
       } finally {
         setUploading(false);
@@ -148,20 +149,21 @@ export function PinComposer({
       onCancel={onDone}
     >
       {/* Pictures lead — this is a board, and the page's own description
-          promises you can add one here. */}
-      <ImagePicker value={staged} onChange={setStaged} />
+          promises you can add one here.
 
-      {/* Only on create: the fastest path in is a link, so it leads. Editing an
-          existing pin has nothing to capture — its source is already set. */}
-      {!existing && (
-        <UrlCapture
-          boardId={boardId || null}
-          onDone={(ideaId) => {
-            if (onDone) onDone();
-            else router.push(`/inspiration/pins/${ideaId}`);
-          }}
-        />
-      )}
+          ⚠️ THERE IS NO URL FIELD ON THIS FORM, and there must not be one. It
+          had one, and it was a data-loss trap: it called `captureFromUrl`
+          immediately, which mints a pin from the page's own metadata, then
+          navigated to that new pin — silently discarding the title, notes,
+          tags, links and staged pictures already typed here. Two pin-creators
+          on one form cannot both be right, and the wall's capture bar is now
+          mounted section-wide, so this one had no reason to exist.
+
+          The better shape, if it is ever wanted: a `fetchOpenGraph` action that
+          RETURNS metadata without inserting, so the button fills these fields
+          instead of replacing them. That needs its own server action and its
+          own SSRF path — a separate change. */}
+      <ImagePicker value={staged} onChange={setStaged} />
 
       <Field id={`${ids}-title`} label={t("inspiration.pinTitle")}>
         <TextInput

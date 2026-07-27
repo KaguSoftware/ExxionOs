@@ -63,8 +63,8 @@ export function ImagePicker({
         toast.error(
           `${file.name}: ${
             rejection === "tooBig"
-              ? t("inspiration.photoTooBig")
-              : t("inspiration.photoWrongType")
+              ? t("inspiration.pictureTooBig")
+              : t("inspiration.pictureWrongType")
           }`
         );
         continue;
@@ -82,7 +82,7 @@ export function ImagePicker({
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-xs font-medium text-muted">
-        {t("inspiration.photos")}
+        {t("inspiration.pictures")}
       </span>
 
       <div
@@ -151,7 +151,7 @@ export function ImagePicker({
           )}
         >
           <ImagePlus aria-hidden className="size-5" />
-          <span className="sr-only">{t("inspiration.addPhotos")}</span>
+          <span className="sr-only">{t("inspiration.addPictures")}</span>
           <input
             id={inputId}
             type="file"

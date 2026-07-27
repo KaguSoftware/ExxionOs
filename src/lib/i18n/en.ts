@@ -203,6 +203,8 @@ export const en = {
     add: "Add",
     remove: "Remove",
     close: "Close",
+    more: "More",
+    retry: "Try again",
     confirm: "Confirm",
     back: "Back",
     search: "Search",
@@ -401,14 +403,23 @@ export const en = {
 
     pins: "Pins",
     boards: "Boards",
-    list: "List",
     tags: "Tags",
 
     newPin: "New pin",
     editPin: "Edit pin",
+    openPin: "Open pin",
+    quickLook: "Pin",
+    previousPin: "Previous pin",
+    nextPin: "Next pin",
+    pictureCount: "{index} of {total}",
+    searchPins: "Search pins",
     noPins: "Nothing pinned yet.",
+    // ⚠️ THE ONLY PLACE THIS SENTENCE LIVES. It used to render in three
+    // components — including the pin page, which has no drop or paste listener
+    // at all, so there it was simply false.
     noPinsHint:
-      "Drop a picture here, paste a link, or press Ctrl+V. Anything that made you think “we could make that”.",
+      "Drop a picture anywhere on this page, paste a link, or press Ctrl+V. Anything that made you think “we could make that”.",
+    noPictures: "No pictures on this pin yet.",
     noMatches: "Nothing matches those filters.",
     clearFilters: "Clear filters",
 
@@ -444,24 +455,30 @@ export const en = {
     addTag: "Add a tag",
     allTags: "All tags",
 
-    // Capture
-    addPins: "Add pins",
-    // ⚠️ Names the CLICK first. Drag-and-drop and Ctrl+V are invisible until
-    // someone tells you they exist; "choose files" is the affordance people
-    // look for, so it leads.
-    addPinsHint: "Click to choose images — or drop them anywhere, or press Ctrl+V",
-    photos: "Pictures",
-    addPhotos: "Add pictures",
-    addPhotosHint: "Click to choose, or drop pictures here. They upload when you create the pin.",
+    // Capture.
+    // ⚠️ TWO NOUNS, NOT FOUR. A PIN is the record; a PICTURE is the file.
+    // "photo" and "image" are gone from user-facing text — this namespace used
+    // all four for the same thing and left the reader to work it out.
+    pictures: "Pictures",
+    addPictures: "Add pictures",
+    // ⚠️ The two capture paths have OPPOSITE results, and nothing said so:
+    // N files on the wall makes N pins, N files in the composer makes one pin
+    // with N pictures. Same gesture, same files, and you could not tell from
+    // looking which had happened.
+    addPinsHint: "One pin per picture.",
+    addPhotosHint:
+      "All of these go on one pin. Drop pictures on the wall instead to make one pin each.",
     newPinHint:
       "Add pictures, save a link, or just write it down. Anything that made you think “we could make that”.",
     capture: "Save from a link",
     captureHint:
       "Paste a product page, an article, anything. We'll pull its picture if the site allows it.",
     capturePlaceholder: "https://…",
-    fetchUrl: "Save",
+    // "Fetch", not "Save" — it sat next to `common.save` on the same screen.
+    fetchUrl: "Fetch",
     fetching: "Fetching…",
-    captured: "Pinned.",
+    pinned: "Pinned.",
+    pinnedMany: "Pinned {count}.",
     // ⚠️ SAID OUT LOUD, not buried in a doc. Instagram serves a login wall to
     // every server fetch, so its pins are ALWAYS link-only. A user who isn't
     // told this concludes the feature is broken.
@@ -474,17 +491,20 @@ export const en = {
 
     dropHere: "Drop to pin",
     dropping: "Adding {done} of {total}…",
-    photoTooBig: "That image is over 5 MB.",
-    photoWrongType: "Images must be PNG, JPEG or WebP.",
-    uploadFailed: "Couldn't upload that image.",
+    pictureTooBig: "That picture is over 5 MB.",
+    pictureWrongType: "Pictures must be PNG, JPEG or WebP.",
+    uploadFailed: "Couldn't upload that picture.",
 
     // Status — the same four an idea has always had.
+    // ⚠️ These do NOT render on a tile. A picture wall that prints a four-state
+    // workflow under every photograph stops reading as a wall.
     status: "Status",
     statusNew: "New",
     statusExploring: "Exploring",
     statusDropped: "Dropped",
     statusMade: "Made",
     showDropped: "Show dropped",
+    hideDropped: "Hide dropped",
 
     makeIt: "Make it",
     madeInto: "Became a collection",
@@ -499,6 +519,9 @@ export const en = {
       "The pins in it survive — they just move to Unsorted. Only the board goes.",
     saved: "Saved.",
     saveFailed: "Couldn't save that.",
+    // Split out — "Couldn't save that" after pressing Delete is simply wrong.
+    deleteFailed: "Couldn't delete that.",
+    coverFailed: "Couldn't set the cover.",
     deleted: "Deleted.",
   },
 

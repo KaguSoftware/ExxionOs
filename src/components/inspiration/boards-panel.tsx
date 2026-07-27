@@ -1,13 +1,23 @@
 "use client";
 
-import { LayoutGrid } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ImageOff,
+  LayoutGrid,
+  Pencil,
+} from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Menu } from "@/components/ui/menu";
+import { archiveBoard } from "@/lib/actions/inspiration";
 import { useI18n } from "@/lib/i18n/client";
+import { useAction } from "@/lib/use-action";
 import { boardPinCounts, imagesByIdea } from "@/lib/inspiration";
 import { createClient } from "@/lib/supabase/client";
 import type { Board, Idea, IdeaImage } from "@/lib/types";
@@ -33,8 +43,18 @@ export function BoardsPanel({
   images: IdeaImage[];
 }) {
   const { t } = useI18n();
+  const router = useRouter();
+  const { run } = useAction();
   const [showArchived, setShowArchived] = useState(false);
-  const [urls, setUrls] = useState<Record<string, string>>({});
+  /** `undefined` = still signing, `null` = signing failed, string = ready. */
+  const [urls, setUrls] = useState<Record<string, string | null>>({});
+
+  const toggleArchive = (board: Board) =>
+    run(() => archiveBoard(board.id, board.archived_at === null), {
+      successMessage: t("inspiration.saved"),
+      errorMessage: t("inspiration.saveFailed"),
+      onSuccess: () => router.refresh(),
+    });
 
   const counts = useMemo(() => boardPinCounts(pins), [pins]);
   const byIdea = useMemo(() => imagesByIdea(images), [images]);
@@ -79,7 +99,9 @@ export function BoardsPanel({
             .createSignedUrl(path, THUMB_TTL, {
               transform: { width: 320, height: 320, resize: "cover" },
             });
-          return [path, data?.signedUrl ?? ""] as const;
+          // `null`, never `""` — an empty string is falsy, so a signing
+          // failure rendered the skeleton forever with no way out.
+          return [path, data?.signedUrl ?? null] as const;
         })
       );
       if (!cancelled) setUrls(Object.fromEntries(entries));
@@ -118,12 +140,12 @@ export function BoardsPanel({
 
           return (
             <li key={board.id}>
-              <Link
-                href={`/inspiration/boards/${board.id}`}
+              {/* An <article> with a stretched anchor, so the tile can carry a
+                  menu without nesting a button inside a link. */}
+              <article
                 className={cn(
-                  "flex h-full flex-col overflow-hidden rounded-xl border border-line bg-surface",
-                  "transition-colors hover:border-line-strong",
-                  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+                  "group relative flex h-full flex-col overflow-hidden rounded-xl border border-line bg-surface",
+                  "transition-colors hover:border-line-strong focus-within:border-line-strong",
                   board.archived_at && "opacity-60"
                 )}
               >
@@ -140,11 +162,18 @@ export function BoardsPanel({
                     </div>
                   ) : (
                     paths.map((path) =>
-                      urls[path] ? (
+                      urls[path] === null ? (
+                        <div
+                          key={path}
+                          className="grid size-full place-items-center bg-raised text-faint"
+                        >
+                          <ImageOff aria-hidden className="size-5" />
+                        </div>
+                      ) : urls[path] ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           key={path}
-                          src={urls[path]}
+                          src={urls[path]!}
                           alt=""
                           className="size-full object-cover"
                           loading="lazy"
@@ -172,7 +201,53 @@ export function BoardsPanel({
                     <Badge tone="neutral">{t("inspiration.archivedBoard")}</Badge>
                   )}
                 </div>
-              </Link>
+
+                <Link
+                  href={`/inspiration/boards/${board.id}`}
+                  className="absolute inset-0 z-10 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                >
+                  <span className="sr-only">{board.name}</span>
+                </Link>
+
+                {/* ⚠️ ALWAYS VISIBLE ON AN ARCHIVED BOARD. Un-archiving used to
+                    be impossible from this tab — the page fetches archived rows
+                    specifically to offer it, and then rendered them with no
+                    controls at all. */}
+                <div
+                  className={cn(
+                    "absolute end-2 top-2 z-20 transition-opacity duration-[var(--dur-fast)]",
+                    board.archived_at
+                      ? "opacity-100"
+                      : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                  )}
+                >
+                  <Menu
+                    label={t("common.more")}
+                    items={[
+                      {
+                        id: "edit",
+                        label: t("common.edit"),
+                        icon: <Pencil aria-hidden className="size-3.5" />,
+                        onSelect: () =>
+                          router.push(`/inspiration/boards/${board.id}/edit`),
+                      },
+                      {
+                        id: "archive",
+                        label: board.archived_at
+                          ? t("inspiration.unarchiveBoard")
+                          : t("inspiration.archiveBoard"),
+                        icon: board.archived_at ? (
+                          <ArchiveRestore aria-hidden className="size-3.5" />
+                        ) : (
+                          <Archive aria-hidden className="size-3.5" />
+                        ),
+                        onSelect: () => void toggleArchive(board),
+                      },
+                    ]}
+                    className="bg-surface/90"
+                  />
+                </div>
+              </article>
             </li>
           );
         })}

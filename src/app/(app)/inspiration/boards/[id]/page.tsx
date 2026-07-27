@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { BoardDetail } from "@/components/inspiration/board-detail";
 import { LiveRefresh } from "@/components/shell/live-refresh";
@@ -53,7 +54,11 @@ export default async function BoardPage({
   return (
     <>
       <LiveRefresh tables={["ideas", "idea_images", "boards"]} />
-      <BoardDetail board={board} pins={pins} images={images} boards={boards} />
+      {/* The wall reads its filters from the URL, so it calls
+          `useSearchParams` and needs a boundary. */}
+      <Suspense>
+        <BoardDetail board={board} pins={pins} images={images} boards={boards} />
+      </Suspense>
     </>
   );
 }

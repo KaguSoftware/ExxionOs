@@ -1,19 +1,28 @@
 "use client";
 
-import { ArrowRight, ExternalLink, ImageIcon, Star, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ExternalLink,
+  ImageIcon,
+  Star,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { ImageStrip } from "@/components/creative/image-strip";
 import { Lightbox } from "@/components/creative/lightbox";
 import { PinComposer } from "@/components/inspiration/pin-composer";
-import { Badge } from "@/components/ui/badge";
+import { PinStatusControl } from "@/components/inspiration/pin-status";
+import { SignedImage } from "@/components/inspiration/signed-image";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CreateOverlay } from "@/components/ui/create";
 import { Dropdown } from "@/components/ui/dropdown";
 import { LinksList } from "@/components/ui/links-list";
+import { Menu } from "@/components/ui/menu";
 import { Panel } from "@/components/ui/panel";
 import { PageHeader } from "@/components/ui/page-header";
 import {
@@ -25,18 +34,9 @@ import {
 } from "@/lib/actions/inspiration";
 import { useI18n } from "@/lib/i18n/client";
 import { liveBoards, sourceLabel } from "@/lib/inspiration";
-import { createClient } from "@/lib/supabase/client";
 import type { Board, Idea, IdeaImage, IdeaStatus, Vocabulary } from "@/lib/types";
-import { IDEA_STATUSES } from "@/lib/types";
 import { useAction } from "@/lib/use-action";
-import { cn, formatDate } from "@/lib/utils";
-
-const STATUS_KEY: Record<IdeaStatus, string> = {
-  new: "inspiration.statusNew",
-  exploring: "inspiration.statusExploring",
-  dropped: "inspiration.statusDropped",
-  made: "inspiration.statusMade",
-};
+import { formatDate } from "@/lib/utils";
 
 /**
  * One pin, opened.
@@ -132,31 +132,49 @@ export function PinDetail({
       },
     });
 
+  const boardName = pin.board_id
+    ? (boards.find((b) => b.id === pin.board_id)?.name ?? null)
+    : null;
+
   return (
-    <>
+    // The page wrapper every other detail surface has — this page and the board
+    // page were the only two rendering flush to the viewport edge.
+    <div className="animate-fade-rise px-4 py-6 md:px-8">
+      {/* Up to where the pin actually lives, not to a generic root. */}
+      <Link
+        href={
+          pin.board_id ? `/inspiration/boards/${pin.board_id}` : "/inspiration"
+        }
+        className="mb-5 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-ink"
+      >
+        <ArrowLeft aria-hidden className="size-4 rtl:rotate-180" />
+        {boardName ?? t("inspiration.title")}
+      </Link>
+
       <PageHeader
         title={pin.title || t("inspiration.untitledPin")}
         description={formatDate(pin.created_at, locale)}
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            {!pin.collection_id && pin.status !== "dropped" && (
-              <Button
-                variant="primary"
-                onClick={() => void promote()}
-                loading={promoting}
-                icon={<ArrowRight aria-hidden className="size-4 rtl:rotate-180" />}
-              >
-                {t("inspiration.makeIt")}
-              </Button>
-            )}
-            <Button variant="secondary" onClick={() => setEditing(true)}>
+          <div className="flex items-center gap-2">
+            {/* ⚠️ Edit is UNCONDITIONAL, and "Make it" has moved down beside
+                Status. The header used to hold a conditional primary that
+                reflowed the whole row when a pin was promoted — and the
+                loudest control on the page was the one action that leaves the
+                section entirely. */}
+            <Button variant="primary" onClick={() => setEditing(true)}>
               {t("common.edit")}
             </Button>
-            <Button
-              variant="ghost"
-              onClick={() => setConfirmDelete(true)}
-              aria-label={t("common.delete")}
-              icon={<Trash2 aria-hidden className="size-4" />}
+            <Menu
+              label={t("common.more")}
+              items={[
+                {
+                  id: "delete",
+                  label: t("common.delete"),
+                  icon: <Trash2 aria-hidden className="size-3.5" />,
+                  destructive: true,
+                  onSelect: () => setConfirmDelete(true),
+                },
+              ]}
             />
           </div>
         }
@@ -178,7 +196,12 @@ export function PinDetail({
                       : undefined
                   }
                 >
-                  <PinHero image={hero} />
+                  <SignedImage
+                    path={hero.path}
+                    size={1200}
+                    alt={pin.title || t("inspiration.untitledPin")}
+                    className="size-full object-contain"
+                  />
                 </button>
                 {pin.board_id && (
                   <Button
@@ -197,9 +220,12 @@ export function PinDetail({
                 )}
               </div>
             ) : (
+              // ⚠️ NOT the wall's hint. This page has no drop or paste
+              // listener, so telling someone to drop a picture here was a
+              // straightforward lie — the strip below is the way in.
               <div className="flex flex-col items-center gap-2 py-8 text-faint">
                 <ImageIcon aria-hidden className="size-6" />
-                <p className="text-xs">{t("inspiration.noPinsHint")}</p>
+                <p className="text-xs">{t("inspiration.noPictures")}</p>
               </div>
             )}
 
@@ -224,27 +250,24 @@ export function PinDetail({
 
         <div className="flex flex-col gap-4">
           <Panel title={t("inspiration.status")}>
-            <div className="flex flex-wrap gap-1">
-              {IDEA_STATUSES.filter((s) => s !== "made").map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setStatus(value)}
-                  aria-pressed={pin.status === value}
-                  className={cn(
-                    "rounded border px-2 py-1 text-xs transition-colors",
-                    pin.status === value
-                      ? "border-brand bg-brand-soft text-ink"
-                      : "border-line text-muted hover:text-ink"
-                  )}
-                >
-                  {t(STATUS_KEY[value] as never)}
-                </button>
-              ))}
-              {pin.status === "made" && (
-                <Badge tone="accent">{t("inspiration.statusMade")}</Badge>
-              )}
-            </div>
+            <PinStatusControl status={pin.status} onChange={setStatus} />
+
+            {/* ⚠️ "Make it" LIVES HERE, not in the header. It is the one
+                control that leaves the section, and beside Status it reads as
+                what it is — "this became a project" — rather than as the
+                loudest button on the page. */}
+            {!pin.collection_id && pin.status !== "dropped" && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="mt-3"
+                onClick={() => void promote()}
+                loading={promoting}
+                icon={<ArrowRight aria-hidden className="size-3.5 rtl:rotate-180" />}
+              >
+                {t("inspiration.makeIt")}
+              </Button>
+            )}
 
             {pin.collection_id && (
               <Link
@@ -353,48 +376,6 @@ export function PinDetail({
           onClose={() => setViewing(null)}
         />
       )}
-    </>
-  );
-}
-
-/**
- * The hero picture, signed at mount.
- *
- * ⚠️ Signed at a GENEROUS size with a `contain` transform — big enough to look
- * like the real thing, small enough not to ship a 12MP original into a panel.
- * The full original is still one click away in the Lightbox, which passes no
- * transform at all. The effect keys on the path alone and holds no caller
- * callback, so the focus-steal deps trap cannot apply.
- */
-function PinHero({ image }: { image: IdeaImage }) {
-  const { t } = useI18n();
-  const [url, setUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const supabase = createClient();
-      const { data } = await supabase.storage
-        .from("creative")
-        .createSignedUrl(image.path, 60 * 30, {
-          transform: { width: 1200, height: 1200, resize: "contain" },
-        });
-      if (!cancelled) setUrl(data?.signedUrl ?? null);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [image.path]);
-
-  // The skeleton covers the wait, so `src` is never empty — a signing failure
-  // degrades to a placeholder rather than a broken-image box.
-  if (!url) return <div className="skeleton aspect-[4/5] w-full" />;
-  return (
-    /* eslint-disable-next-line @next/next/no-img-element */
-    <img
-      src={url}
-      alt={t("creative.photos")}
-      className="size-full object-contain"
-    />
+    </div>
   );
 }

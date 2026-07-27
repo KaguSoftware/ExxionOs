@@ -131,3 +131,41 @@ export function liveBoards(boards: Board[]): Board[] {
     .filter((b) => b.archived_at === null)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
+
+/** The first picture of a pin, or undefined — what a tile renders. */
+export function firstImage(
+  byIdea: Map<string, IdeaImage[]>,
+  ideaId: string
+): IdeaImage | undefined {
+  return byIdea.get(ideaId)?.[0];
+}
+
+/**
+ * Everything about a pin that search should look at, flattened once.
+ *
+ * ⚠️ Includes the BOARD NAME and the SOURCE HOSTNAME, not just the pin's own
+ * columns. "that lamp thing from the Danish site" and "what's in Packaging" are
+ * both how people actually look for a picture they saw once, and neither is a
+ * substring of title or body.
+ */
+export function pinHaystack(idea: Idea, boardName: string | null): string {
+  return [
+    idea.title,
+    idea.body ?? "",
+    (idea.tags ?? []).join(" "),
+    sourceLabel(idea.source_url) ?? "",
+    boardName ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+/**
+ * AND across whitespace-separated tokens, so "brass lamp" narrows rather than
+ * widening — typing more words should always mean fewer results.
+ */
+export function matchesQuery(haystack: string, query: string): boolean {
+  const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return true;
+  return tokens.every((token) => haystack.includes(token));
+}

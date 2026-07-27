@@ -191,6 +191,8 @@ export const fa: Dictionary = {
     add: "افزودن",
     remove: "حذف",
     close: "بستن",
+    more: "بیشتر",
+    retry: "تلاش دوباره",
     confirm: "تأیید",
     back: "بازگشت",
     search: "جستجو",
@@ -384,14 +386,20 @@ export const fa: Dictionary = {
 
     pins: "پین‌ها",
     boards: "بردها",
-    list: "فهرست",
     tags: "برچسب‌ها",
 
     newPin: "پین جدید",
     editPin: "ویرایش پین",
+    openPin: "باز کردن پین",
+    quickLook: "پین",
+    previousPin: "پین قبلی",
+    nextPin: "پین بعدی",
+    pictureCount: "{index} از {total}",
+    searchPins: "جستجوی پین‌ها",
     noPins: "هنوز چیزی پین نشده.",
     noPinsHint:
-      "یک عکس را اینجا رها کنید، لینکی را بچسبانید، یا Ctrl+V بزنید. هر چیزی که با دیدنش گفتید «این را می‌توانیم بسازیم».",
+      "یک عکس را هر جای این صفحه رها کنید، لینکی را بچسبانید، یا Ctrl+V بزنید. هر چیزی که با دیدنش گفتید «این را می‌توانیم بسازیم».",
+    noPictures: "هنوز تصویری روی این پین نیست.",
     noMatches: "چیزی با این فیلترها پیدا نشد.",
     clearFilters: "پاک کردن فیلترها",
 
@@ -427,22 +435,21 @@ export const fa: Dictionary = {
     addTag: "افزودن برچسب",
     allTags: "همهٔ برچسب‌ها",
 
-    addPins: "افزودن پین",
-    addPinsHint:
-      "برای انتخاب تصویر کلیک کنید — یا هر جای صفحه رهایشان کنید، یا Ctrl+V بزنید",
-    photos: "تصویرها",
-    addPhotos: "افزودن تصویر",
+    pictures: "تصویرها",
+    addPictures: "افزودن تصویر",
+    addPinsHint: "هر تصویر، یک پین.",
     addPhotosHint:
-      "برای انتخاب کلیک کنید، یا تصویرها را اینجا رها کنید. هنگام ساخت پین آپلود می‌شوند.",
+      "همهٔ این‌ها روی یک پین می‌روند. برای اینکه هر کدام پین جداگانه شود، آن‌ها را روی دیوار رها کنید.",
     newPinHint:
       "تصویر اضافه کنید، لینکی ذخیره کنید، یا فقط بنویسیدش. هر چیزی که با دیدنش گفتید «این را می‌توانیم بسازیم».",
     capture: "ذخیره از یک لینک",
     captureHint:
       "صفحهٔ یک محصول، یک مقاله، هر چیزی را بچسبانید. اگر سایت اجازه بدهد تصویرش را می‌آوریم.",
     capturePlaceholder: "https://…",
-    fetchUrl: "ذخیره",
+    fetchUrl: "دریافت",
     fetching: "در حال دریافت…",
-    captured: "پین شد.",
+    pinned: "پین شد.",
+    pinnedMany: "{count} پین شد.",
     linkOnly: "این سایت تصویرش را نداد — فقط به‌صورت لینک ذخیره شد.",
     linkOnlyHint:
       "اینستاگرام و بعضی فروشگاه‌ها این کار را مسدود می‌کنند. اسکرین‌شات بگیرید و Ctrl+V بزنید.",
@@ -452,8 +459,8 @@ export const fa: Dictionary = {
 
     dropHere: "برای پین کردن رها کنید",
     dropping: "افزودن {done} از {total}…",
-    photoTooBig: "این تصویر بیشتر از ۵ مگابایت است.",
-    photoWrongType: "تصویر باید PNG، JPEG یا WebP باشد.",
+    pictureTooBig: "این تصویر بیشتر از ۵ مگابایت است.",
+    pictureWrongType: "تصویر باید PNG، JPEG یا WebP باشد.",
     uploadFailed: "این تصویر آپلود نشد.",
 
     status: "وضعیت",
@@ -462,6 +469,7 @@ export const fa: Dictionary = {
     statusDropped: "کنار گذاشته شد",
     statusMade: "ساخته شد",
     showDropped: "نمایش کنارگذاشته‌شده‌ها",
+    hideDropped: "پنهان کردن کنارگذاشته‌شده‌ها",
 
     makeIt: "بسازیمش",
     madeInto: "به کالکشن تبدیل شد",
@@ -475,6 +483,8 @@ export const fa: Dictionary = {
       "پین‌های داخلش می‌مانند — فقط به «دسته‌بندی‌نشده» منتقل می‌شوند. تنها خودِ برد حذف می‌شود.",
     saved: "ذخیره شد.",
     saveFailed: "ذخیره نشد.",
+    deleteFailed: "حذف نشد.",
+    coverFailed: "کاور تنظیم نشد.",
     deleted: "حذف شد.",
   },
 

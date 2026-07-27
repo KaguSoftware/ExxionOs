@@ -1,83 +1,156 @@
 "use client";
 
-import { Link2 } from "lucide-react";
+import { FolderInput, ImageOff, Images, Link2, Trash2 } from "lucide-react";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
+import { Menu, type MenuItem } from "@/components/ui/menu";
 import { useI18n } from "@/lib/i18n/client";
 import { pinAspect, sourceLabel } from "@/lib/inspiration";
-import type { Idea, IdeaImage } from "@/lib/types";
+import type { Board, Idea, IdeaImage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
- * One tile on the board.
+ * One tile on the wall.
  *
- * ⚠️ THREE SHAPES, ONE COMPONENT. A photo pin (media box + optional caption), a
- * link-only pin (the site wouldn't give up its picture — a source chip is what
- * distinguishes that from a forgotten note), and a text pin. Splitting them
- * into three components would mean three places to change the card, and the
- * masonry has to flow them interchangeably anyway.
+ * ⚠️ AN `<article>` WITH A STRETCHED ANCHOR, not one big `<Link>`. The tile was
+ * a single anchor wrapping everything, which structurally forbids a button
+ * inside it — nested interactive elements are invalid HTML with unreliable hit
+ * targets, and that is why the wall had no actions at all. The anchor is now an
+ * absolutely-positioned overlay sibling; the action buttons sit above it.
  *
- * ⚠️ The media box's height comes from the STORED intrinsic size, not from the
- * loaded image. That is the entire reason `idea_images.width/height` exist: a
- * card that sizes itself when the picture lands makes every column below it
- * jump, forty times, on every visit.
+ * ⚠️ IT IS STILL A REAL ANCHOR, deliberately. A plain left-click is intercepted
+ * and opens the quick-look (no navigation, so the wall keeps its filters and
+ * scroll), but ctrl/cmd/middle-click still opens the full pin page in a new
+ * tab, the browser still shows the URL on hover, and a screen reader still
+ * announces a link to a real destination.
+ *
+ * ⚠️ TOUCH HAS NO HOVER, AND THAT IS CORRECT. Do not "fix" this by forcing the
+ * action pills visible on small screens — a tap opens the quick-look, which
+ * holds a strict superset of them. Pinning them open rebuilds the dossier tile
+ * this rework exists to remove.
  */
 export function PinCard({
   pin,
   image,
+  imageCount,
+  /** Signed at the wall level. `undefined` = still signing, `null` = failed. */
   thumbUrl,
   boardName,
+  boards,
+  onOpen,
+  onMoveToBoard,
+  onDelete,
+  onRetryThumb,
 }: {
   pin: Idea;
   image: IdeaImage | undefined;
-  /** Signed at the board level, one effect for the whole wall. Undefined
-   *  while it resolves — the skeleton covers that, so `src` is never empty. */
-  thumbUrl: string | undefined;
+  imageCount: number;
+  thumbUrl: string | null | undefined;
   boardName: string | null;
+  boards: Board[];
+  onOpen: (id: string) => void;
+  onMoveToBoard: (pin: Idea, boardId: string | null) => void;
+  onDelete: (pin: Idea) => void;
+  onRetryThumb: (image: IdeaImage) => void;
 }) {
   const { t } = useI18n();
   const aspect = pinAspect(image);
   const source = sourceLabel(pin.source_url);
   const dropped = pin.status === "dropped";
+  const title = pin.title || t("inspiration.untitledPin");
+
+  const boardItems: MenuItem[] = [
+    {
+      id: "unsorted",
+      label: t("inspiration.unsorted"),
+      disabled: pin.board_id === null,
+      onSelect: () => onMoveToBoard(pin, null),
+    },
+    ...boards.map((board) => ({
+      id: board.id,
+      label: board.name,
+      disabled: pin.board_id === board.id,
+      onSelect: () => onMoveToBoard(pin, board.id),
+    })),
+  ];
 
   return (
-    <Link
-      href={`/inspiration/pins/${pin.id}`}
+    <article
       className={cn(
-        "group block overflow-hidden rounded-xl border border-line bg-surface",
-        "transition-colors hover:border-line-strong",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
-        // A dropped pin stays on the wall when you ask for it, but it must not
-        // compete visually with live ones.
+        "group relative overflow-hidden rounded-xl border border-line bg-surface",
+        "transition-colors duration-[var(--dur-fast)] hover:border-line-strong",
+        "focus-within:border-line-strong",
+        // A pin you decided against stays legible but stops competing.
         dropped && "opacity-60"
       )}
     >
       {image ? (
-        // ⚠️ The ratio is ALWAYS set, falling back to 4:5 when the dimensions
-        // are unknown. An unset height here would leave the box to be sized by
-        // the picture, which is precisely the reflow the stored dimensions
-        // exist to prevent. Tailwind can't express an arbitrary runtime number,
-        // and a class per ratio would be hundreds of one-off utilities.
-        <div className="bg-raised" style={{ aspectRatio: aspect ?? 4 / 5 }}>
-          {thumbUrl ? (
-            /* A plain <img>: these are SHORT-LIVED SIGNED URLs from a private
-               bucket. next/image would proxy and cache them, and its copy would
-               outlive the token — so the picture would 400 once the signature
-               expired. The bucket's own transform already resizes.
-
-               The fade is the section's ONE authored moment: forty thumbnails
-               land at forty different times, and popping each one in hard reads
-               as jitter. The box is already the right size, so nothing moves. */
+        // ⚠️ The ratio is ALWAYS set, falling back to 4:5 when unknown. An
+        // unset height would let the picture size the box — precisely the
+        // reflow the stored dimensions exist to prevent.
+        <div
+          className="relative bg-raised"
+          style={{ aspectRatio: aspect ?? 4 / 5 }}
+        >
+          {thumbUrl === undefined && <div className="skeleton size-full" />}
+          {thumbUrl === null && (
+            // ⚠️ A signing failure used to store "" and render the skeleton
+            // FOREVER — indistinguishable from a slow network, with no way out.
+            <div className="flex size-full flex-col items-center justify-center gap-2 text-faint">
+              <ImageOff aria-hidden className="size-5" />
+              <button
+                type="button"
+                onClick={() => onRetryThumb(image)}
+                className="relative z-20 text-xs underline hover:text-ink"
+              >
+                {t("common.retry")}
+              </button>
+            </div>
+          )}
+          {thumbUrl && (
+            /* A plain <img>: short-lived signed URLs from a private bucket.
+               next/image would cache a copy that outlives the token and 400. */
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={thumbUrl}
-              alt={pin.title || t("inspiration.untitledPin")}
+              alt={title}
               className="animate-fade-in size-full object-cover"
               loading="lazy"
             />
-          ) : (
-            <div className="skeleton size-full" />
+          )}
+
+          {/* Board + tags, revealed with the actions rather than printed under
+              every picture. Inside the media box so the gradient sits on the
+              photograph, and `pointer-events-none` so it never eats a click
+              meant for the stretched anchor beneath it. */}
+          {(boardName || pin.tags.length > 0) && (
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-wrap items-center gap-1 p-2",
+                "bg-gradient-to-t from-black/70 to-transparent",
+                "opacity-0 transition-opacity duration-[var(--dur-fast)]",
+                "group-hover:opacity-100 group-focus-within:opacity-100"
+              )}
+            >
+              {boardName && (
+                <span className="rounded bg-black/50 px-1.5 py-0.5 text-2xs text-white">
+                  {boardName}
+                </span>
+              )}
+              {pin.tags.slice(0, 3).map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded bg-black/50 px-1.5 py-0.5 text-2xs text-white/85"
+                >
+                  {tag}
+                </span>
+              ))}
+              {pin.tags.length > 3 && (
+                <span className="text-2xs text-white/70">
+                  +{pin.tags.length - 3}
+                </span>
+              )}
+            </div>
           )}
         </div>
       ) : (
@@ -91,58 +164,82 @@ export function PinCard({
       )}
 
       <div className="flex flex-col gap-1.5 p-3">
-        {/* A pin with no picture, no title and no notes would otherwise be a
-            blank tile you can't tell from a rendering failure. Reachable only
-            by deliberately clearing every field, but a card must always say
-            what it is. */}
+        {/* Title ONLY. Board and tags moved into the hover scrim below, and
+            the status badge is gone entirely — a wall at rest should read as
+            pictures, not as a row of dossiers. */}
         {(pin.title || (!image && !pin.body)) && (
           <p
             className={cn(
-              "line-clamp-2 text-sm font-medium",
+              "line-clamp-1 text-sm font-medium",
               pin.title ? "text-ink" : "text-faint italic",
               dropped && "line-through"
             )}
           >
-            {pin.title || t("inspiration.untitledPin")}
+            {title}
           </p>
         )}
 
-        {/* The source chip is what makes a link-only pin legible AS a link-only
-            pin, rather than as a picture that failed to load. */}
+        {/* The source chip STAYS PERMANENT on a link-only pin — it is the only
+            thing distinguishing "this site refused its picture" from "this
+            picture failed to load". */}
         {!image && source && (
           <span className="flex items-center gap-1 text-xs text-faint" dir="ltr">
             <Link2 aria-hidden className="size-3 shrink-0" />
             <span className="truncate">{source}</span>
           </span>
         )}
-
-        {(boardName || pin.tags.length > 0) && (
-          <div className="flex flex-wrap items-center gap-1">
-            {boardName && (
-              <span className="rounded border border-line px-1.5 py-0.5 text-2xs text-muted">
-                {boardName}
-              </span>
-            )}
-            {/* Two, then a count. A pin with nine tags would otherwise be a
-                wall of chips taller than its own picture. */}
-            {pin.tags.slice(0, 2).map((tag) => (
-              <span
-                key={tag}
-                className="rounded bg-raised px-1.5 py-0.5 text-2xs text-faint"
-              >
-                {tag}
-              </span>
-            ))}
-            {pin.tags.length > 2 && (
-              <span className="text-2xs text-faint">+{pin.tags.length - 2}</span>
-            )}
-          </div>
-        )}
-
-        {pin.status === "made" && (
-          <Badge tone="accent">{t("inspiration.statusMade")}</Badge>
-        )}
       </div>
-    </Link>
+
+      {/* ⚠️ THE PRIMARY ACTION, stretched over the whole tile and UNDER the
+          action buttons (z-10 vs z-20). Keeping it an anchor is what preserves
+          ctrl-click, middle-click and "copy link address". */}
+      <Link
+        href={`/inspiration/pins/${pin.id}`}
+        onClick={(e) => {
+          // Let the browser handle every modified click natively.
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          e.preventDefault();
+          onOpen(pin.id);
+        }}
+        className="absolute inset-0 z-10 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+      >
+        <span className="sr-only">{title}</span>
+      </Link>
+
+      {/* Multi-image count — ALWAYS visible. A pin holding nine pictures used
+          to be pixel-identical to one holding a single picture. */}
+      {imageCount > 1 && (
+        <span className="pointer-events-none absolute start-2 top-2 z-20 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-2xs font-medium text-white">
+          <Images aria-hidden className="size-3" />
+          {imageCount}
+        </span>
+      )}
+
+      {/* Two actions, no more. A third turns the wall back into a control
+          panel; everything else lives one tap away in the quick-look. */}
+      <div
+        className={cn(
+          "absolute end-2 top-2 z-20 flex items-center gap-1",
+          "opacity-0 transition-opacity duration-[var(--dur-fast)]",
+          "group-hover:opacity-100 group-focus-within:opacity-100"
+        )}
+      >
+        <Menu
+          label={t("inspiration.moveToBoard")}
+          items={boardItems}
+          trigger={<FolderInput aria-hidden className="size-3.5" />}
+          className="size-7 rounded-full border-transparent bg-black/60 text-white hover:border-transparent hover:bg-black/75 hover:text-white"
+        />
+        <button
+          type="button"
+          onClick={() => onDelete(pin)}
+          aria-label={t("common.delete")}
+          className="grid size-7 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-danger-fill"
+        >
+          <Trash2 aria-hidden className="size-3.5" />
+        </button>
+      </div>
+
+    </article>
   );
 }
