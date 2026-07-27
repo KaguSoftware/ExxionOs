@@ -6,10 +6,8 @@ import { useState } from "react";
 
 import { CaptureDropzone } from "@/components/inspiration/capture-dropzone";
 import { PinMasonry } from "@/components/inspiration/pin-masonry";
-import { UrlCapture } from "@/components/inspiration/url-capture";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Panel } from "@/components/ui/panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { archiveBoard, deleteBoard } from "@/lib/actions/inspiration";
 import { useI18n } from "@/lib/i18n/client";
@@ -104,20 +102,16 @@ export function BoardDetail({
         }
       />
 
-      <div className="flex flex-col gap-4">
-        <Panel>
-          <UrlCapture boardId={board.id} />
-        </Panel>
-
-        <CaptureDropzone boardId={board.id}>
-          <PinMasonry
-            pins={pins}
-            images={images}
-            boards={boards}
-            lockedBoardId={board.id}
-          />
-        </CaptureDropzone>
-      </div>
+      {/* Dropping here files straight into this board — the board you have open
+          IS the answer to "where should this go". */}
+      <CaptureDropzone boardId={board.id}>
+        <PinMasonry
+          pins={pins}
+          images={images}
+          boards={boards}
+          lockedBoardId={board.id}
+        />
+      </CaptureDropzone>
 
       <ConfirmDialog
         open={confirmDelete}

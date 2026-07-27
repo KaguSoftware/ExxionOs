@@ -7,10 +7,8 @@ import { BoardsPanel } from "@/components/inspiration/boards-panel";
 import { CaptureDropzone } from "@/components/inspiration/capture-dropzone";
 import { PinMasonry } from "@/components/inspiration/pin-masonry";
 import { PinsList } from "@/components/inspiration/pins-list";
-import { UrlCapture } from "@/components/inspiration/url-capture";
 import { TabbedPanels } from "@/components/shell/tabbed-panels";
 import { Button } from "@/components/ui/button";
-import { Panel } from "@/components/ui/panel";
 import { VocabularyManager } from "@/components/ui/vocabulary-manager";
 import { useI18n } from "@/lib/i18n/client";
 import { liveBoards } from "@/lib/inspiration";
@@ -65,18 +63,15 @@ export function InspirationPanels({
           ).length,
           action: newPinAction,
           content: (
-            <div className="flex flex-col gap-4">
-              <Panel>
-                <UrlCapture boardId={null} />
-              </Panel>
-              <CaptureDropzone boardId={null}>
-                <PinMasonry
-                  pins={pins}
-                  images={images}
-                  boards={liveBoards(boards)}
-                />
-              </CaptureDropzone>
-            </div>
+            // CaptureDropzone renders the capture bar AND arms the whole window
+            // as a drop target, so it wraps the wall rather than sitting beside it.
+            <CaptureDropzone boardId={null}>
+              <PinMasonry
+                pins={pins}
+                images={images}
+                boards={liveBoards(boards)}
+              />
+            </CaptureDropzone>
           ),
         },
         {

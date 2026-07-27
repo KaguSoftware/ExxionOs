@@ -445,6 +445,11 @@ export const en = {
     allTags: "All tags",
 
     // Capture
+    addPins: "Add pins",
+    // ⚠️ Names the CLICK first. Drag-and-drop and Ctrl+V are invisible until
+    // someone tells you they exist; "choose files" is the affordance people
+    // look for, so it leads.
+    addPinsHint: "Click to choose images — or drop them anywhere, or press Ctrl+V",
     capture: "Save from a link",
     captureHint:
       "Paste a product page, an article, anything. We'll pull its picture if the site allows it.",

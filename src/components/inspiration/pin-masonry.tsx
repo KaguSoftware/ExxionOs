@@ -138,7 +138,7 @@ export function PinMasonry({
       {/* Filters. The board row is hidden on a board page — you are already
           inside one, and offering to filter to a different board there would
           contradict the page you're on. */}
-      {!lockedBoardId && boards.length > 0 && (
+      {!lockedBoardId && boards.length > 1 && (
         <div className="flex flex-wrap gap-1.5">
           <FilterChip active={boardFilter === null} onClick={() => setBoardFilter(null)}>
             {t("inspiration.allBoards")}
@@ -179,12 +179,17 @@ export function PinMasonry({
         </div>
       )}
 
-      <Checkbox
-        className="w-fit"
-        checked={showDropped}
-        onChange={(e) => setShowDropped(e.target.checked)}
-        label={t("inspiration.showDropped")}
-      />
+      {/* Only when there is something to reveal. A permanent control for a
+          state you may never have used is chrome sitting on top of the
+          pictures, which is the one thing this surface is for. */}
+      {pins.some((p) => p.status === "dropped") && (
+        <Checkbox
+          className="w-fit"
+          checked={showDropped}
+          onChange={(e) => setShowDropped(e.target.checked)}
+          label={t("inspiration.showDropped")}
+        />
+      )}
 
       {visible.length === 0 ? (
         <EmptyState
